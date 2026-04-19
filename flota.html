@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Flota de Equipos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="ph">
+      <div class="ph-left">
+        <h1>Flota de Equipos</h1>
+        <p>Administrá los equipos y maquinarias disponibles</p>
+      </div>
+      <button class="btn btn-accent" onclick="abrirModal()">+ Agregar Equipo</button>
+    </div>
+
+    <!-- Cards resumen -->
+    <div class="cards3" style="margin-bottom:24px">
+      <div class="card bl-primary">
+        <div class="card-label">Total Equipos</div>
+        <div class="card-value" id="cnt-total">—</div>
+        <div class="card-sub">En el sistema</div>
+      </div>
+      <div class="card bl-ok">
+        <div class="card-label">Equipos Propios</div>
+        <div class="card-value" id="cnt-propios">—</div>
+        <div class="card-sub">De la empresa</div>
+      </div>
+      <div class="card bl-warn">
+        <div class="card-label">Equipos Alquilados</div>
+        <div class="card-value" id="cnt-alquilados">—</div>
+        <div class="card-sub">Externos / subcontratados</div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>Listado de Equipos</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="buscador" placeholder="Buscar equipo..." oninput="filtrarTabla()"
+            style="padding:8px 14px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;width:220px">
+          <select id="filtro-tipo" onchange="filtrarTabla()"
+            style="padding:8px 12px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none">
+            <option value="">Todos los tipos</option>
+            <option value="Propio">Propios</option>
+            <option value="Alquilado">Alquilados</option>
+          </select>
+        </div>
+      </div>
+      <table id="tabla-flota">
+        <thead><tr>
+          <th style="width:100px">N° Interno</th>
+          <th>Nombre del Equipo</th>
+          <th style="width:120px">Tipo</th>
+          <th style="width:90px">Estado</th>
+          <th style="width:120px"></th>
+        </tr></thead>
+        <tbody id="tbody-flota">
+          <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-equipo">
+  <div class="modal" style="width:480px;max-width:95vw">
+    <h2 id="modal-titulo">Agregar Equipo</h2>
+    <input type="hidden" id="eq-id">
+    <div class="row2">
+      <div class="fg">
+        <label>N° Interno</label>
+        <input type="text" id="eq-numero" placeholder="Ej: M-01, CAM-03">
+      </div>
+      <div class="fg">
+        <label>Tipo</label>
+        <select id="eq-tipo">
+          <option value="Propio">Propio</option>
+          <option value="Alquilado">Alquilado</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Nombre del Equipo *</label>
+      <input type="text" id="eq-nombre" placeholder="Ej: Fresadora Wirtgen W200">
+    </div>
+    <div class="fg" style="max-width:160px">
+      <label>Estado</label>
+      <select id="eq-activo">
+        <option value="true">Activo</option>
+        <option value="false">Inactivo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-success" id="btn-guardar-eq" onclick="guardarEquipo()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let equipos = []
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (usuario.rol === 'jefe_obra') { window.location.href = 'dashboard.html'; return }
+  renderSidebar(usuario, 'flota')
+  await cargarEquipos()
+}
+
+async function cargarEquipos() {
+  const { data, error } = await db.from('flota_equipos').select('*').order('numero_interno')
+  if (error) { toast('Error al cargar equipos', 'error'); return }
+  equipos = data || []
+  renderCards()
+  renderTabla(equipos)
+}
+
+function renderCards() {
+  const total     = equipos.length
+  const propios   = equipos.filter(e => e.tipo === 'Propio').length
+  const alquilados = equipos.filter(e => e.tipo === 'Alquilado').length
+  document.getElementById('cnt-total').textContent     = total
+  document.getElementById('cnt-propios').textContent   = propios
+  document.getElementById('cnt-alquilados').textContent = alquilados
+}
+
+function renderTabla(lista) {
+  const tbody = document.getElementById('tbody-flota')
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">
+      No hay equipos registrados aún</td></tr>`
+    return
+  }
+  const esCoord = usuario.rol === 'coordinador'
+  tbody.innerHTML = lista.map(e => `
+    <tr style="opacity:${e.activo ? 1 : 0.5}">
+      <td><strong>${e.numero_interno || '—'}</strong></td>
+      <td>${e.nombre}</td>
+      <td><span class="badge ${e.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.tipo}</span></td>
+      <td><span class="badge ${e.activo ? 'b-ok' : 'b-blue'}">${e.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td style="text-align:right">
+        ${esCoord ? `
+        <button class="btn btn-outline btn-sm" onclick="editarEquipo('${e.id}')">Editar</button>
+        <button class="btn btn-sm" style="background:#fff0f0;color:var(--danger);border:1px solid #f5c6c6;margin-left:4px" onclick="eliminarEquipo('${e.id}')">✕</button>
+        ` : '—'}
+      </td>
+    </tr>`).join('')
+}
+
+function filtrarTabla() {
+  const texto = document.getElementById('buscador').value.toLowerCase()
+  const tipo  = document.getElementById('filtro-tipo').value
+  const filtrados = equipos.filter(e => {
+    const matchTexto = e.nombre.toLowerCase().includes(texto) || (e.numero_interno||'').toLowerCase().includes(texto)
+    const matchTipo  = !tipo || e.tipo === tipo
+    return matchTexto && matchTipo
+  })
+  renderTabla(filtrados)
+}
+
+function abrirModal(equipo = null) {
+  document.getElementById('eq-id').value      = equipo?.id || ''
+  document.getElementById('eq-numero').value  = equipo?.numero_interno || ''
+  document.getElementById('eq-nombre').value  = equipo?.nombre || ''
+  document.getElementById('eq-tipo').value    = equipo?.tipo || 'Propio'
+  document.getElementById('eq-activo').value  = equipo ? String(equipo.activo) : 'true'
+  document.getElementById('modal-titulo').textContent = equipo ? 'Editar Equipo' : 'Agregar Equipo'
+  document.getElementById('modal-equipo').classList.add('open')
+  document.getElementById('eq-nombre').focus()
+}
+
+function cerrarModal() {
+  document.getElementById('modal-equipo').classList.remove('open')
+}
+
+function editarEquipo(id) {
+  const eq = equipos.find(e => e.id === id)
+  if (eq) abrirModal(eq)
+}
+
+async function guardarEquipo() {
+  const nombre = document.getElementById('eq-nombre').value.trim()
+  if (!nombre) { toast('El nombre del equipo es obligatorio', 'error'); return }
+
+  const btn = document.getElementById('btn-guardar-eq')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  const id     = document.getElementById('eq-id').value
+  const datos  = {
+    numero_interno: document.getElementById('eq-numero').value.trim() || null,
+    nombre,
+    tipo:   document.getElementById('eq-tipo').value,
+    activo: document.getElementById('eq-activo').value === 'true'
+  }
+
+  const { error } = id
+    ? await db.from('flota_equipos').update(datos).eq('id', id)
+    : await db.from('flota_equipos').insert(datos)
+
+  if (error) { toast('Error al guardar', 'error'); btn.textContent = '✓ Guardar'; btn.disabled = false; return }
+
+  toast(id ? 'Equipo actualizado' : 'Equipo agregado correctamente')
+  cerrarModal()
+  btn.textContent = '✓ Guardar'
+  btn.disabled = false
+  await cargarEquipos()
+}
+
+async function eliminarEquipo(id) {
+  if (!confirm('¿Eliminás este equipo del sistema?')) return
+  const { error } = await db.from('flota_equipos').delete().eq('id', id)
+  if (error) { toast('Error al eliminar', 'error'); return }
+  toast('Equipo eliminado')
+  await cargarEquipos()
+}
+
+init()
+</script>
+</body>
+</html>

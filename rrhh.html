@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Recursos Humanos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="ph">
+      <div class="ph-left">
+        <h1>Recursos Humanos</h1>
+        <p>Nómina de operarios y personal afectable a obras</p>
+      </div>
+      <button class="btn btn-accent" onclick="abrirModal()">+ Agregar Persona</button>
+    </div>
+
+    <!-- Cards resumen -->
+    <div class="cards3" style="margin-bottom:24px">
+      <div class="card bl-primary">
+        <div class="card-label">Total Personal</div>
+        <div class="card-value" id="cnt-total">—</div>
+        <div class="card-sub">En nómina</div>
+      </div>
+      <div class="card bl-ok">
+        <div class="card-label">Personal Activo</div>
+        <div class="card-value" id="cnt-activos">—</div>
+        <div class="card-sub">Disponible para afectar</div>
+      </div>
+      <div class="card bl-warn">
+        <div class="card-label">Funciones Distintas</div>
+        <div class="card-value" id="cnt-funciones">—</div>
+        <div class="card-sub">Categorías registradas</div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>Nómina de Personal</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="buscador" placeholder="Buscar persona..." oninput="filtrarTabla()"
+            style="padding:8px 14px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;width:220px">
+          <select id="filtro-funcion" onchange="filtrarTabla()"
+            style="padding:8px 12px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none">
+            <option value="">Todas las funciones</option>
+          </select>
+        </div>
+      </div>
+      <table id="tabla-rrhh">
+        <thead><tr>
+          <th>Nombre Completo</th>
+          <th style="width:180px">Función</th>
+          <th style="width:90px">Estado</th>
+          <th style="width:120px"></th>
+        </tr></thead>
+        <tbody id="tbody-rrhh">
+          <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-persona">
+  <div class="modal" style="width:440px;max-width:95vw">
+    <h2 id="modal-titulo">Agregar Persona</h2>
+    <input type="hidden" id="p-id">
+    <div class="fg">
+      <label>Nombre Completo *</label>
+      <input type="text" id="p-nombre" placeholder="Ej: García, Juan Carlos">
+    </div>
+    <div class="fg">
+      <label>Función / Categoría *</label>
+      <input type="text" id="p-funcion" placeholder="Ej: Oficial, Operador, Capataz..." list="funciones-list">
+      <datalist id="funciones-list">
+        <option value="Oficial">
+        <option value="Medio Oficial">
+        <option value="Ayudante">
+        <option value="Capataz">
+        <option value="Operador">
+        <option value="Chofer">
+        <option value="Electricista">
+        <option value="Soldador">
+      </datalist>
+    </div>
+    <div class="fg" style="max-width:160px">
+      <label>Estado</label>
+      <select id="p-activo">
+        <option value="true">Activo</option>
+        <option value="false">Inactivo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-success" id="btn-guardar-p" onclick="guardarPersona()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let personal = []
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (usuario.rol === 'jefe_obra') { window.location.href = 'dashboard.html'; return }
+  renderSidebar(usuario, 'rrhh')
+  await cargarPersonal()
+}
+
+async function cargarPersonal() {
+  const { data, error } = await db.from('recursos_humanos').select('*').order('nombre_completo')
+  if (error) { toast('Error al cargar personal', 'error'); return }
+  personal = data || []
+  renderCards()
+  renderFiltroFunciones()
+  renderTabla(personal)
+}
+
+function renderCards() {
+  const total    = personal.length
+  const activos  = personal.filter(p => p.activo).length
+  const funciones = [...new Set(personal.map(p => p.funcion).filter(Boolean))].length
+  document.getElementById('cnt-total').textContent    = total
+  document.getElementById('cnt-activos').textContent  = activos
+  document.getElementById('cnt-funciones').textContent = funciones
+}
+
+function renderFiltroFunciones() {
+  const sel = document.getElementById('filtro-funcion')
+  const funciones = [...new Set(personal.map(p => p.funcion).filter(Boolean))].sort()
+  funciones.forEach(f => sel.insertAdjacentHTML('beforeend', `<option value="${f}">${f}</option>`))
+}
+
+function renderTabla(lista) {
+  const tbody = document.getElementById('tbody-rrhh')
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--gray)">
+      No hay personal registrado aún</td></tr>`
+    return
+  }
+  const esCoord = usuario.rol === 'coordinador'
+  tbody.innerHTML = lista.map(p => `
+    <tr style="opacity:${p.activo ? 1 : 0.5}">
+      <td><strong>${p.nombre_completo}</strong></td>
+      <td><span class="badge b-ok" style="font-size:12px">${p.funcion || '—'}</span></td>
+      <td><span class="badge ${p.activo ? 'b-ok' : 'b-blue'}">${p.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td style="text-align:right">
+        ${esCoord ? `
+        <button class="btn btn-outline btn-sm" onclick="editarPersona('${p.id}')">Editar</button>
+        <button class="btn btn-sm" style="background:#fff0f0;color:var(--danger);border:1px solid #f5c6c6;margin-left:4px" onclick="eliminarPersona('${p.id}')">✕</button>
+        ` : '—'}
+      </td>
+    </tr>`).join('')
+}
+
+function filtrarTabla() {
+  const texto   = document.getElementById('buscador').value.toLowerCase()
+  const funcion = document.getElementById('filtro-funcion').value
+  const filtrados = personal.filter(p => {
+    const matchTexto   = p.nombre_completo.toLowerCase().includes(texto)
+    const matchFuncion = !funcion || p.funcion === funcion
+    return matchTexto && matchFuncion
+  })
+  renderTabla(filtrados)
+}
+
+function abrirModal(persona = null) {
+  document.getElementById('p-id').value      = persona?.id || ''
+  document.getElementById('p-nombre').value  = persona?.nombre_completo || ''
+  document.getElementById('p-funcion').value = persona?.funcion || ''
+  document.getElementById('p-activo').value  = persona ? String(persona.activo) : 'true'
+  document.getElementById('modal-titulo').textContent = persona ? 'Editar Persona' : 'Agregar Persona'
+  document.getElementById('modal-persona').classList.add('open')
+  document.getElementById('p-nombre').focus()
+}
+
+function cerrarModal() {
+  document.getElementById('modal-persona').classList.remove('open')
+}
+
+function editarPersona(id) {
+  const p = personal.find(x => x.id === id)
+  if (p) abrirModal(p)
+}
+
+async function guardarPersona() {
+  const nombre  = document.getElementById('p-nombre').value.trim()
+  const funcion = document.getElementById('p-funcion').value.trim()
+  if (!nombre)  { toast('El nombre es obligatorio', 'error'); return }
+  if (!funcion) { toast('La función es obligatoria', 'error'); return }
+
+  const btn = document.getElementById('btn-guardar-p')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  const id    = document.getElementById('p-id').value
+  const datos = {
+    nombre_completo: nombre,
+    funcion,
+    activo: document.getElementById('p-activo').value === 'true'
+  }
+
+  const { error } = id
+    ? await db.from('recursos_humanos').update(datos).eq('id', id)
+    : await db.from('recursos_humanos').insert(datos)
+
+  if (error) { toast('Error al guardar', 'error'); btn.textContent = '✓ Guardar'; btn.disabled = false; return }
+
+  toast(id ? 'Persona actualizada' : 'Persona agregada correctamente')
+  cerrarModal()
+  btn.textContent = '✓ Guardar'
+  btn.disabled = false
+  await cargarPersonal()
+}
+
+async function eliminarPersona(id) {
+  if (!confirm('¿Eliminás esta persona de la nómina?')) return
+  const { error } = await db.from('recursos_humanos').delete().eq('id', id)
+  if (error) { toast('Error al eliminar', 'error'); return }
+  toast('Persona eliminada')
+  await cargarPersonal()
+}
+
+init()
+</script>
+</body>
+</html>
