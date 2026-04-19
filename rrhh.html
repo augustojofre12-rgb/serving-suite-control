@@ -84,6 +84,7 @@
       </div>
       <table id="tabla-rrhh">
         <thead><tr>
+          <th style="width:70px" class="tc">Orden</th>
           <th>Nombre Completo</th>
           <th style="width:180px">Función</th>
           <th style="width:90px">Estado</th>
@@ -106,6 +107,13 @@
     <div class="fg">
       <label>Nombre Completo *</label>
       <input type="text" id="p-nombre" placeholder="Ej: García, Juan Carlos">
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label>N° de Orden <span style="font-weight:400;color:var(--gray)">(para agrupar)</span></label>
+        <input type="number" id="p-orden" placeholder="Ej: 1, 2, 3..." min="0">
+      </div>
+      <div class="fg"></div>
     </div>
     <div class="fg">
       <label>Función / Categoría *</label>
@@ -153,7 +161,7 @@ async function init() {
 }
 
 async function cargarPersonal() {
-  const { data, error } = await db.from('recursos_humanos').select('*').order('nombre_completo')
+  const { data, error } = await db.from('recursos_humanos').select('*').order('orden').order('nombre_completo')
   if (error) { toast('Error al cargar personal', 'error'); return }
   personal = data || []
   renderCards()
@@ -186,6 +194,7 @@ function renderTabla(lista) {
   const esCoord = usuario.rol === 'coordinador'
   tbody.innerHTML = lista.map(p => `
     <tr style="opacity:${p.activo ? 1 : 0.5}">
+      <td class="tc" style="font-size:13px;color:var(--gray);font-weight:600">${p.orden ?? '—'}</td>
       <td><strong>${p.nombre_completo}</strong></td>
       <td><span class="badge b-ok" style="font-size:12px">${p.funcion || '—'}</span></td>
       <td><span class="badge ${p.activo ? 'b-ok' : 'b-blue'}">${p.activo ? 'Activo' : 'Inactivo'}</span></td>
@@ -218,6 +227,7 @@ function abrirModal(persona = null) {
   document.getElementById('p-id').value      = persona?.id || ''
   document.getElementById('p-nombre').value  = persona?.nombre_completo || ''
   document.getElementById('p-funcion').value = persona?.funcion || ''
+  document.getElementById('p-orden').value   = persona?.orden ?? ''
   document.getElementById('p-activo').value  = persona ? String(persona.activo) : 'true'
   document.getElementById('modal-titulo').textContent = persona ? 'Editar Persona' : 'Agregar Persona'
   document.getElementById('modal-persona').classList.add('open')
@@ -244,9 +254,11 @@ async function guardarPersona() {
   btn.disabled = true
 
   const id    = document.getElementById('p-id').value
+  const ordenVal = document.getElementById('p-orden').value
   const datos = {
     nombre_completo: nombre,
     funcion,
+    orden:  ordenVal !== '' ? parseInt(ordenVal) : null,
     activo: document.getElementById('p-activo').value === 'true'
   }
 
