@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Usuarios</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="ph">
+      <div class="ph-left"><h1>Usuarios</h1><p>Administración de accesos y roles</p></div>
+      <button class="btn btn-accent" onclick="abrirModal()">+ Nuevo Usuario</button>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Usuarios del sistema</h3></div>
+      <div id="lista-usuarios"><div class="loading"><div class="spinner"></div> Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h2>➕ Nuevo Usuario</h2>
+    <div class="fg"><label>Nombre completo *</label><input type="text" id="m-nombre" placeholder="Ej: Carlos Martínez"></div>
+    <div class="fg"><label>Correo electrónico *</label><input type="email" id="m-email" placeholder="usuario@serving.com"></div>
+    <div class="fg"><label>Contraseña inicial *</label><input type="password" id="m-pass" placeholder="Mínimo 6 caracteres"></div>
+    <div class="fg"><label>Rol</label>
+      <select id="m-rol">
+        <option value="jefe_obra">Jefe de Obra</option>
+        <option value="coordinador">Coordinador</option>
+        <option value="directivo">Directivo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-success" onclick="crearUsuario()">✓ Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (usuario.rol !== 'coordinador') { window.location.href = 'dashboard.html'; return }
+  renderSidebar(usuario, 'usuarios')
+  await cargarUsuarios()
+}
+
+async function cargarUsuarios() {
+  const { data, error } = await db.from('usuarios').select('*').order('nombre')
+  if (error) { document.getElementById('lista-usuarios').innerHTML = '<div class="empty"><p>Error al cargar usuarios</p></div>'; return }
+
+  if (!data || data.length === 0) {
+    document.getElementById('lista-usuarios').innerHTML = `
+      <div class="empty"><div class="empty-icon">👥</div><h3>Sin usuarios registrados</h3><p>Creá el primer usuario</p></div>`
+    return
+  }
+
+  const roles = { coordinador: 'Coordinador', jefe_obra: 'Jefe de Obra', directivo: 'Directivo' }
+  const badgeRol = { coordinador: 'b-blue', jefe_obra: 'b-ok', directivo: 'b-warn' }
+
+  document.getElementById('lista-usuarios').innerHTML = `
+    <table>
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead>
+      <tbody>
+        ${data.map(u => `
+          <tr>
+            <td><strong>${u.nombre || '—'}</strong></td>
+            <td>${u.email || '—'}</td>
+            <td><span class="badge ${badgeRol[u.rol] || 'b-gray'}">${roles[u.rol] || u.rol}</span></td>
+            <td>
+              <select onchange="cambiarRol('${u.id}', this.value)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px">
+                <option value="jefe_obra" ${u.rol==='jefe_obra'?'selected':''}>Jefe de Obra</option>
+                <option value="coordinador" ${u.rol==='coordinador'?'selected':''}>Coordinador</option>
+                <option value="directivo" ${u.rol==='directivo'?'selected':''}>Directivo</option>
+              </select>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`
+}
+
+async function cambiarRol(id, nuevoRol) {
+  const { error } = await db.from('usuarios').update({ rol: nuevoRol }).eq('id', id)
+  if (error) { toast('Error al actualizar el rol', 'error'); return }
+  toast('Rol actualizado correctamente')
+  await cargarUsuarios()
+}
+
+function abrirModal() { document.getElementById('modal').classList.add('open') }
+function cerrarModal() { document.getElementById('modal').classList.remove('open') }
+
+async function crearUsuario() {
+  const nombre = document.getElementById('m-nombre').value.trim()
+  const email  = document.getElementById('m-email').value.trim()
+  const pass   = document.getElementById('m-pass').value
+  const rol    = document.getElementById('m-rol').value
+
+  if (!nombre || !email || !pass) { toast('Completá todos los campos', 'error'); return }
+  if (pass.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'error'); return }
+
+  const btn = document.querySelector('.modal .btn-success')
+  btn.textContent = 'Creando...'
+  btn.disabled = true
+
+  // Crear usuario en Auth
+  const { data, error } = await db.auth.admin?.createUser({
+    email, password: pass, email_confirm: true
+  })
+
+  // Fallback: usar signUp si admin no disponible
+  if (error || !data) {
+    const { data: signData, error: signErr } = await db.auth.signUp({ email, password: pass })
+    if (signErr) { toast('Error: ' + signErr.message, 'error'); btn.textContent = '✓ Crear Usuario'; btn.disabled = false; return }
+
+    const uid = signData.user?.id
+    if (uid) {
+      await db.from('usuarios').upsert({ id: uid, nombre, email, rol })
+      toast('Usuario creado. Debe verificar su email antes de ingresar.')
+      cerrarModal()
+      await cargarUsuarios()
+    }
+  } else {
+    const uid = data.user?.id
+    if (uid) await db.from('usuarios').upsert({ id: uid, nombre, email, rol })
+    toast('Usuario creado correctamente')
+    cerrarModal()
+    await cargarUsuarios()
+  }
+
+  btn.textContent = '✓ Crear Usuario'
+  btn.disabled = false
+}
+
+init()
+</script>
+</body>
+</html>

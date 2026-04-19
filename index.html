@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Ingreso</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    background: #0f3d22;
+  }
+
+  /* ── PANEL IZQUIERDO ── */
+  .panel-left {
+    flex: 1.1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 52px;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  /* Imagen + overlay verde en una sola capa */
+  .panel-left::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(150deg, rgba(10,45,20,0.78) 0%, rgba(18,72,36,0.72) 50%, rgba(8,35,18,0.82) 100%),
+      url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1400&q=85') center/cover no-repeat;
+    z-index: 0;
+  }
+
+  .panel-left > * { position: relative; z-index: 2; }
+
+  /* Logo en panel izquierdo */
+  .panel-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .panel-logo img {
+    height: 44px;
+    filter: brightness(0) invert(1);
+  }
+  .panel-logo-text {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  .panel-logo-text span {
+    color: #f39c12;
+  }
+
+  /* Contenido central izquierdo */
+  .panel-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px 0;
+  }
+
+  .panel-hero h1 {
+    color: #fff;
+    font-size: 38px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 18px;
+    letter-spacing: -.5px;
+  }
+
+  .panel-hero h1 span {
+    color: #4cd480;
+  }
+
+  .panel-hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 400px;
+    margin-bottom: 44px;
+  }
+
+  /* Features / puntos clave */
+  .panel-features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: 14px 18px;
+    backdrop-filter: blur(4px);
+  }
+
+  .feature-icon {
+    font-size: 22px;
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .feature-text strong {
+    display: block;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .feature-text span {
+    color: rgba(255,255,255,.6);
+    font-size: 12px;
+  }
+
+  /* Footer izquierdo */
+  .panel-footer {
+    color: rgba(255,255,255,.35);
+    font-size: 12px;
+  }
+
+  /* ── PANEL DERECHO ── */
+  .panel-right {
+    width: 440px;
+    flex-shrink: 0;
+    background: #f5f7f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+    min-height: 100vh;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .login-header img {
+    height: 52px;
+    margin-bottom: 16px;
+  }
+
+  .login-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+
+  .login-header h2 span { color: #f39c12; }
+
+  .login-header p {
+    font-size: 13px;
+    color: #888;
+  }
+
+  /* Formulario */
+  .fg {
+    margin-bottom: 18px;
+  }
+
+  .fg label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 7px;
+  }
+
+  .fg input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid #dde3dd;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fff;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  .fg input:focus {
+    border-color: #1e6b40;
+    box-shadow: 0 0 0 3px rgba(30,107,64,.12);
+  }
+
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: #1e6b40;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    margin-top: 6px;
+    letter-spacing: .3px;
+  }
+
+  .btn-login:hover  { background: #28884f; }
+  .btn-login:active { transform: scale(.98); }
+  .btn-login:disabled { opacity: .6; cursor: default; }
+
+  .login-error {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: #fff0f0;
+    border: 1px solid #f5c6c6;
+    color: #c0392b;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  .login-footer {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 12px;
+    color: #aaa;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 820px) {
+    body { flex-direction: column; }
+    .panel-left {
+      min-height: 220px;
+      padding: 28px 24px;
+      flex: none;
+    }
+    .panel-hero { display: none; }
+    .panel-footer { display: none; }
+    .panel-right {
+      width: 100%;
+      flex: 1;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- PANEL IZQUIERDO -->
+<div class="panel-left">
+
+  <div class="panel-logo">
+    <img src="logo.png" alt="Serving">
+    <div class="panel-logo-text">Suite <span>Control</span></div>
+  </div>
+
+  <div class="panel-hero">
+    <h1>Gestión de<br>Obras<br><span>en tiempo real</span></h1>
+    <p>Control de consumo de recursos, control del costo previsto presupuestado vs el costo real del trabajo ejecutado y retroalimentación con información precisa.</p>
+    <div class="panel-features">
+      <div class="feature-item">
+        <div class="feature-icon">📋</div>
+        <div class="feature-text">
+          <strong>Partes Diarios Digitales</strong>
+          <span>Materiales, mano de obra, equipos y combustible por ítem</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📊</div>
+        <div class="feature-text">
+          <strong>Control Financiero a Costo Directo</strong>
+          <span>Presupuesto vs real con coeficiente de pase (K)</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📈</div>
+        <div class="feature-text">
+          <strong>Avance Físico por Ítem</strong>
+          <span>Seguimiento de progreso y proyección de cierre</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-footer">
+    © 2025 Serving — Control de Gestión de Obras
+  </div>
+</div>
+
+<!-- PANEL DERECHO -->
+<div class="panel-right">
+  <div class="login-box">
+    <div class="login-header">
+      <img src="logo.png" alt="Serving">
+      <h2>Suite <span>Control</span></h2>
+      <p>Ingresá con tu cuenta para continuar</p>
+    </div>
+
+    <div class="login-error" id="login-error">
+      ✗ &nbsp;Email o contraseña incorrectos.
+    </div>
+
+    <div class="fg">
+      <label>Correo electrónico</label>
+      <input type="email" id="email" placeholder="usuario@serving.com" autocomplete="email">
+    </div>
+    <div class="fg">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="btn-login" id="btn-login" onclick="login()">Ingresar</button>
+
+    <div class="login-footer">
+      Serving — Control de Gestión de Obras
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(async () => {
+  const { data: { session } } = await db.auth.getSession()
+  if (session) window.location.href = 'dashboard.html'
+})()
+
+async function login() {
+  const email    = document.getElementById('email').value.trim()
+  const password = document.getElementById('password').value
+  const errEl    = document.getElementById('login-error')
+  const btn      = document.getElementById('btn-login')
+
+  if (!email || !password) {
+    errEl.textContent = '✗  Completá todos los campos.'
+    errEl.style.display = 'flex'
+    return
+  }
+
+  btn.textContent = 'Ingresando...'
+  btn.disabled = true
+  errEl.style.display = 'none'
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    errEl.textContent = '✗  Email o contraseña incorrectos.'
+    errEl.style.display = 'flex'
+    btn.textContent = 'Ingresar'
+    btn.disabled = false
+    return
+  }
+
+  window.location.href = 'dashboard.html'
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') login()
+})
+</script>
+</body>
+</html>

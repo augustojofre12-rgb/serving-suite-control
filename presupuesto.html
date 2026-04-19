@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Presupuesto Base</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.item-bloque{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px;overflow:hidden}
+.item-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .2s}
+.item-header:hover{background:#f8f9fa}
+.item-header.open{background:#f0faf4;border-bottom:2px solid var(--primary)}
+.item-nombre{font-size:14px;font-weight:700;color:var(--text)}
+.item-sub{font-size:12px;color:var(--gray);margin-top:2px}
+.item-totales{display:flex;gap:20px;align-items:center}
+.item-total-label{font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase}
+.item-total-valor{font-size:15px;font-weight:700;color:var(--primary)}
+.item-body{display:none;padding:20px}
+.item-body.open{display:block}
+.tipo-section{margin-bottom:20px}
+.tipo-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:6px 12px;border-radius:6px;margin-bottom:10px;display:inline-block}
+.tipo-material{background:#eaf0fb;color:#2d5986}
+.tipo-mo{background:#d5f5e3;color:#1a7a40}
+.tipo-equipo{background:#fef9e7;color:#a04000}
+.tipo-combustible{background:#fdeaea;color:#8b0000}
+.tipo-herramientas{background:#f3e8ff;color:#5b21b6}
+.subtotal-row{background:#f8f9fa;font-weight:700;font-size:13px}
+.chevron{transition:transform .2s;font-size:12px}
+.chevron.open{transform:rotate(180deg)}
+.total-obra{background:var(--primary);color:#fff;border-radius:12px;padding:20px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
+.total-obra h3{font-size:14px;opacity:.7;font-weight:600}
+.total-obra .valor{font-size:28px;font-weight:700}
+.col-num{width:110px;text-align:right}
+.col-unit{width:80px}
+.col-desc{min-width:200px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="ph">
+      <div class="ph-left"><h1>Presupuesto Base</h1><p>Cargá el presupuesto detallado por ítem de obra</p></div>
+    </div>
+
+    <!-- SELECTOR DE OBRA -->
+    <div class="fsec" style="margin-bottom:20px">
+      <div class="row2">
+        <div class="fg">
+          <label>Seleccioná una Obra</label>
+          <select id="sel-obra" onchange="cargarObra()">
+            <option value="">— Elegí una obra —</option>
+          </select>
+        </div>
+        <div class="fg" style="display:flex;align-items:flex-end">
+          <div id="obra-info" style="font-size:13px;color:var(--gray);padding-bottom:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="contenido"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let obraActual = null
+let itemsObra = []
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (usuario.rol === 'jefe_obra') { window.location.href = 'dashboard.html'; return }
+  renderSidebar(usuario, 'presupuesto')
+
+  const { data: obras } = await db.from('obras').select('id, nombre, monto_contrato, plazo_dias').order('nombre')
+  const sel = document.getElementById('sel-obra')
+  obras?.forEach(o => sel.insertAdjacentHTML('beforeend', `<option value="${o.id}" data-monto="${o.monto_contrato||0}" data-plazo="${o.plazo_dias||0}">${o.nombre}</option>`))
+
+  // Si viene ?obra_id en URL
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('obra_id')) {
+    sel.value = params.get('obra_id')
+    await cargarObra()
+  }
+}
+
+async function cargarObra() {
+  const sel = document.getElementById('sel-obra')
+  const obraId = sel.value
+  if (!obraId) { document.getElementById('contenido').innerHTML = ''; document.getElementById('obra-info').innerHTML = ''; return }
+
+  const opt = sel.options[sel.selectedIndex]
+  const monto = parseFloat(opt.dataset.monto) || 0
+  const plazo = parseInt(opt.dataset.plazo) || 0
+  document.getElementById('obra-info').innerHTML =
+    `💰 Contrato: <strong>${formatPeso(monto)}</strong>&nbsp;&nbsp;⏱️ Plazo: <strong>${plazo ? plazo+' días' : '—'}</strong>`
+
+  document.getElementById('contenido').innerHTML = '<div class="loading"><div class="spinner"></div> Cargando ítems...</div>'
+
+  const { data: items } = await db.from('items_obra').select('*').eq('obra_id', obraId).order('orden')
+  if (!items || items.length === 0) {
+    document.getElementById('contenido').innerHTML = `
+      <div class="empty"><div class="empty-icon">📋</div><h3>Esta obra no tiene ítems</h3>
+      <p>Agregá ítems desde el detalle de la obra</p>
+      <a href="obra.html?id=${obraId}" class="btn btn-accent">Ir a la Obra</a></div>`
+    return
+  }
+
+  itemsObra = items
+  obraActual = obraId
+  await renderPresupuesto()
+}
+
+async function renderPresupuesto() {
+  // Traer todo el presupuesto de todos los ítems de una vez
+  const itemIds = itemsObra.map(i => i.id)
+  const { data: presupItems } = await db.from('presupuesto_items').select('*').in('item_id', itemIds)
+
+  let totalObra = 0
+  let htmlItems = ''
+
+  for (const item of itemsObra) {
+    const lineas = presupItems?.filter(p => p.item_id === item.id) || []
+    const totalItem = lineas.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    totalObra += totalItem
+
+    const materiales  = lineas.filter(l => l.tipo === 'material')
+    const moLineas    = lineas.filter(l => l.tipo === 'mano_obra')
+    const equipos     = lineas.filter(l => l.tipo === 'equipo')
+    const combustibles  = lineas.filter(l => l.tipo === 'combustible')
+    const herramientas  = lineas.filter(l => l.tipo === 'herramientas')
+
+    const totalMat   = materiales.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    const totalMO    = moLineas.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    const totalEq    = equipos.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    const totalComb  = combustibles.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    const totalHerr  = herramientas.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+
+    htmlItems += `
+      <div class="item-bloque" id="bloque-${item.id}">
+        <div class="item-header" onclick="toggleItem('${item.id}')">
+          <div>
+            <div class="item-nombre">${item.codigo ? item.codigo+' — ' : ''}${item.descripcion}</div>
+            <div class="item-sub">${item.cantidad_presupuestada} ${item.unidad} · ${lineas.length} líneas de presupuesto</div>
+          </div>
+          <div class="item-totales">
+            <div style="text-align:right">
+              <div class="item-total-label">Total ítem</div>
+              <div class="item-total-valor" id="total-item-${item.id}">${formatPeso(totalItem)}</div>
+            </div>
+            <span class="chevron" id="chev-${item.id}">▼</span>
+          </div>
+        </div>
+        <div class="item-body" id="body-${item.id}">
+          ${renderSeccionTipo(item.id, 'material', 'Material', 'tipo-material', materiales)}
+          ${renderSeccionTipo(item.id, 'mano_obra', 'Mano de Obra', 'tipo-mo', moLineas)}
+          ${renderSeccionTipo(item.id, 'equipo', 'Equipo', 'tipo-equipo', equipos)}
+          ${renderSeccionTipo(item.id, 'combustible', 'Combustible', 'tipo-combustible', combustibles)}
+          ${renderSeccionTipo(item.id, 'herramientas', 'Herramientas Menores', 'tipo-herramientas', herramientas)}
+          <div style="display:flex;justify-content:flex-end;gap:24px;padding-top:12px;border-top:2px solid #e8ecef;margin-top:8px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--gray)">Materiales: <strong>${formatPeso(totalMat)}</strong></span>
+            <span style="font-size:13px;color:var(--gray)">MO: <strong>${formatPeso(totalMO)}</strong></span>
+            <span style="font-size:13px;color:var(--gray)">Equipos: <strong>${formatPeso(totalEq)}</strong></span>
+            <span style="font-size:13px;color:var(--gray)">Combustible: <strong>${formatPeso(totalComb)}</strong></span>
+            <span style="font-size:13px;color:var(--gray)">Herramientas: <strong>${formatPeso(totalHerr)}</strong></span>
+            <span style="font-size:14px;font-weight:700;color:var(--primary)">TOTAL: ${formatPeso(totalItem)}</span>
+          </div>
+        </div>
+      </div>`
+  }
+
+  document.getElementById('contenido').innerHTML = `
+    <div class="total-obra">
+      <div>
+        <h3>PRESUPUESTO TOTAL DE LA OBRA &nbsp;<span style="font-size:11px;background:rgba(255,255,255,.2);padding:2px 10px;border-radius:10px;letter-spacing:.3px">A VALORES FINALES DE CONTRATO</span></h3>
+        <div class="valor" id="total-obra-valor">${formatPeso(totalObra)}</div>
+        <div style="font-size:12px;opacity:.8;margin-top:8px">⚠️ Ingresá todos los valores a precio final de contrato — incluye beneficio, costos indirectos e impuestos (afectados por el coeficiente de pase K). No ingresar a costo directo.</div>
+      </div>
+      <div style="text-align:right;opacity:.7;font-size:13px">
+        <div>${itemsObra.length} ítems de obra</div>
+        <div style="margin-top:4px">${usuario.rol === 'coordinador' ? 'Hacé click en cada ítem para editar' : '👁️ Solo lectura'}</div>
+      </div>
+    </div>
+    ${htmlItems}`
+}
+
+function renderSeccionTipo(itemId, tipo, label, cssClass, lineas) {
+  const soloLectura = usuario.rol !== 'coordinador'
+  const unidades = ['m²','m³','ml','u','kg','tn','gl','hs','día','mes','km']
+
+  const filas = lineas.map(l => `
+    <tr data-id="${l.id}">
+      <td><input type="text" class="desc-input" value="${l.descripcion}" ${soloLectura ? 'disabled' : `onchange="actualizarLinea('${l.id}', 'descripcion', this.value)"`}></td>
+      <td class="col-unit"><select class="unidad-sel" ${soloLectura ? 'disabled' : `onchange="actualizarLinea('${l.id}', 'unidad', this.value)"`}>
+        ${unidades.map(u => `<option ${l.unidad===u?'selected':''}>${u}</option>`).join('')}
+      </select></td>
+      <td class="col-num"><input type="number" value="${l.cantidad}" min="0" step="0.01" ${soloLectura ? 'disabled' : `onchange="actualizarLinea('${l.id}', 'cantidad', parseFloat(this.value)||0)" oninput="recalcFila(this)"`}></td>
+      <td class="col-num"><input type="number" value="${l.precio_unitario}" min="0" step="0.01" ${soloLectura ? 'disabled' : `onchange="actualizarLinea('${l.id}', 'precio_unitario', parseFloat(this.value)||0)" oninput="recalcFila(this)"`}></td>
+      <td class="col-num" id="subtotal-${l.id}" style="font-weight:700;color:var(--primary)">${formatPeso(l.cantidad*l.precio_unitario)}</td>
+      ${soloLectura ? '<td></td>' : `<td style="width:40px"><button class="btn-icon" onclick="eliminarLinea('${l.id}','${itemId}')">✕</button></td>`}
+    </tr>`).join('')
+
+  return `
+    <div class="tipo-section">
+      <span class="tipo-title ${cssClass}">${label}</span>
+      <table class="dtbl">
+        <thead><tr>
+          <th class="col-desc">Descripción</th>
+          <th class="col-unit">Unidad</th>
+          <th class="col-num">Cantidad</th>
+          <th class="col-num">Precio Unit. $</th>
+          <th class="col-num">Total $</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-${itemId}-${tipo}">${filas}</tbody>
+      </table>
+      ${soloLectura ? '' : `<button class="add-row-btn" onclick="agregarLinea('${itemId}','${tipo}')">+ Agregar ${label.toLowerCase()}</button>`}
+    </div>`
+}
+
+function toggleItem(itemId) {
+  const body = document.getElementById('body-'+itemId)
+  const header = body.previousElementSibling
+  const chev = document.getElementById('chev-'+itemId)
+  const isOpen = body.classList.contains('open')
+  body.classList.toggle('open', !isOpen)
+  header.classList.toggle('open', !isOpen)
+  chev.classList.toggle('open', !isOpen)
+}
+
+function recalcFila(input) {
+  const row = input.closest('tr')
+  const id  = row.dataset.id
+  const inputs = row.querySelectorAll('input[type="number"]')
+  const cant = parseFloat(inputs[0].value) || 0
+  const precio = parseFloat(inputs[1].value) || 0
+  const subtotalEl = document.getElementById('subtotal-'+id)
+  if (subtotalEl) subtotalEl.textContent = formatPeso(cant * precio)
+}
+
+// Debounce para no hacer queries en cada tecla
+const pendientes = {}
+function actualizarLinea(id, campo, valor) {
+  clearTimeout(pendientes[id])
+  pendientes[id] = setTimeout(async () => {
+    await db.from('presupuesto_items').update({ [campo]: valor }).eq('id', id)
+    await recalcTotalesItem()
+  }, 600)
+}
+
+async function recalcTotalesItem() {
+  const itemIds = itemsObra.map(i => i.id)
+  const { data: lineas } = await db.from('presupuesto_items').select('item_id, cantidad, precio_unitario').in('item_id', itemIds)
+  let totalObra = 0
+  for (const item of itemsObra) {
+    const itemLineas = lineas?.filter(l => l.item_id === item.id) || []
+    const total = itemLineas.reduce((s, l) => s + l.cantidad * l.precio_unitario, 0)
+    totalObra += total
+    const el = document.getElementById('total-item-'+item.id)
+    if (el) el.textContent = formatPeso(total)
+  }
+  const totalEl = document.getElementById('total-obra-valor')
+  if (totalEl) totalEl.textContent = formatPeso(totalObra)
+}
+
+async function agregarLinea(itemId, tipo) {
+  const { data, error } = await db.from('presupuesto_items').insert({
+    item_id: itemId, tipo, descripcion: '', cantidad: 0, unidad: 'm²', precio_unitario: 0
+  }).select().single()
+  if (error) { toast('Error al agregar línea', 'error'); return }
+
+  const unidades = ['m²','m³','ml','u','kg','tn','gl','hs','día','mes','km']
+  const tbody = document.getElementById(`tbody-${itemId}-${tipo}`)
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr data-id="${data.id}">
+      <td><input type="text" class="desc-input" placeholder="Descripción" onchange="actualizarLinea('${data.id}', 'descripcion', this.value)"></td>
+      <td class="col-unit"><select class="unidad-sel" onchange="actualizarLinea('${data.id}', 'unidad', this.value)">
+        ${unidades.map(u => `<option>${u}</option>`).join('')}
+      </select></td>
+      <td class="col-num"><input type="number" value="0" min="0" step="0.01"
+        onchange="actualizarLinea('${data.id}', 'cantidad', parseFloat(this.value)||0)"
+        oninput="recalcFila(this)"></td>
+      <td class="col-num"><input type="number" value="0" min="0" step="0.01"
+        onchange="actualizarLinea('${data.id}', 'precio_unitario', parseFloat(this.value)||0)"
+        oninput="recalcFila(this)"></td>
+      <td class="col-num" id="subtotal-${data.id}" style="font-weight:700;color:var(--primary)">$0</td>
+      <td style="width:40px"><button class="btn-icon" onclick="eliminarLinea('${data.id}','${itemId}')">✕</button></td>
+    </tr>`)
+
+  // Focus en la descripción
+  tbody.lastElementChild.querySelector('input[type="text"]').focus()
+}
+
+async function eliminarLinea(id, itemId) {
+  if (!confirm('¿Eliminás esta línea del presupuesto?')) return
+  const { error } = await db.from('presupuesto_items').delete().eq('id', id)
+  if (error) { toast('Error al eliminar', 'error'); return }
+  document.querySelector(`tr[data-id="${id}"]`)?.remove()
+  await recalcTotalesItem()
+  toast('Línea eliminada')
+}
+
+init()
+</script>
+</body>
+</html>

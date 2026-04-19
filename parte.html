@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Parte Diario</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <a class="back" href="dashboard.html">← Volver a Mis Obras / Contrataciones</a>
+    <div class="ph"><div class="ph-left"><h1>Nuevo Parte Diario</h1><p id="parte-subtitulo">Seleccioná una obra para continuar</p></div></div>
+
+    <!-- DATOS GENERALES -->
+    <div class="fsec">
+      <div class="fsec-title">📋 Datos Generales</div>
+      <div class="row3">
+        <div class="fg"><label>Obra *</label>
+          <select id="sel-obra" onchange="cargarItems()">
+            <option value="">— Seleccioná una obra —</option>
+          </select>
+        </div>
+        <div class="fg"><label>Ítem de Obra *</label>
+          <select id="sel-item"><option value="">— Seleccioná el ítem —</option></select>
+        </div>
+        <div class="fg"><label>Fecha *</label><input type="date" id="fecha"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Ubicación / Progresiva</label><input type="text" id="ubicacion" placeholder="Ej: Km 18+500 a Km 19+200"></div>
+        <div class="fg"><label>Observaciones</label><input type="text" id="observaciones" placeholder="Condiciones climáticas, incidentes, novedades..."></div>
+      </div>
+    </div>
+
+    <!-- RENDIMIENTO -->
+    <div class="fsec">
+      <div class="fsec-title">📈 Rendimiento del Día</div>
+      <div class="row3">
+        <div class="fg"><label>Cantidad Ejecutada *</label><input type="number" id="cant-ejecutada" placeholder="0" min="0" step="0.01"></div>
+        <div class="fg"><label>Unidad</label>
+          <select id="unidad-ejec"><option>m²</option><option>m³</option><option>ml</option><option>u</option><option>kg</option><option>tn</option><option>gl</option></select>
+        </div>
+        <div class="fg"><label>&nbsp;</label><div style="padding-top:6px;font-size:13px;color:var(--gray)" id="rendimiento-acum">—</div></div>
+      </div>
+    </div>
+
+    <!-- MATERIALES -->
+    <div class="fsec">
+      <div class="fsec-title">🧱 Materiales Consumidos</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th>Material / Insumo</th>
+          <th style="width:100px">Cantidad</th>
+          <th style="width:80px">Unidad</th>
+          <th style="width:130px">Precio Unit. $</th>
+          <th style="width:120px">Remito</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-mat">
+          <tr>
+            <td><input type="text" placeholder="Ej: Hormigón H-30"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
+            <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
+            <td><input type="text" placeholder="R-0000"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addMat()">+ Agregar material</button>
+    </div>
+
+    <!-- PERSONAL -->
+    <div class="fsec">
+      <div class="fsec-title">👷 Personal Afectado</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th>Nombre y Apellido</th>
+          <th style="width:120px">Categoría</th>
+          <th style="width:95px">Ingreso</th>
+          <th style="width:95px">Egreso</th>
+          <th style="width:80px">Hs. Trab.</th>
+          <th style="width:130px">Precio / Hora $</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-pers">
+          <tr>
+            <td><input type="text" placeholder="Apellido, Nombre"></td>
+            <td><select><option>Oficial</option><option>Ayudante</option><option>Medio Oficial</option><option>Capataz</option><option>Operador</option></select></td>
+            <td><input type="time" onchange="calcHorasPers(this)"></td>
+            <td><input type="time" onchange="calcHorasPers(this)"></td>
+            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addPers()">+ Agregar operario</button>
+    </div>
+
+    <!-- EQUIPOS -->
+    <div class="fsec">
+      <div class="fsec-title">🚜 Equipos Utilizados</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th>Equipo / Máquina</th>
+          <th style="width:110px">Tipo</th>
+          <th style="width:95px">H. Inicio</th>
+          <th style="width:95px">H. Fin</th>
+          <th style="width:80px">Hs. Util.</th>
+          <th style="width:130px">Precio / Hora $</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-eq">
+          <tr>
+            <td><input type="text" placeholder="Ej: Camión Mixer M-01"></td>
+            <td><select><option>Propio</option><option>Alquilado</option></select></td>
+            <td><input type="time" onchange="calcHorasEq(this)"></td>
+            <td><input type="time" onchange="calcHorasEq(this)"></td>
+            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addEq()">+ Agregar equipo</button>
+    </div>
+
+    <!-- GAS OIL -->
+    <div class="fsec">
+      <div class="fsec-title">⛽ Combustible</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th>Equipo / Máquina</th>
+          <th style="width:100px">Litros</th>
+          <th style="width:130px">Precio / Litro $</th>
+          <th style="width:120px">Remito / Ref.</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-comb">
+          <tr>
+            <td><input type="text" placeholder="Ej: Fresadora / Camión M-01"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><input type="text" placeholder="Remito"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addComb()">+ Agregar carga de combustible</button>
+    </div>
+
+    <!-- HERRAMIENTAS MENORES -->
+    <div class="fsec">
+      <div class="fsec-title">🔧 Herramientas Menores</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th>Descripción</th>
+          <th style="width:100px">Cantidad</th>
+          <th style="width:80px">Unidad</th>
+          <th style="width:130px">Precio Unit. $</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-herr">
+          <tr>
+            <td><input type="text" placeholder="Ej: Amoladora, Martillo, Pico..."></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><select><option>u</option><option>hs</option><option>día</option><option>gl</option></select></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addHerr()">+ Agregar herramienta</button>
+    </div>
+
+    <div style="display:flex;gap:14px;justify-content:flex-end;margin-bottom:40px">
+      <a href="dashboard.html" class="btn btn-outline">Cancelar</a>
+      <button class="btn btn-success" onclick="guardarParte()">✓ Guardar Parte Diario</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'parte')
+  document.getElementById('fecha').valueAsDate = new Date()
+
+  // Cargar obras activas
+  const { data: obras } = await db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre')
+  const sel = document.getElementById('sel-obra')
+  obras?.forEach(o => sel.insertAdjacentHTML('beforeend', `<option value="${o.id}">${o.nombre}</option>`))
+
+  // Si viene ?obra_id en la URL, preseleccionar
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('obra_id')) {
+    sel.value = params.get('obra_id')
+    await cargarItems()
+    if (params.get('item_id')) document.getElementById('sel-item').value = params.get('item_id')
+  }
+}
+
+async function cargarItems() {
+  const obraId = document.getElementById('sel-obra').value
+  const selItem = document.getElementById('sel-item')
+  selItem.innerHTML = '<option value="">— Seleccioná el ítem —</option>'
+  if (!obraId) return
+
+  const { data: items } = await db.from('items_obra').select('id, codigo, descripcion, unidad')
+    .eq('obra_id', obraId).order('orden')
+  items?.forEach(i => {
+    selItem.insertAdjacentHTML('beforeend', `<option value="${i.id}" data-unidad="${i.unidad}">${i.codigo ? i.codigo+' - ' : ''}${i.descripcion}</option>`)
+  })
+
+  // Actualizar unidad de rendimiento
+  selItem.onchange = () => {
+    const opt = selItem.options[selItem.selectedIndex]
+    if (opt.dataset.unidad) document.getElementById('unidad-ejec').value = opt.dataset.unidad
+  }
+}
+
+// Helpers para filas
+function delRow(btn) { btn.closest('tr').remove() }
+
+function rowTemplate(type) {
+  const templates = {
+    mat: `<tr>
+      <td><input type="text" placeholder="Material / Insumo"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
+      <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
+      <td><input type="text" placeholder="R-0000"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`,
+    pers: `<tr>
+      <td><input type="text" placeholder="Apellido, Nombre"></td>
+      <td><select><option>Oficial</option><option>Ayudante</option><option>Medio Oficial</option><option>Capataz</option><option>Operador</option></select></td>
+      <td><input type="time" onchange="calcHorasPers(this)"></td>
+      <td><input type="time" onchange="calcHorasPers(this)"></td>
+      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`,
+    eq: `<tr>
+      <td><input type="text" placeholder="Nombre del equipo"></td>
+      <td><select><option>Propio</option><option>Alquilado</option></select></td>
+      <td><input type="time" onchange="calcHorasEq(this)"></td>
+      <td><input type="time" onchange="calcHorasEq(this)"></td>
+      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`
+  }
+  return templates[type]
+}
+
+function addMat()  { document.getElementById('tbody-mat').insertAdjacentHTML('beforeend', rowTemplate('mat')) }
+function addPers() { document.getElementById('tbody-pers').insertAdjacentHTML('beforeend', rowTemplate('pers')) }
+function addEq()   { document.getElementById('tbody-eq').insertAdjacentHTML('beforeend', rowTemplate('eq')) }
+function addComb() {
+  document.getElementById('tbody-comb').insertAdjacentHTML('beforeend', `
+    <tr>
+      <td><input type="text" placeholder="Equipo / Máquina"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><input type="text" placeholder="Remito"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+}
+
+function addHerr() {
+  document.getElementById('tbody-herr').insertAdjacentHTML('beforeend', `
+    <tr>
+      <td><input type="text" placeholder="Descripción herramienta"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><select><option>u</option><option>hs</option><option>día</option><option>gl</option></select></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+}
+
+function calcHorasPers(input) {
+  const row = input.closest('tr')
+  const times = row.querySelectorAll('input[type="time"]')
+  const hs = calcHoras(times[0].value, times[1].value)
+  row.querySelectorAll('input[type="number"]')[0].value = hs > 0 ? hs : ''
+}
+
+function calcHorasEq(input) {
+  const row = input.closest('tr')
+  const times = row.querySelectorAll('input[type="time"]')
+  const hs = calcHoras(times[0].value, times[1].value)
+  row.querySelectorAll('input[type="number"]')[0].value = hs > 0 ? hs : ''
+}
+
+function calcTotal(input) { /* solo visual, el total real se calcula al guardar */ }
+
+async function guardarParte() {
+  const obraId = document.getElementById('sel-obra').value
+  const itemId = document.getElementById('sel-item').value
+  const fecha  = document.getElementById('fecha').value
+
+  if (!obraId) { toast('Seleccioná una obra', 'error'); return }
+  if (!itemId) { toast('Seleccioná un ítem de obra', 'error'); return }
+  if (!fecha)  { toast('Ingresá la fecha', 'error'); return }
+
+  const cantEjec = parseFloat(document.getElementById('cant-ejecutada').value) || 0
+  if (cantEjec <= 0) { toast('Ingresá la cantidad ejecutada del día', 'error'); return }
+
+  const btn = document.querySelector('.btn-success')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  // Crear parte diario
+  const { data: parte, error: errParte } = await db.from('partes_diarios').insert({
+    obra_id: obraId,
+    item_id: itemId,
+    fecha,
+    ubicacion: document.getElementById('ubicacion').value.trim(),
+    observaciones: document.getElementById('observaciones').value.trim(),
+    cantidad_ejecutada: cantEjec,
+    unidad_ejecutada: document.getElementById('unidad-ejec').value,
+    creado_por_nombre: usuario.nombre || usuario.email
+  }).select().single()
+
+  if (errParte) { toast('Error al guardar el parte', 'error'); btn.textContent = '✓ Guardar Parte Diario'; btn.disabled = false; return }
+
+  const pid = parte.id
+
+  // Materiales
+  const matRows = document.querySelectorAll('#tbody-mat tr')
+  const materiales = []
+  matRows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    const desc = inputs[0].value.trim()
+    const cant = parseFloat(inputs[1].value) || 0
+    if (!desc || cant <= 0) return
+    materiales.push({ parte_id: pid, descripcion: desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: inputs[4].value.trim() })
+  })
+  if (materiales.length > 0) await db.from('parte_materiales').insert(materiales)
+
+  // Personal
+  const persRows = document.querySelectorAll('#tbody-pers tr')
+  const personal = []
+  persRows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    const nombre = inputs[0].value.trim()
+    const hs = parseFloat(inputs[4].value) || 0
+    if (!nombre) return
+    personal.push({ parte_id: pid, nombre, categoria: inputs[1].value, hora_ingreso: inputs[2].value || null, hora_egreso: inputs[3].value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[5].value) || 0 })
+  })
+  if (personal.length > 0) await db.from('parte_personal').insert(personal)
+
+  // Equipos
+  const eqRows = document.querySelectorAll('#tbody-eq tr')
+  const equipos = []
+  eqRows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    const desc = inputs[0].value.trim()
+    const hs = parseFloat(inputs[4].value) || 0
+    if (!desc) return
+    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[1].value, hora_inicio: inputs[2].value || null, hora_fin: inputs[3].value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[5].value) || 0 })
+  })
+  if (equipos.length > 0) await db.from('parte_equipos').insert(equipos)
+
+  // Gas Oil — se guarda como material con tipo especial
+  const combRows = document.querySelectorAll('#tbody-comb tr')
+  const combustibles = []
+  combRows.forEach(row => {
+    const inputs = row.querySelectorAll('input')
+    const desc = inputs[0].value.trim()
+    const lts  = parseFloat(inputs[1].value) || 0
+    if (!desc || lts <= 0) return
+    combustibles.push({ parte_id: pid, descripcion: desc, cantidad: lts, unidad: 'lt', precio_unitario: parseFloat(inputs[2].value) || 0, remito: inputs[3].value.trim() })
+  })
+  // Guardamos combustible en parte_materiales con descripción identificatoria
+  if (combustibles.length > 0) await db.from('parte_materiales').insert(combustibles.map(c => ({ ...c, descripcion: '⛽ ' + c.descripcion })))
+
+  // Herramientas menores — se guardan en parte_materiales con prefijo 🔧
+  const herrRows = document.querySelectorAll('#tbody-herr tr')
+  const herramientas = []
+  herrRows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    const desc = inputs[0].value.trim()
+    const cant = parseFloat(inputs[1].value) || 0
+    if (!desc || cant <= 0) return
+    herramientas.push({ parte_id: pid, descripcion: '🔧 ' + desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: '' })
+  })
+  if (herramientas.length > 0) await db.from('parte_materiales').insert(herramientas)
+
+  toast('Parte diario guardado correctamente')
+  setTimeout(() => window.location.href = `obra.html?id=${obraId}`, 1200)
+}
+
+init()
+</script>
+</body>
+</html>

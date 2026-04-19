@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Nueva Obra / Contratación</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <a class="back" href="dashboard.html">← Volver a Mis Obras</a>
+    <div class="ph"><div class="ph-left"><h1>Nueva Obra / Contratación</h1><p>Registrá los datos de la obra y sus ítems de licitación</p></div></div>
+
+    <!-- DATOS GENERALES -->
+    <div class="fsec">
+      <div class="fsec-title">🏗️ Datos Generales</div>
+      <div class="row2">
+        <div class="fg"><label>Nombre de la Obra *</label><input type="text" id="nombre" placeholder="Ej: Pavimentación Ruta Provincial 45"></div>
+        <div class="fg"><label>N° de Expediente</label><input type="text" id="numero_expediente" placeholder="Ej: EXP-2025-001234"></div>
+      </div>
+      <div class="fg"><label>Ubicación</label><input type="text" id="ubicacion" placeholder="Ej: Ruta Prov. 45 Km 12 a Km 28"></div>
+      <div class="fg"><label>Descripción</label><textarea id="descripcion" placeholder="Detalles adicionales de la obra..."></textarea></div>
+      <div class="row4">
+        <div class="fg"><label>Monto de Contrato $ (valor final)</label><input type="number" id="monto_contrato" placeholder="0" min="0" step="0.01" oninput="calcCostoDirecto()"></div>
+        <div class="fg"><label>Coeficiente de Pase (K)</label><input type="number" id="coeficiente_pase" placeholder="1.00" min="1" step="0.01" value="1.00" oninput="calcCostoDirecto()"></div>
+        <div class="fg"><label>Plazo de Obra (días)</label><input type="number" id="plazo_dias" placeholder="0" min="0"></div>
+        <div class="fg"><label>Fecha de Inicio</label><input type="date" id="fecha_inicio"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Fecha de Fin Estimada</label><input type="date" id="fecha_fin"></div>
+        <div class="fg"><label>Costo Directo Presupuestado (referencia)</label>
+          <input type="text" id="costo_directo_ref" readonly style="background:#f0faf4;font-weight:700;color:var(--primary)" placeholder="Se calcula automáticamente">
+        </div>
+      </div>
+      <div class="fg" style="max-width:200px"><label>Estado</label>
+        <select id="estado"><option value="activa">En Ejecución</option><option value="suspendida">Suspendida</option><option value="finalizada">Finalizada</option></select>
+      </div>
+    </div>
+
+    <!-- ÍTEMS DE OBRA -->
+    <div class="fsec">
+      <div class="fsec-title">📋 Ítems de Obra (del Cómputo)</div>
+      <table class="dtbl" id="tabla-items">
+        <thead><tr>
+          <th style="width:80px">Código</th>
+          <th>Descripción del Ítem *</th>
+          <th style="width:130px">Unidad</th>
+          <th style="width:150px">Cantidad Total</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-items">
+          <tr>
+            <td><input type="text" placeholder="01"></td>
+            <td><input type="text" placeholder="Ej: Excavación y Terraplén"></td>
+            <td><select>
+              <option>m²</option><option>m³</option><option>ml</option>
+              <option>u</option><option>kg</option><option>tn</option><option>gl</option>
+            </select></td>
+            <td><input type="number" placeholder="0" min="0"></td>
+            <td><button class="btn-icon" onclick="delRow(this)" title="Eliminar">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addItem()">+ Agregar ítem</button>
+    </div>
+
+    <div style="display:flex;gap:14px;justify-content:flex-end;margin-bottom:40px">
+      <a href="dashboard.html" class="btn btn-outline">Cancelar</a>
+      <button class="btn btn-success" onclick="guardarObra()">✓ Guardar Obra</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (usuario.rol !== 'coordinador') { window.location.href = 'dashboard.html'; return }
+  renderSidebar(usuario, 'nueva-obra')
+}
+
+function calcCostoDirecto() {
+  const monto = parseFloat(document.getElementById('monto_contrato').value) || 0
+  const k     = parseFloat(document.getElementById('coeficiente_pase').value) || 1
+  const cd    = k > 0 ? monto / k : 0
+  document.getElementById('costo_directo_ref').value = cd > 0 ? formatPeso(cd) : ''
+}
+
+function addItem() {
+  const row = `<tr>
+    <td><input type="text" placeholder="01"></td>
+    <td><input type="text" placeholder="Descripción del ítem"></td>
+    <td><select><option>m²</option><option>m³</option><option>ml</option><option>u</option><option>kg</option><option>tn</option><option>gl</option></select></td>
+    <td><input type="number" placeholder="0" min="0"></td>
+    <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+  </tr>`
+  document.getElementById('tbody-items').insertAdjacentHTML('beforeend', row)
+}
+
+function delRow(btn) { btn.closest('tr').remove() }
+
+async function guardarObra() {
+  const nombre = document.getElementById('nombre').value.trim()
+  if (!nombre) { toast('El nombre de la obra es obligatorio', 'error'); return }
+
+  const rows = document.querySelectorAll('#tbody-items tr')
+  const items = []
+  let orden = 1
+  for (const row of rows) {
+    const inputs = row.querySelectorAll('input, select')
+    const desc = inputs[1].value.trim()
+    if (!desc) continue
+    items.push({
+      codigo: inputs[0].value.trim(),
+      descripcion: desc,
+      unidad: inputs[2].value,
+      cantidad_presupuestada: parseFloat(inputs[3].value) || 0,
+      orden: orden++
+    })
+  }
+
+  if (items.length === 0) { toast('Agregá al menos un ítem de obra', 'error'); return }
+
+  const btn = document.querySelector('.btn-success')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  // Guardar obra
+  const { data: obra, error } = await db.from('obras').insert({
+    nombre,
+    numero_expediente: document.getElementById('numero_expediente').value.trim() || null,
+    descripcion: document.getElementById('descripcion').value.trim(),
+    ubicacion: document.getElementById('ubicacion').value.trim(),
+    monto_contrato: parseFloat(document.getElementById('monto_contrato').value) || 0,
+    coeficiente_pase: parseFloat(document.getElementById('coeficiente_pase').value) || 1,
+    plazo_dias: parseInt(document.getElementById('plazo_dias').value) || 0,
+    fecha_inicio: document.getElementById('fecha_inicio').value || null,
+    fecha_fin_estimada: document.getElementById('fecha_fin').value || null,
+    estado: document.getElementById('estado').value
+  }).select().single()
+
+  if (error) { toast('Error al guardar la obra', 'error'); btn.textContent = '✓ Guardar Obra'; btn.disabled = false; return }
+
+  // Guardar ítems
+  const itemsConObra = items.map(i => ({ ...i, obra_id: obra.id }))
+  const { error: errItems } = await db.from('items_obra').insert(itemsConObra)
+
+  if (errItems) { toast('Obra creada pero hubo un error con los ítems', 'error'); return }
+
+  toast('Obra creada correctamente')
+  setTimeout(() => window.location.href = `obra.html?id=${obra.id}`, 1200)
+}
+
+init()
+</script>
+</body>
+</html>

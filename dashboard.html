@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Mis Obras</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div id="contenido">
+      <div class="loading"><div class="spinner"></div> Cargando...</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'obras')
+  await cargarDashboard()
+}
+
+async function cargarDashboard() {
+  const { data: obras, error } = await db
+    .from('obras')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) { toast('Error al cargar obras', 'error'); return }
+
+  const esCoord = usuario.rol === 'coordinador'
+  const esDir   = usuario.rol === 'directivo'
+  const verFinanciero = esCoord || esDir
+
+  // Calcular totales de presupuesto para cards resumen
+  let totalPresup = 0, totalDesvio = 0, itemsDesvio = 0
+
+  // Cards resumen (solo coord y directivos)
+  let htmlCards = ''
+  if (verFinanciero) {
+    const obrasActivas = obras.filter(o => o.estado === 'activa').length
+    const obrasFinalizadas = obras.filter(o => o.estado === 'finalizada').length
+    htmlCards = `
+      <div class="cards3" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+        <div class="card bl-primary">
+          <div class="card-label">Monto Total Contratado</div>
+          <div class="card-value" id="card-presup">Calculando...</div>
+          <div class="card-sub">${obras.length} obra${obras.length !== 1 ? 's' : ''} en el sistema</div>
+        </div>
+        <div class="card bl-ok">
+          <div class="card-label">Obras en Ejecución</div>
+          <div class="card-value">${obrasActivas}</div>
+          <div class="card-sub">${obrasFinalizadas} finalizada${obrasFinalizadas !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="card bl-warn">
+          <div class="card-label">Monto Contrato Activo</div>
+          <div class="card-value" id="card-activo">Calculando...</div>
+          <div class="card-sub">Solo obras en ejecución</div>
+        </div>
+      </div>`
+  }
+
+  // Lista de obras
+  let htmlObras = ''
+  if (obras.length === 0) {
+    htmlObras = `
+      <div class="empty">
+        <div class="empty-icon">🏗️</div>
+        <h3>No hay obras cargadas</h3>
+        <p>Creá la primera obra para empezar a gestionar</p>
+        ${esCoord ? `<a href="nueva-obra.html" class="btn btn-accent">+ Nueva Obra / Contratación</a>` : ''}
+      </div>`
+  } else {
+    const cards = await Promise.all(obras.map(o => renderObraCard(o, verFinanciero)))
+    htmlObras = `<div class="obras-grid">${cards.join('')}</div>`
+  }
+
+  document.getElementById('contenido').innerHTML = `
+    <div class="ph">
+      <div class="ph-left"><h1>Mis Obras / Contrataciones</h1><p>Estado actual de todas las obras y contrataciones activas</p></div>
+      ${esCoord ? `<a href="nueva-obra.html" class="btn btn-accent">+ Nueva Obra / Contratación</a>` : ''}
+    </div>
+    ${htmlCards}
+    ${htmlObras}
+  `
+
+  // Calcular cards resumen
+  if (verFinanciero && obras.length > 0) calcularResumen(obras)
+}
+
+async function renderObraCard(obra, verFinanciero) {
+  // Avance físico: sum ejecutado / sum presupuestado
+  const { data: items } = await db.from('items_obra').select('id, cantidad_presupuestada').eq('obra_id', obra.id)
+
+  let porcFisico = 0
+  if (items && items.length > 0) {
+    const { data: partes } = await db.from('partes_diarios').select('item_id, cantidad_ejecutada').eq('obra_id', obra.id)
+    const totalPresup = items.reduce((s, i) => s + (i.cantidad_presupuestada || 0), 0)
+    const totalEjec   = items.reduce((s, i) => {
+      const partesItem = partes?.filter(p => p.item_id === i.id) || []
+      return s + partesItem.reduce((ss, p) => ss + (p.cantidad_ejecutada || 0), 0)
+    }, 0)
+    porcFisico = totalPresup > 0 ? Math.min(100, Math.round(totalEjec / totalPresup * 100)) : 0
+  }
+
+  const colorFisico = porcFisico >= 80 ? 'pf-ok' : porcFisico >= 40 ? 'pf-primary' : 'pf-warn'
+  const badgeEstado = obra.estado === 'activa' ? 'b-ok' : obra.estado === 'finalizada' ? 'b-blue' : 'b-warn'
+  const labelEstado = obra.estado === 'activa' ? 'En Ejecución' : obra.estado === 'finalizada' ? 'Finalizada' : 'Suspendida'
+
+  const monto  = obra.monto_contrato > 0 ? `💰 ${formatPeso(obra.monto_contrato)}` : '💰 —'
+  const plazo  = obra.plazo_dias > 0 ? `⏱️ ${obra.plazo_dias} días` : '⏱️ —'
+  const inicio = obra.fecha_inicio ? new Date(obra.fecha_inicio+'T12:00').toLocaleDateString('es-AR',{month:'short',year:'numeric'}) : '—'
+  const fin    = obra.fecha_fin_estimada ? new Date(obra.fecha_fin_estimada+'T12:00').toLocaleDateString('es-AR',{month:'short',year:'numeric'}) : '—'
+
+  return `
+    <a class="obra-card" href="obra.html?id=${obra.id}">
+      <div class="flex-between mb-20">
+        <div><div class="obra-title">${obra.nombre}</div><div class="obra-sub">${obra.ubicacion || obra.descripcion || ''}</div></div>
+        <span class="badge ${badgeEstado}">${labelEstado}</span>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--primary)">
+        <span>${monto}</span>
+        <span>${plazo}</span>
+        <span>📅 ${inicio} → ${fin}</span>
+      </div>
+      <div class="prog-label"><span>Avance Físico</span><span>${porcFisico}%</span></div>
+      <div class="prog-bar"><div class="pf ${colorFisico}" style="width:${porcFisico}%"></div></div>
+    </a>`
+}
+
+function calcularResumen(obras) {
+  const montoTotal  = obras.reduce((s, o) => s + (o.monto_contrato || 0), 0)
+  const montoActivo = obras.filter(o => o.estado === 'activa').reduce((s, o) => s + (o.monto_contrato || 0), 0)
+
+  document.getElementById('card-presup').textContent = formatPeso(montoTotal)
+  document.getElementById('card-activo').textContent = formatPeso(montoActivo)
+}
+
+async function getTotalesObra(obraId) {
+  const { data: items } = await db.from('items_obra').select('id').eq('obra_id', obraId)
+  if (!items || items.length === 0) return { presup: 0, real: 0 }
+
+  const itemIds = items.map(i => i.id)
+  const { data: presupItems } = await db.from('presupuesto_items').select('cantidad, precio_unitario').in('item_id', itemIds)
+  const presup = presupItems?.reduce((s, p) => s + (p.cantidad * p.precio_unitario), 0) || 0
+
+  const { data: partes } = await db.from('partes_diarios').select('id').eq('obra_id', obraId)
+  if (!partes || partes.length === 0) return { presup, real: 0 }
+
+  const parteIds = partes.map(p => p.id)
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', parteIds),
+    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
+    db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+  ])
+  const real = (mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
+             + (pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
+             + (eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
+
+  return { presup, real }
+}
+
+init()
+</script>
+</body>
+</html>

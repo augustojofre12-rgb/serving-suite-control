@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Detalle de Obra</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main" id="main-content">
+    <div class="loading"><div class="spinner"></div> Cargando...</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- MODAL EDITAR OBRA -->
+<div class="modal-bg" id="modal-obra">
+  <div class="modal" style="width:620px;max-width:95vw">
+    <h2>✏️ Editar Datos de la Obra</h2>
+    <div class="row2">
+      <div class="fg"><label>Nombre de la Obra *</label><input type="text" id="eo-nombre" placeholder="Nombre de la obra"></div>
+      <div class="fg"><label>N° de Expediente</label><input type="text" id="eo-expediente" placeholder="Ej: EXP-2025-001234"></div>
+    </div>
+    <div class="row3">
+      <div class="fg"><label>Monto de Contrato $ (valor final)</label><input type="number" id="eo-monto" placeholder="0" min="0" step="0.01" oninput="calcCD()"></div>
+      <div class="fg"><label>Coeficiente de Pase (K)</label><input type="number" id="eo-k" placeholder="1.00" min="1" step="0.01" oninput="calcCD()"></div>
+      <div class="fg"><label>Costo Directo Presup. (referencia)</label><input type="text" id="eo-cd" readonly style="background:#f0faf4;font-weight:700;color:var(--primary)"></div>
+    </div>
+    <div class="fg" style="max-width:200px"><label>Plazo de Obra (días)</label><input type="number" id="eo-plazo" placeholder="0" min="0"></div>
+    <div class="row2">
+      <div class="fg"><label>Fecha de Inicio</label><input type="date" id="eo-inicio"></div>
+      <div class="fg"><label>Fecha de Fin Estimada</label><input type="date" id="eo-fin"></div>
+    </div>
+    <div class="fg"><label>Ubicación</label><input type="text" id="eo-ubicacion" placeholder="Ej: Ruta Prov. 45 Km 12 a Km 28"></div>
+    <div class="fg"><label>Descripción</label><textarea id="eo-descripcion" placeholder="Detalles adicionales..."></textarea></div>
+    <div class="fg" style="max-width:200px"><label>Estado</label>
+      <select id="eo-estado">
+        <option value="activa">En Ejecución</option>
+        <option value="suspendida">Suspendida</option>
+        <option value="finalizada">Finalizada</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarEditarObra()">Cancelar</button>
+      <button class="btn btn-success" id="btn-guardar-obra" onclick="guardarObra()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR ÍTEMS -->
+<div class="modal-bg" id="modal-items">
+  <div class="modal" style="width:700px;max-width:95vw">
+    <h2>✏️ Editar Ítems de Obra</h2>
+    <table class="dtbl" style="margin-bottom:10px">
+      <thead><tr>
+        <th style="width:80px">Código</th>
+        <th>Descripción *</th>
+        <th style="width:90px">Unidad</th>
+        <th style="width:130px">Cantidad Total</th>
+        <th style="width:40px"></th>
+      </tr></thead>
+      <tbody id="modal-tbody-items"></tbody>
+    </table>
+    <button class="add-row-btn" onclick="addItemModal()">+ Agregar ítem</button>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarEditarItems()">Cancelar</button>
+      <button class="btn btn-success" onclick="guardarItems()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let obra = null
+let chartItems = null
+let chartDist = null
+
+const params = new URLSearchParams(window.location.search)
+const obraId = params.get('id')
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (!obraId) { window.location.href = 'dashboard.html'; return }
+
+  renderSidebar(usuario, 'obras')
+
+  const { data, error } = await db.from('obras').select('*').eq('id', obraId).single()
+  if (error || !data) { window.location.href = 'dashboard.html'; return }
+  obra = data
+
+  await renderDetalle()
+}
+
+async function renderDetalle() {
+  const esCoord = usuario.rol === 'coordinador'
+  const esDir   = usuario.rol === 'directivo'
+  const verFin  = esCoord || esDir
+
+  const badgeEstado = obra.estado === 'activa' ? 'b-ok' : obra.estado === 'finalizada' ? 'b-blue' : 'b-warn'
+  const labelEstado = obra.estado === 'activa' ? 'En Ejecución' : obra.estado === 'finalizada' ? 'Finalizada' : 'Suspendida'
+
+  // KPI cards (solo si verFin)
+  const k = obra.coeficiente_pase || 1
+  let htmlCards = ''
+  if (verFin) {
+    htmlCards = `
+      <div style="background:#f0faf4;border:1.5px solid var(--primary);border-radius:10px;padding:12px 20px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px">Referencia:</span>
+        <span style="font-size:13px">💰 Contrato: <strong>${formatPeso(obra.monto_contrato)}</strong></span>
+        <span style="font-size:13px">📐 K (Coef. de pase): <strong>${k}</strong></span>
+        <span style="font-size:13px">🎯 Costo Directo Presupuestado: <strong style="color:var(--primary)">${formatPeso((obra.monto_contrato||0) / k)}</strong></span>
+        <span style="font-size:11px;color:var(--gray);margin-left:auto">Análisis a costo directo</span>
+      </div>
+      <div class="cards4" style="margin-bottom:20px">
+        <div class="card bl-primary"><div class="card-label">Presup. Costo Directo</div><div class="card-value" id="kpi-presup">—</div><div class="card-sub" id="kpi-items-count">— ítems · K=${k}</div></div>
+        <div class="card bl-ok"><div class="card-label">Costo Real Directo</div><div class="card-value" id="kpi-real">—</div><div class="card-sub" id="kpi-porc-fin">—% del presupuesto</div></div>
+        <div class="card bl-ok"><div class="card-label">Valor Ganado a Costo Directo</div><div class="card-value" id="kpi-margen">—</div><div class="card-sub" id="kpi-margen-sub">—</div></div>
+        <div class="card bl-primary"><div class="card-label">Avance Físico</div><div class="card-value" id="kpi-fisico">—</div><div class="card-sub" id="kpi-fisico-sub">Promedio entre ítems</div></div>
+      </div>
+      <div class="charts2">
+        <div class="chart-card"><h3>Presupuesto vs Real por Ítem</h3><canvas id="ch-items" height="200"></canvas></div>
+        <div class="chart-card"><h3>Distribución de Costos Reales</h3><canvas id="ch-dist" height="200"></canvas></div>
+      </div>`
+  }
+
+  document.getElementById('main-content').innerHTML = `
+    <a class="back" href="dashboard.html">← Volver a Mis Obras / Contrataciones</a>
+    <div class="ph">
+      <div class="ph-left">
+        <h1>${obra.nombre}</h1>
+        <p>${obra.descripcion || obra.ubicacion || ''} &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span></p>
+      </div>
+      <div style="display:flex;gap:10px">
+        ${esCoord ? `<button class="btn btn-outline" onclick="abrirEditarObra()">✏️ Editar Obra</button>` : ''}
+        ${esCoord ? `<button class="btn btn-outline" onclick="abrirEditarItems()">📋 Editar Ítems</button>` : ''}
+        <a href="historial-partes.html?id=${obra.id}" class="btn btn-outline">📋 Historial</a>
+        ${!esDir ? `<a href="parte.html?obra_id=${obra.id}" class="btn btn-accent">+ Parte Diario</a>` : ''}
+      </div>
+    </div>
+    ${htmlCards}
+    <div class="tbl-wrap" id="tabla-items-wrap">
+      <div class="tbl-head">
+        <h3>Control por Ítem de Obra</h3>
+        <div style="display:flex;gap:8px">
+          <span class="badge b-ok">● Dentro del presupuesto</span>
+          <span class="badge b-danger">● Con desvío</span>
+        </div>
+      </div>
+      <div class="loading"><div class="spinner"></div> Calculando...</div>
+    </div>
+  `
+
+  // Cargar ítems y datos
+  const { data: items } = await db.from('items_obra').select('*').eq('obra_id', obraId).order('orden')
+  const { data: partes } = await db.from('partes_diarios').select('*').eq('obra_id', obraId)
+
+  if (!items || items.length === 0) {
+    document.querySelector('#tabla-items-wrap .loading').innerHTML = '<div class="empty"><div class="empty-icon">📋</div><h3>Sin ítems cargados</h3><p>Esta obra no tiene ítems de presupuesto</p></div>'
+    return
+  }
+
+  // Para cada ítem, obtener presupuesto y real
+  const dataItems = await Promise.all(items.map(item => calcItem(item, partes || [])))
+
+  // Renderizar tabla
+  const esJefe = usuario.rol === 'jefe_obra'
+  let htmlRows = ''
+  dataItems.forEach(d => {
+    const partesItem = (partes || []).filter(p => p.item_id === d.item.id)
+    const color = d.presup > 0 && d.desvio < 0 ? '#fff8f8' : 'transparent'
+    const pf = d.porcFisico
+    const pfClass = pf >= 80 ? 'pf-ok' : pf >= 40 ? 'pf-primary' : 'pf-warn'
+    const pfColor = pf >= 80 ? 'text-ok' : 'text-warn'
+    htmlRows += `
+      <tr style="background:${color}">
+        <td><strong>${d.item.codigo ? d.item.codigo+' — ' : ''}${d.item.descripcion}</strong></td>
+        <td>${d.item.unidad}</td>
+        <td>${formatNum(d.ejecutado)} / ${formatNum(d.item.cantidad_presupuestada)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="prog-bar" style="min-width:80px;margin:0"><div class="pf ${pfClass}" style="width:${pf}%"></div></div>
+            <small class="${pfColor}">${pf}%</small>
+          </div>
+        </td>
+        ${verFin ? (() => {
+          const presupCD = d.presup / k
+          const desvioCD = presupCD - d.real
+          const porcDesv = presupCD > 0 ? Math.round(desvioCD / presupCD * 100) : 0
+          return `
+          <td class="tr">${formatPeso(presupCD)}</td>
+          <td class="tr">${formatPeso(d.real)}</td>
+          <td class="tr ${desvioCD >= 0 ? 'text-ok' : 'text-neg'}">${desvioCD >= 0 ? '+' : ''}${formatPeso(desvioCD)}</td>
+          <td class="tc ${desvioCD >= 0 ? 'text-ok' : 'text-neg'}">${porcDesv >= 0 ? '+' : ''}${porcDesv}%</td>`
+        })() : ''}
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="toggleDetalle('det-${d.item.id}')">Ver detalle</button>
+          ${!esDir ? `<a href="parte.html?obra_id=${obra.id}&item_id=${d.item.id}" class="btn btn-accent btn-sm" style="margin-left:4px">+ Parte</a>` : ''}
+        </td>
+      </tr>
+      <tr id="det-${d.item.id}" style="display:none;background:#f8faff">
+        <td colspan="${verFin ? 9 : 5}">
+          <div style="padding:12px 4px" id="det-content-${d.item.id}">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </td>
+      </tr>`
+  })
+
+  document.getElementById('tabla-items-wrap').innerHTML = `
+    <div class="tbl-head">
+      <h3>Control por Ítem de Obra</h3>
+      <div style="display:flex;gap:8px">
+        <span class="badge b-ok">● Dentro del presupuesto</span>
+        <span class="badge b-danger">● Con desvío</span>
+      </div>
+    </div>
+    <table><thead><tr>
+      <th>Ítem</th><th>Unidad</th><th>Ejec. / Total</th><th>Avance</th>
+      ${verFin ? '<th class="tr">Presupuesto</th><th class="tr">Real</th><th class="tr">Desvío</th><th class="tc">Desvío%</th>' : ''}
+      <th></th>
+    </tr></thead>
+    <tbody>${htmlRows}</tbody>
+    </table>`
+
+  // KPIs financieros
+  if (verFin) {
+    // Presupuesto a costo directo = presup final / K
+    const totalPresupFinal = dataItems.reduce((s, d) => s + d.presup, 0)
+    const totalPresupCD    = totalPresupFinal / k
+    const totalReal        = dataItems.reduce((s, d) => s + d.real, 0)
+    const porcFin          = totalPresupCD > 0 ? Math.round(totalReal / totalPresupCD * 100) : 0
+    const porcFisico       = Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length)
+
+    // Valor ganado: presupuesto CD que "ganamos" según el avance físico real cargado
+    // Si no hay partes cargados, earnedCD = 0 → Resultado = 0
+    const totalEarnedCD    = dataItems.reduce((s, d) => s + d.earnedValue, 0) / k
+    const resultado        = totalEarnedCD - totalReal
+
+    document.getElementById('kpi-presup').textContent     = formatPeso(totalPresupCD)
+    document.getElementById('kpi-items-count').textContent = `${items.length} ítems · K=${k}`
+    document.getElementById('kpi-real').textContent       = formatPeso(totalReal)
+    document.getElementById('kpi-porc-fin').textContent   = `${porcFin}% del presupuesto CD`
+    document.getElementById('kpi-margen').textContent     = totalEarnedCD > 0 || totalReal > 0
+      ? (resultado >= 0 ? '+' : '') + formatPeso(resultado)
+      : '$0'
+    document.getElementById('kpi-margen').style.color     = resultado >= 0 ? 'var(--ok)' : 'var(--danger)'
+    document.getElementById('kpi-margen-sub').textContent = totalEarnedCD > 0 || totalReal > 0
+      ? (resultado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto')
+      : 'Sin partes cargados aún'
+    document.getElementById('kpi-fisico').textContent     = `${porcFisico}%`
+
+    // Charts
+    const labels = dataItems.map(d => d.item.descripcion.substring(0, 20))
+    const presups = dataItems.map(d => Math.round(d.presup))
+    const reales  = dataItems.map(d => Math.round(d.real))
+
+    if (chartItems) chartItems.destroy()
+    chartItems = new Chart(document.getElementById('ch-items'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label: 'Presupuesto', data: presups, backgroundColor: 'rgba(30,107,64,.2)', borderColor: 'rgba(30,107,64,.8)', borderWidth: 2 },
+        { label: 'Real', data: reales, backgroundColor: 'rgba(243,156,18,.7)', borderColor: 'rgba(243,156,18,1)', borderWidth: 2 }
+      ]},
+      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } } } }
+    })
+
+    // Distribución real por tipo (necesito query adicional)
+    calcDistribucion()
+  }
+}
+
+async function calcItem(item, partes) {
+  // Presupuesto
+  const { data: presupItems } = await db.from('presupuesto_items').select('cantidad, precio_unitario').eq('item_id', item.id)
+  const presup = presupItems?.reduce((s, p) => s + p.cantidad * p.precio_unitario, 0) || 0
+
+  // Real
+  const partesItem = partes.filter(p => p.item_id === item.id)
+  const parteIds = partesItem.map(p => p.id)
+  let real = 0
+
+  if (parteIds.length > 0) {
+    const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+      db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', parteIds),
+      db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
+      db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+    ])
+    real = (mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
+         + (pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
+         + (eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
+  }
+
+  const ejecutado = partesItem.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
+  const porcFisico = item.cantidad_presupuestada > 0
+    ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100))
+    : 0
+
+  const desvio = presup - real
+  const porcDesvio = presup > 0 ? Math.round(desvio / presup * 100) : 0
+  // Valor ganado: presupuesto correspondiente al avance físico ejecutado
+  const earnedValue = presup * (porcFisico / 100)
+
+  return { item, presup, real, ejecutado, desvio, porcDesvio, porcFisico, earnedValue }
+}
+
+async function toggleDetalle(id) {
+  const row = document.getElementById(id)
+  const visible = row.style.display !== 'none'
+  row.style.display = visible ? 'none' : 'table-row'
+  if (!visible) {
+    const itemId = id.replace('det-', '')
+    await renderDetalleItem(itemId)
+  }
+}
+
+async function renderDetalleItem(itemId) {
+  const container = document.getElementById(`det-content-${itemId}`)
+  const { data: parteIds } = await db.from('partes_diarios').select('id').eq('item_id', itemId)
+
+  if (!parteIds || parteIds.length === 0) {
+    container.innerHTML = '<p style="color:var(--gray);padding:8px">Sin partes diarios cargados para este ítem.</p>'
+    return
+  }
+
+  const ids = parteIds.map(p => p.id)
+  const [presupItems, mat, pers, eq] = await Promise.all([
+    db.from('presupuesto_items').select('*').eq('item_id', itemId),
+    db.from('parte_materiales').select('*').in('parte_id', ids),
+    db.from('parte_personal').select('*').in('parte_id', ids),
+    db.from('parte_equipos').select('*').in('parte_id', ids)
+  ])
+
+  // Agrupar por descripción
+  const agrupar = (arr, descKey, cantKey, precKey) => {
+    const map = {}
+    arr?.forEach(r => {
+      const k = r[descKey]
+      if (!map[k]) map[k] = { desc: k, tipo: r.tipo || r.categoria || '', real: 0 }
+      map[k].real += (r[cantKey] || 0) * (r[precKey] || 0)
+    })
+    return Object.values(map)
+  }
+
+  const matAgrup  = agrupar(mat.data, 'descripcion', 'cantidad', 'precio_unitario')
+  const persAgrup = agrupar(pers.data, 'nombre', 'horas_trabajadas', 'precio_hora')
+  const eqAgrup   = agrupar(eq.data, 'descripcion', 'horas_utilizadas', 'precio_hora')
+
+  const verFin = usuario.rol !== 'jefe_obra'
+
+  const filasPres = presupItems.data?.map(p => `
+    <tr>
+      <td>${p.descripcion}</td>
+      <td><span class="badge ${p.tipo==='material'?'b-blue':p.tipo==='mano_obra'?'b-ok':'b-warn'}">${p.tipo==='material'?'Material':p.tipo==='mano_obra'?'Mano de Obra':'Equipo'}</span></td>
+      <td class="tr">${verFin ? formatPeso(p.cantidad * p.precio_unitario) : '—'}</td>
+      <td class="tr">—</td>
+      <td class="tr">—</td>
+    </tr>`) || []
+
+  container.innerHTML = `
+    <table class="dtbl" style="margin:0">
+      <thead><tr><th>Recurso</th><th>Tipo</th><th class="tr">Presupuestado</th><th class="tr">Real</th><th class="tr">Desvío</th></tr></thead>
+      <tbody>
+        ${matAgrup.map(r => {
+          const pItem = presupItems.data?.find(p => p.descripcion === r.desc && p.tipo === 'material')
+          const prev  = pItem ? pItem.cantidad * pItem.precio_unitario : 0
+          const dev   = prev - r.real
+          return `<tr><td>${r.desc}</td><td><span class="badge b-blue">Material</span></td>
+            <td class="tr">${verFin ? formatPeso(prev) : '—'}</td>
+            <td class="tr">${verFin ? formatPeso(r.real) : '—'}</td>
+            <td class="tr ${dev>=0?'text-ok':'text-neg'}">${verFin ? (dev>=0?'+':'')+formatPeso(dev) : '—'}</td></tr>`
+        }).join('')}
+        ${persAgrup.map(r => {
+          const pItem = presupItems.data?.find(p => p.tipo === 'mano_obra')
+          const prev  = pItem ? pItem.cantidad * pItem.precio_unitario : 0
+          const dev   = prev - r.real
+          return `<tr><td>${r.desc}</td><td><span class="badge b-ok">Mano de Obra</span></td>
+            <td class="tr">${verFin ? formatPeso(prev) : '—'}</td>
+            <td class="tr">${verFin ? formatPeso(r.real) : '—'}</td>
+            <td class="tr ${dev>=0?'text-ok':'text-neg'}">${verFin ? (dev>=0?'+':'')+formatPeso(dev) : '—'}</td></tr>`
+        }).join('')}
+        ${eqAgrup.map(r => {
+          const pItem = presupItems.data?.find(p => p.tipo === 'equipo')
+          const prev  = pItem ? pItem.cantidad * pItem.precio_unitario : 0
+          const dev   = prev - r.real
+          return `<tr><td>${r.desc}</td><td><span class="badge b-warn">Equipo</span></td>
+            <td class="tr">${verFin ? formatPeso(prev) : '—'}</td>
+            <td class="tr">${verFin ? formatPeso(r.real) : '—'}</td>
+            <td class="tr ${dev>=0?'text-ok':'text-neg'}">${verFin ? (dev>=0?'+':'')+formatPeso(dev) : '—'}</td></tr>`
+        }).join('')}
+      </tbody>
+    </table>`
+}
+
+async function calcDistribucion() {
+  const { data: partes } = await db.from('partes_diarios').select('id').eq('obra_id', obraId)
+  if (!partes || partes.length === 0) return
+  const ids = partes.map(p => p.id)
+
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', ids),
+    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', ids),
+    db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids)
+  ])
+
+  const costMat  = mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0
+  const costPers = pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0
+  const costEq   = eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0
+
+  if (chartDist) chartDist.destroy()
+  chartDist = new Chart(document.getElementById('ch-dist'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Materiales', 'Mano de Obra', 'Equipos'],
+      datasets: [{ data: [Math.round(costMat), Math.round(costPers), Math.round(costEq)], backgroundColor: ['#1e6b40','#f39c12','#27ae60'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  })
+}
+
+// ---- EDITAR OBRA ----
+function calcCD() {
+  const monto = parseFloat(document.getElementById('eo-monto').value) || 0
+  const k     = parseFloat(document.getElementById('eo-k').value) || 1
+  document.getElementById('eo-cd').value = k > 0 && monto > 0 ? formatPeso(monto / k) : ''
+}
+
+function abrirEditarObra() {
+  document.getElementById('eo-nombre').value      = obra.nombre || ''
+  document.getElementById('eo-expediente').value  = obra.numero_expediente || ''
+  document.getElementById('eo-monto').value       = obra.monto_contrato || ''
+  document.getElementById('eo-k').value           = obra.coeficiente_pase || 1
+  document.getElementById('eo-cd').value          = obra.monto_contrato && obra.coeficiente_pase ? formatPeso(obra.monto_contrato / obra.coeficiente_pase) : ''
+  document.getElementById('eo-plazo').value       = obra.plazo_dias || ''
+  document.getElementById('eo-inicio').value      = obra.fecha_inicio || ''
+  document.getElementById('eo-fin').value         = obra.fecha_fin_estimada || ''
+  document.getElementById('eo-ubicacion').value   = obra.ubicacion || ''
+  document.getElementById('eo-descripcion').value = obra.descripcion || ''
+  document.getElementById('eo-estado').value      = obra.estado || 'activa'
+  document.getElementById('modal-obra').classList.add('open')
+}
+
+function cerrarEditarObra() {
+  document.getElementById('modal-obra').classList.remove('open')
+}
+
+async function guardarObra() {
+  const nombre = document.getElementById('eo-nombre').value.trim()
+  if (!nombre) { toast('El nombre es obligatorio', 'error'); return }
+
+  const btn = document.getElementById('btn-guardar-obra')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  const { data, error } = await db.from('obras').update({
+    nombre,
+    numero_expediente: document.getElementById('eo-expediente').value.trim() || null,
+    monto_contrato:     parseFloat(document.getElementById('eo-monto').value) || 0,
+    coeficiente_pase:   parseFloat(document.getElementById('eo-k').value) || 1,
+    plazo_dias:        parseInt(document.getElementById('eo-plazo').value) || 0,
+    fecha_inicio:      document.getElementById('eo-inicio').value || null,
+    fecha_fin_estimada: document.getElementById('eo-fin').value || null,
+    ubicacion:         document.getElementById('eo-ubicacion').value.trim(),
+    descripcion:       document.getElementById('eo-descripcion').value.trim(),
+    estado:            document.getElementById('eo-estado').value
+  }).eq('id', obraId).select().single()
+
+  if (error) { toast('Error al guardar', 'error'); btn.textContent = '✓ Guardar cambios'; btn.disabled = false; return }
+
+  obra = data
+  toast('Obra actualizada correctamente')
+  cerrarEditarObra()
+  btn.textContent = '✓ Guardar cambios'
+  btn.disabled = false
+  await renderDetalle()
+}
+
+// ---- EDITAR ÍTEMS ----
+let itemsOriginales = []
+
+async function abrirEditarItems() {
+  const { data: items } = await db.from('items_obra').select('*').eq('obra_id', obraId).order('orden')
+  itemsOriginales = items || []
+
+  const tbody = document.getElementById('modal-tbody-items')
+  tbody.innerHTML = items.map(i => `
+    <tr data-id="${i.id}">
+      <td><input type="text" value="${i.codigo || ''}" placeholder="01"></td>
+      <td><input type="text" value="${i.descripcion}" placeholder="Descripción"></td>
+      <td><select>
+        ${['m²','m³','ml','u','kg','tn','gl'].map(u => `<option ${i.unidad===u?'selected':''}>${u}</option>`).join('')}
+      </select></td>
+      <td><input type="number" value="${i.cantidad_presupuestada}" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRowModal(this)" title="Eliminar">✕</button></td>
+    </tr>`).join('')
+
+  document.getElementById('modal-items').classList.add('open')
+}
+
+function cerrarEditarItems() {
+  document.getElementById('modal-items').classList.remove('open')
+}
+
+function addItemModal() {
+  const tbody = document.getElementById('modal-tbody-items')
+  const orden = tbody.querySelectorAll('tr').length + 1
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr data-id="nuevo">
+      <td><input type="text" placeholder="0${orden}"></td>
+      <td><input type="text" placeholder="Descripción del ítem"></td>
+      <td><select>${['m²','m³','ml','u','kg','tn','gl'].map(u=>`<option>${u}</option>`).join('')}</select></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRowModal(this)">✕</button></td>
+    </tr>`)
+}
+
+function delRowModal(btn) { btn.closest('tr').remove() }
+
+async function guardarItems() {
+  const rows = document.querySelectorAll('#modal-tbody-items tr')
+  const btn = document.querySelector('#modal-items .btn-success')
+  btn.textContent = 'Guardando...'
+  btn.disabled = true
+
+  let orden = 1
+  for (const row of rows) {
+    const id     = row.dataset.id
+    const inputs = row.querySelectorAll('input, select')
+    const codigo = inputs[0].value.trim()
+    const desc   = inputs[1].value.trim()
+    const unidad = inputs[2].value
+    const cant   = parseFloat(inputs[3].value) || 0
+
+    if (!desc) continue
+
+    if (id === 'nuevo') {
+      await db.from('items_obra').insert({ obra_id: obraId, codigo, descripcion: desc, unidad, cantidad_presupuestada: cant, orden: orden++ })
+    } else {
+      await db.from('items_obra').update({ codigo, descripcion: desc, unidad, cantidad_presupuestada: cant, orden: orden++ }).eq('id', id)
+    }
+  }
+
+  // Eliminar ítems que se borraron del modal
+  const idsActuales = Array.from(rows).map(r => r.dataset.id).filter(id => id !== 'nuevo')
+  const idsOriginales = itemsOriginales.map(i => i.id)
+  const idsAEliminar = idsOriginales.filter(id => !idsActuales.includes(id))
+  if (idsAEliminar.length > 0) {
+    await db.from('items_obra').delete().in('id', idsAEliminar)
+  }
+
+  toast('Ítems guardados correctamente')
+  cerrarEditarItems()
+  btn.textContent = '✓ Guardar cambios'
+  btn.disabled = false
+  await renderDetalle()
+}
+
+init()
+</script>
+</body>
+</html>

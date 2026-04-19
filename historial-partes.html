@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Historial de Partes</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <a class="back" id="back-link" href="dashboard.html">← Volver a la Obra</a>
+    <div class="ph">
+      <div class="ph-left">
+        <h1>Historial de Partes Diarios</h1>
+        <p id="obra-nombre" style="font-weight:600;color:var(--primary)">Cargando...</p>
+      </div>
+      <a id="btn-nuevo-parte" href="#" class="btn btn-accent">+ Nuevo Parte</a>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="fsec" style="margin-bottom:16px">
+      <div class="fsec-title">🔍 Filtros</div>
+      <div class="row4">
+        <div class="fg"><label>Desde</label><input type="date" id="f-desde"></div>
+        <div class="fg"><label>Hasta</label><input type="date" id="f-hasta"></div>
+        <div class="fg"><label>Ítem de Obra</label>
+          <select id="f-item">
+            <option value="">— Todos los ítems —</option>
+          </select>
+        </div>
+        <div class="fg"><label>&nbsp;</label>
+          <div style="display:flex;gap:8px;padding-top:6px">
+            <button class="btn btn-success" onclick="filtrar()">Filtrar</button>
+            <button class="btn btn-outline" onclick="limpiarFiltros()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARDS RESUMEN -->
+    <div class="cards3" id="cards-resumen" style="margin-bottom:20px;display:none">
+      <div class="card bl-primary">
+        <div class="card-label">Partes en el período</div>
+        <div class="card-value" id="res-partes">0</div>
+        <div class="card-sub" id="res-rango">—</div>
+      </div>
+      <div class="card bl-ok">
+        <div class="card-label">Costo Real del Período</div>
+        <div class="card-value" id="res-costo">$0</div>
+        <div class="card-sub">Materiales + MO + Equipos + Combustible</div>
+      </div>
+      <div class="card bl-warn">
+        <div class="card-label">Avance Físico del Período</div>
+        <div class="card-value" id="res-avance">—</div>
+        <div class="card-sub" id="res-avance-sub">Sobre ítems ejecutados</div>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div id="tabla-wrap">
+      <div class="loading"><div class="spinner"></div> Cargando partes...</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let obraId = null
+let obra = null
+let todosPartes = []
+let itemsObra = []
+
+const params = new URLSearchParams(window.location.search)
+obraId = params.get('id')
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  if (!obraId) { window.location.href = 'dashboard.html'; return }
+
+  renderSidebar(usuario, 'obras')
+
+  const { data: obraData } = await db.from('obras').select('*').eq('id', obraId).single()
+  if (!obraData) { window.location.href = 'dashboard.html'; return }
+  obra = obraData
+
+  document.getElementById('obra-nombre').textContent = obra.nombre
+  document.getElementById('back-link').href = `obra.html?id=${obraId}`
+  document.getElementById('btn-nuevo-parte').href = `parte.html?obra_id=${obraId}`
+  document.title = `Historial — ${obra.nombre}`
+
+  // Cargar ítems para el filtro
+  const { data: items } = await db.from('items_obra')
+    .select('id, codigo, descripcion, cantidad_presupuestada, unidad')
+    .eq('obra_id', obraId).order('orden')
+  itemsObra = items || []
+  const selItem = document.getElementById('f-item')
+  itemsObra.forEach(i => {
+    selItem.insertAdjacentHTML('beforeend',
+      `<option value="${i.id}">${i.codigo ? i.codigo + ' — ' : ''}${i.descripcion}</option>`)
+  })
+
+  // Defaults: últimos 30 días
+  const hoy = new Date()
+  const hace30 = new Date(); hace30.setDate(hoy.getDate() - 30)
+  document.getElementById('f-hasta').value = hoy.toISOString().split('T')[0]
+  document.getElementById('f-desde').value = hace30.toISOString().split('T')[0]
+
+  await cargarPartes()
+}
+
+async function cargarPartes() {
+  const { data: partes, error } = await db
+    .from('partes_diarios')
+    .select('*')
+    .eq('obra_id', obraId)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) { toast('Error al cargar partes', 'error'); return }
+  todosPartes = partes || []
+  filtrar()
+}
+
+function filtrar() {
+  const desde  = document.getElementById('f-desde').value
+  const hasta  = document.getElementById('f-hasta').value
+  const itemId = document.getElementById('f-item').value
+
+  let filtrados = todosPartes
+  if (desde)  filtrados = filtrados.filter(p => p.fecha >= desde)
+  if (hasta)  filtrados = filtrados.filter(p => p.fecha <= hasta)
+  if (itemId) filtrados = filtrados.filter(p => p.item_id === itemId)
+
+  renderTabla(filtrados, desde, hasta)
+}
+
+function limpiarFiltros() {
+  document.getElementById('f-desde').value = ''
+  document.getElementById('f-hasta').value = ''
+  document.getElementById('f-item').value  = ''
+  filtrar()
+}
+
+function renderTabla(partes, desde, hasta) {
+  const verFin = usuario.rol !== 'jefe_obra'
+  const wrap   = document.getElementById('tabla-wrap')
+
+  if (partes.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <h3>Sin partes en el período</h3>
+        <p>Ajustá los filtros o cargá un nuevo parte diario</p>
+        <a href="parte.html?obra_id=${obraId}" class="btn btn-accent">+ Nuevo Parte Diario</a>
+      </div>`
+    document.getElementById('cards-resumen').style.display = 'none'
+    return
+  }
+
+  // Cards resumen visibles
+  document.getElementById('cards-resumen').style.display = 'grid'
+  document.getElementById('res-partes').textContent = partes.length
+  document.getElementById('res-rango').textContent  = desde && hasta
+    ? `${formatFecha(desde)} → ${formatFecha(hasta)}`
+    : 'Todos los registros'
+
+  // Filas de la tabla
+  let htmlRows = ''
+  partes.forEach(p => {
+    const item = itemsObra.find(i => i.id === p.item_id)
+    const itemLabel = item
+      ? `${item.codigo ? item.codigo + ' — ' : ''}${item.descripcion}`
+      : '—'
+    const fecha = new Date(p.fecha + 'T12:00').toLocaleDateString('es-AR', {
+      weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+    })
+
+    htmlRows += `
+      <tr>
+        <td><strong>${fecha}</strong></td>
+        <td>${itemLabel}</td>
+        <td style="color:var(--gray);font-size:13px">${p.ubicacion || '—'}</td>
+        <td class="tc"><strong>${formatNum(p.cantidad_ejecutada)}</strong> <span style="color:var(--gray);font-size:12px">${p.unidad_ejecutada || ''}</span></td>
+        <td class="tc">
+          <span style="background:#f0faf4;color:var(--primary);font-size:12px;font-weight:600;padding:3px 8px;border-radius:12px">
+            ${p.creado_por_nombre || '—'}
+          </span>
+        </td>
+        <td class="tc">
+          <button class="btn btn-outline btn-sm" onclick="toggleDetalleParte('det-${p.id}','${p.id}')">Ver detalle</button>
+        </td>
+      </tr>
+      <tr id="det-${p.id}" style="display:none;background:#f8faff">
+        <td colspan="6" style="padding:0">
+          <div id="det-content-${p.id}" style="padding:16px 12px">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </td>
+      </tr>`
+  })
+
+  wrap.innerHTML = `
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>Partes Diarios <span style="color:var(--gray);font-weight:400;font-size:14px">(${partes.length} resultado${partes.length !== 1 ? 's' : ''})</span></h3>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:170px">Fecha</th>
+          <th>Ítem de Obra</th>
+          <th>Ubicación / Progresiva</th>
+          <th class="tc" style="width:140px">Cant. Ejecutada</th>
+          <th class="tc" style="width:140px">Cargado por</th>
+          <th class="tc" style="width:110px"></th>
+        </tr></thead>
+        <tbody>${htmlRows}</tbody>
+      </table>
+    </div>`
+
+  // Calcular totales async (no bloquea el render)
+  calcResumenCards(partes)
+}
+
+async function calcResumenCards(partes) {
+  const verFin   = usuario.rol !== 'jefe_obra'
+  const parteIds = partes.map(p => p.id)
+
+  // Avance físico del período por ítem único
+  const idsItemsUnicos = [...new Set(partes.map(p => p.item_id))]
+  let sumaPorc = 0
+  for (const itemId of idsItemsUnicos) {
+    const item = itemsObra.find(i => i.id === itemId)
+    if (!item || !item.cantidad_presupuestada) continue
+    const cantEjec = partes
+      .filter(p => p.item_id === itemId)
+      .reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
+    sumaPorc += Math.min(100, (cantEjec / item.cantidad_presupuestada) * 100)
+  }
+  const avanceProm = idsItemsUnicos.length > 0 ? Math.round(sumaPorc / idsItemsUnicos.length) : 0
+  document.getElementById('res-avance').textContent     = `${avanceProm}%`
+  document.getElementById('res-avance-sub').textContent = `${idsItemsUnicos.length} ítem${idsItemsUnicos.length !== 1 ? 's' : ''} con actividad`
+
+  if (!verFin) { document.getElementById('res-costo').textContent = '—'; return }
+
+  if (parteIds.length === 0) { document.getElementById('res-costo').textContent = '$0'; return }
+
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', parteIds),
+    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
+    db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+  ])
+
+  const costo = (mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
+              + (pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
+              + (eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
+
+  document.getElementById('res-costo').textContent = formatPeso(costo)
+}
+
+async function toggleDetalleParte(rowId, parteId) {
+  const row     = document.getElementById(rowId)
+  const visible = row.style.display !== 'none'
+  row.style.display = visible ? 'none' : 'table-row'
+  if (!visible) await renderDetalleParte(parteId)
+}
+
+async function renderDetalleParte(parteId) {
+  const container = document.getElementById(`det-content-${parteId}`)
+  const verFin    = usuario.rol !== 'jefe_obra'
+
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('*').eq('parte_id', parteId),
+    db.from('parte_personal').select('*').eq('parte_id', parteId),
+    db.from('parte_equipos').select('*').eq('parte_id', parteId)
+  ])
+
+  const materiales   = mat?.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧')) || []
+  const combustibles = mat?.filter(m => m.descripcion.startsWith('⛽')) || []
+  const herramientas = mat?.filter(m => m.descripcion.startsWith('🔧')) || []
+
+  const costMat  = materiales.reduce((s, m)   => s + m.cantidad * m.precio_unitario, 0)
+  const costComb = combustibles.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const costHerr = herramientas.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const costPers = pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0
+  const costEq   = eq?.reduce((s, e)   => s + e.horas_utilizadas * e.precio_hora, 0) || 0
+  const costTotal = costMat + costComb + costHerr + costPers + costEq
+
+  const hayDatos = materiales.length || pers?.length || eq?.length || combustibles.length || herramientas.length
+
+  if (!hayDatos) {
+    container.innerHTML = '<p style="color:var(--gray)">Este parte no tiene recursos cargados.</p>'
+    return
+  }
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px">'
+
+  // 🧱 Materiales
+  if (materiales.length > 0) {
+    html += seccionDetalle('🧱 Materiales', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Descripción</th>
+          <th class="tc">Cant.</th>
+          <th class="tc">Unid.</th>
+          ${verFin ? '<th class="tr">Precio/U</th><th class="tr">Total</th>' : ''}
+          <th>Remito</th>
+        </tr></thead>
+        <tbody>
+          ${materiales.map(m => `<tr>
+            <td>${m.descripcion}</td>
+            <td class="tc">${formatNum(m.cantidad)}</td>
+            <td class="tc">${m.unidad || ''}</td>
+            ${verFin ? `<td class="tr">${formatPeso(m.precio_unitario)}</td><td class="tr">${formatPeso(m.cantidad * m.precio_unitario)}</td>` : ''}
+            <td style="font-size:12px;color:var(--gray)">${m.remito || '—'}</td>
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="${verFin ? 4 : 3}">Subtotal</td><td class="tr">${formatPeso(costMat)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
+  }
+
+  // 👷 Personal
+  if (pers && pers.length > 0) {
+    html += seccionDetalle('👷 Personal', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Nombre</th>
+          <th>Categoría</th>
+          <th class="tc">Ingreso</th>
+          <th class="tc">Egreso</th>
+          <th class="tc">Hs.</th>
+          ${verFin ? '<th class="tr">$/Hs</th><th class="tr">Total</th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${pers.map(p => `<tr>
+            <td>${p.nombre}</td>
+            <td><span class="badge b-ok" style="font-size:11px">${p.categoria || ''}</span></td>
+            <td class="tc">${p.hora_ingreso || '—'}</td>
+            <td class="tc">${p.hora_egreso || '—'}</td>
+            <td class="tc"><strong>${p.horas_trabajadas}</strong> hs</td>
+            ${verFin ? `<td class="tr">${formatPeso(p.precio_hora)}</td><td class="tr">${formatPeso(p.horas_trabajadas * p.precio_hora)}</td>` : ''}
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="${verFin ? 5 : 4}">Subtotal</td><td class="tr">${formatPeso(costPers)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
+  }
+
+  // 🚜 Equipos
+  if (eq && eq.length > 0) {
+    html += seccionDetalle('🚜 Equipos', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Equipo</th>
+          <th>Tipo</th>
+          <th class="tc">H. Inicio</th>
+          <th class="tc">H. Fin</th>
+          <th class="tc">Hs. Util.</th>
+          ${verFin ? '<th class="tr">$/Hs</th><th class="tr">Total</th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${eq.map(e => `<tr>
+            <td>${e.descripcion}</td>
+            <td><span class="badge b-warn" style="font-size:11px">${e.tipo || ''}</span></td>
+            <td class="tc">${e.hora_inicio || '—'}</td>
+            <td class="tc">${e.hora_fin || '—'}</td>
+            <td class="tc"><strong>${e.horas_utilizadas}</strong> hs</td>
+            ${verFin ? `<td class="tr">${formatPeso(e.precio_hora)}</td><td class="tr">${formatPeso(e.horas_utilizadas * e.precio_hora)}</td>` : ''}
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="${verFin ? 5 : 4}">Subtotal</td><td class="tr">${formatPeso(costEq)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
+  }
+
+  // ⛽ Combustible
+  if (combustibles.length > 0) {
+    html += seccionDetalle('⛽ Combustible', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Equipo / Máquina</th>
+          <th class="tc">Litros</th>
+          ${verFin ? '<th class="tr">$/Lt</th><th class="tr">Total</th>' : ''}
+          <th>Remito</th>
+        </tr></thead>
+        <tbody>
+          ${combustibles.map(m => `<tr>
+            <td>${m.descripcion.replace('⛽ ', '')}</td>
+            <td class="tc">${formatNum(m.cantidad)} lt</td>
+            ${verFin ? `<td class="tr">${formatPeso(m.precio_unitario)}</td><td class="tr">${formatPeso(m.cantidad * m.precio_unitario)}</td>` : ''}
+            <td style="font-size:12px;color:var(--gray)">${m.remito || '—'}</td>
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="${verFin ? 3 : 2}">Subtotal</td><td class="tr">${formatPeso(costComb)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
+  }
+
+  // 🔧 Herramientas
+  if (herramientas.length > 0) {
+    html += seccionDetalle('🔧 Herramientas Menores', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Descripción</th>
+          <th class="tc">Cant.</th>
+          <th class="tc">Unid.</th>
+          ${verFin ? '<th class="tr">$/U</th><th class="tr">Total</th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${herramientas.map(m => `<tr>
+            <td>${m.descripcion.replace('🔧 ', '')}</td>
+            <td class="tc">${formatNum(m.cantidad)}</td>
+            <td class="tc">${m.unidad || ''}</td>
+            ${verFin ? `<td class="tr">${formatPeso(m.precio_unitario)}</td><td class="tr">${formatPeso(m.cantidad * m.precio_unitario)}</td>` : ''}
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="${verFin ? 4 : 3}">Subtotal</td><td class="tr">${formatPeso(costHerr)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
+  }
+
+  html += '</div>'
+
+  // Total del parte
+  if (verFin && costTotal > 0) {
+    html += `
+      <div style="text-align:right;margin-top:14px;padding-top:12px;border-top:2px solid var(--primary)">
+        <span style="font-size:15px;font-weight:700;color:var(--primary)">
+          💰 Costo Total del Parte: ${formatPeso(costTotal)}
+        </span>
+      </div>`
+  }
+
+  container.innerHTML = html
+}
+
+function seccionDetalle(titulo, contenido) {
+  return `<div>
+    <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:4px">${titulo}</div>
+    ${contenido}
+  </div>`
+}
+
+function formatFecha(fechaStr) {
+  return new Date(fechaStr + 'T12:00').toLocaleDateString('es-AR', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  })
+}
+
+init()
+</script>
+</body>
+</html>
