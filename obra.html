@@ -5,6 +5,71 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Serving Suite Control — Detalle de Obra</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  /* Botones de acción del header de obra */
+  .obra-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .btn-accion {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+    border: 1.5px solid var(--primary);
+    background: #fff;
+    color: var(--primary);
+    box-shadow: 0 1px 4px rgba(30,107,64,.08);
+    white-space: nowrap;
+  }
+  .btn-accion:hover {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(30,107,64,.25);
+    transform: translateY(-1px);
+  }
+  .btn-accion .icono {
+    font-size: 15px;
+    line-height: 1;
+  }
+  .btn-accion .label { line-height: 1; }
+  .btn-accion .sublabel {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    opacity: .7;
+    margin-top: 1px;
+  }
+
+  /* Botón Parte Diario — destaque naranja */
+  .btn-parte {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(243,156,18,.35);
+    white-space: nowrap;
+  }
+  .btn-parte:hover {
+    background: #e08e0b;
+    box-shadow: 0 4px 14px rgba(243,156,18,.45);
+    transform: translateY(-1px);
+  }
+  .btn-parte .icono { font-size: 16px; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -137,11 +202,26 @@ async function renderDetalle() {
         <h1>${obra.nombre}</h1>
         <p>${obra.descripcion || obra.ubicacion || ''} &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span></p>
       </div>
-      <div style="display:flex;gap:10px">
-        ${esCoord ? `<button class="btn btn-outline" onclick="abrirEditarObra()">✏️ Editar Obra</button>` : ''}
-        ${esCoord ? `<button class="btn btn-outline" onclick="abrirEditarItems()">📋 Editar Ítems</button>` : ''}
-        <a href="historial-partes.html?id=${obra.id}" class="btn btn-outline">📋 Historial</a>
-        ${!esDir ? `<a href="parte.html?obra_id=${obra.id}" class="btn btn-accent">+ Parte Diario</a>` : ''}
+      <div class="obra-actions">
+        ${esCoord ? `
+        <button class="btn-accion" onclick="abrirEditarObra()">
+          <span class="icono">✏️</span>
+          <span class="label">Editar Obra</span>
+        </button>` : ''}
+        ${esCoord ? `
+        <button class="btn-accion" onclick="abrirEditarItems()">
+          <span class="icono">📋</span>
+          <span class="label">Editar Ítems</span>
+        </button>` : ''}
+        <a href="historial-partes.html?id=${obra.id}" class="btn-accion">
+          <span class="icono">🗂️</span>
+          <span class="label">Historial</span>
+        </a>
+        ${!esDir ? `
+        <a href="parte.html?obra_id=${obra.id}" class="btn-parte">
+          <span class="icono">＋</span>
+          <span class="label">Parte Diario</span>
+        </a>` : ''}
       </div>
     </div>
     ${htmlCards}
