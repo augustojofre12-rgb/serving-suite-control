@@ -5,6 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Serving Suite Control — Recursos Humanos</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  .menu-wrap { position: relative; display: inline-block; }
+  .menu-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--gray); padding: 4px 10px;
+    border-radius: 6px; line-height: 1; transition: background .15s;
+  }
+  .menu-btn:hover { background: #f0f0f0; color: var(--text); }
+  .menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 0; top: 32px;
+    background: #fff;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    z-index: 100;
+    min-width: 150px;
+    overflow: hidden;
+  }
+  .menu-dropdown.open { display: block; }
+  .menu-dropdown button {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 10px 16px;
+    background: none; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    text-align: left; transition: background .15s;
+  }
+  .menu-dropdown button:hover { background: #f5f7f5; }
+  .menu-dropdown button.danger { color: var(--danger); }
+  .menu-dropdown button.danger:hover { background: #fff0f0; }
+  .menu-sep { height: 1px; background: #f0f0f0; margin: 2px 0; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -15,7 +48,7 @@
         <h1>Recursos Humanos</h1>
         <p>Nómina de operarios y personal afectable a obras</p>
       </div>
-      <button class="btn btn-accent" onclick="abrirModal()">+ Agregar Persona</button>
+      <button class="btn btn-accent" id="btn-agregar" onclick="abrirModal()" style="display:none">+ Agregar Persona</button>
     </div>
 
     <!-- Cards resumen -->
@@ -115,6 +148,7 @@ async function init() {
   if (!usuario) return
   if (usuario.rol === 'jefe_obra') { window.location.href = 'dashboard.html'; return }
   renderSidebar(usuario, 'rrhh')
+  if (usuario.rol === 'coordinador') document.getElementById('btn-agregar').style.display = 'inline-flex'
   await cargarPersonal()
 }
 
@@ -155,11 +189,16 @@ function renderTabla(lista) {
       <td><strong>${p.nombre_completo}</strong></td>
       <td><span class="badge b-ok" style="font-size:12px">${p.funcion || '—'}</span></td>
       <td><span class="badge ${p.activo ? 'b-ok' : 'b-blue'}">${p.activo ? 'Activo' : 'Inactivo'}</span></td>
-      <td style="text-align:right">
+      <td class="tc">
         ${esCoord ? `
-        <button class="btn btn-outline btn-sm" onclick="editarPersona('${p.id}')">Editar</button>
-        <button class="btn btn-sm" style="background:#fff0f0;color:var(--danger);border:1px solid #f5c6c6;margin-left:4px" onclick="eliminarPersona('${p.id}')">✕</button>
-        ` : '—'}
+        <div class="menu-wrap">
+          <button class="menu-btn" onclick="toggleMenu(event,'menu-${p.id}')">⋮</button>
+          <div class="menu-dropdown" id="menu-${p.id}">
+            <button onclick="editarPersona('${p.id}');cerrarMenus()">✏️ &nbsp;Editar</button>
+            <div class="menu-sep"></div>
+            <button class="danger" onclick="eliminarPersona('${p.id}');cerrarMenus()">🗑️ &nbsp;Eliminar</button>
+          </div>
+        </div>` : ''}
       </td>
     </tr>`).join('')
 }
@@ -231,6 +270,16 @@ async function eliminarPersona(id) {
   toast('Persona eliminada')
   await cargarPersonal()
 }
+
+function toggleMenu(e, id) {
+  e.stopPropagation()
+  cerrarMenus()
+  document.getElementById(id)?.classList.toggle('open')
+}
+function cerrarMenus() {
+  document.querySelectorAll('.menu-dropdown.open').forEach(m => m.classList.remove('open'))
+}
+document.addEventListener('click', cerrarMenus)
 
 init()
 </script>
