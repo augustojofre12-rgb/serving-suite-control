@@ -15,8 +15,7 @@
   .menu-btn:hover { background: #f0f0f0; color: var(--text); }
   .menu-dropdown {
     display: none;
-    position: absolute;
-    right: 0; top: 32px;
+    position: fixed;
     background: #fff;
     border: 1.5px solid #e0e0e0;
     border-radius: 10px;
@@ -274,7 +273,13 @@ async function eliminarPersona(id) {
 function toggleMenu(e, id) {
   e.stopPropagation()
   cerrarMenus()
-  document.getElementById(id)?.classList.toggle('open')
+  const menu = document.getElementById(id)
+  if (!menu) return
+  const btn  = e.currentTarget
+  const rect = btn.getBoundingClientRect()
+  menu.style.top  = (rect.bottom + 4) + 'px'
+  menu.style.left = (rect.right - 155) + 'px'
+  menu.classList.toggle('open')
 }
 function cerrarMenus() {
   document.querySelectorAll('.menu-dropdown.open').forEach(m => m.classList.remove('open'))
