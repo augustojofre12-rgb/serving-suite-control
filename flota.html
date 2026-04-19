@@ -54,6 +54,7 @@
       </div>
       <table id="tabla-flota">
         <thead><tr>
+          <th style="width:70px" class="tc">Orden</th>
           <th style="width:100px">N° Interno</th>
           <th>Nombre del Equipo</th>
           <th style="width:120px">Tipo</th>
@@ -61,7 +62,7 @@
           <th style="width:120px"></th>
         </tr></thead>
         <tbody id="tbody-flota">
-          <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -86,6 +87,13 @@
           <option value="Alquilado">Alquilado</option>
         </select>
       </div>
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label>N° de Orden <span style="font-weight:400;color:var(--gray)">(para agrupar)</span></label>
+        <input type="number" id="eq-orden" placeholder="Ej: 1, 2, 3..." min="0">
+      </div>
+      <div class="fg"></div>
     </div>
     <div class="fg">
       <label>Nombre del Equipo *</label>
@@ -121,7 +129,7 @@ async function init() {
 }
 
 async function cargarEquipos() {
-  const { data, error } = await db.from('flota_equipos').select('*').order('numero_interno')
+  const { data, error } = await db.from('flota_equipos').select('*').order('orden').order('nombre')
   if (error) { toast('Error al cargar equipos', 'error'); return }
   equipos = data || []
   renderCards()
@@ -147,6 +155,7 @@ function renderTabla(lista) {
   const esCoord = usuario.rol === 'coordinador'
   tbody.innerHTML = lista.map(e => `
     <tr style="opacity:${e.activo ? 1 : 0.5}">
+      <td class="tc" style="font-size:13px;color:var(--gray);font-weight:600">${e.orden ?? '—'}</td>
       <td><strong>${e.numero_interno || '—'}</strong></td>
       <td>${e.nombre}</td>
       <td><span class="badge ${e.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.tipo}</span></td>
@@ -176,6 +185,7 @@ function abrirModal(equipo = null) {
   document.getElementById('eq-numero').value  = equipo?.numero_interno || ''
   document.getElementById('eq-nombre').value  = equipo?.nombre || ''
   document.getElementById('eq-tipo').value    = equipo?.tipo || 'Propio'
+  document.getElementById('eq-orden').value   = equipo?.orden ?? ''
   document.getElementById('eq-activo').value  = equipo ? String(equipo.activo) : 'true'
   document.getElementById('modal-titulo').textContent = equipo ? 'Editar Equipo' : 'Agregar Equipo'
   document.getElementById('modal-equipo').classList.add('open')
@@ -200,10 +210,12 @@ async function guardarEquipo() {
   btn.disabled = true
 
   const id     = document.getElementById('eq-id').value
+  const ordenVal = document.getElementById('eq-orden').value
   const datos  = {
     numero_interno: document.getElementById('eq-numero').value.trim() || null,
     nombre,
     tipo:   document.getElementById('eq-tipo').value,
+    orden:  ordenVal !== '' ? parseInt(ordenVal) : null,
     activo: document.getElementById('eq-activo').value === 'true'
   }
 
