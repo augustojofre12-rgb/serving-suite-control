@@ -87,11 +87,13 @@ async function cargarDashboard() {
   }
 
   document.getElementById('contenido').innerHTML = `
-    <div class="ph">
-      <div class="ph-left"><h1>Mis Obras / Contrataciones</h1><p>Estado actual de todas las obras y contrataciones activas</p></div>
-      ${esCoord ? `<a href="nueva-obra.html" class="btn btn-accent">+ Nueva Obra / Contratación</a>` : ''}
+    <div class="dashboard-sticky">
+      <div class="ph" style="margin-bottom:${verFinanciero ? '16px' : '0'}">
+        <div class="ph-left"><h1>Mis Obras / Contrataciones</h1><p>Estado actual de todas las obras y contrataciones activas</p></div>
+        ${esCoord ? `<a href="nueva-obra.html" class="btn btn-accent">+ Nueva Obra / Contratación</a>` : ''}
+      </div>
+      ${htmlCards}
     </div>
-    ${htmlCards}
     ${htmlObras}
   `
 
@@ -135,7 +137,7 @@ async function renderObraCard(obra, verFinanciero) {
         <span>${plazo}</span>
         <span>📅 ${inicio} → ${fin}</span>
       </div>
-      <div class="prog-label"><span>Avance Físico</span><span>${porcFisico.toFixed(3)}%</span></div>
+      <div class="prog-label"><span>Avance Físico</span><span>${porcFisico % 1 === 0 ? porcFisico : porcFisico.toFixed(3)}%</span></div>
       <div class="prog-bar"><div class="pf ${colorFisico}" style="width:${porcFisico}%"></div></div>
     </a>`
 }

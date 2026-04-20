@@ -370,7 +370,7 @@ async function renderDetalle() {
     document.getElementById('kpi-presup').textContent     = formatPeso(totalPresupCD)
     document.getElementById('kpi-items-count').textContent = `${items.length} ítems · K=${k}`
     document.getElementById('kpi-real').textContent       = formatPeso(totalReal)
-    document.getElementById('kpi-porc-fin').textContent   = `${porcFin.toFixed(3)}% del presupuesto CD`
+    document.getElementById('kpi-porc-fin').textContent   = `${porcFin % 1 === 0 ? porcFin : porcFin.toFixed(3)}% del presupuesto CD`
     document.getElementById('kpi-margen').textContent     = totalEarnedCD > 0 || totalReal > 0
       ? (resultado >= 0 ? '+' : '') + formatPeso(resultado)
       : '$0'
@@ -378,7 +378,7 @@ async function renderDetalle() {
     document.getElementById('kpi-margen-sub').textContent = totalEarnedCD > 0 || totalReal > 0
       ? (resultado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto')
       : 'Sin partes cargados aún'
-    document.getElementById('kpi-fisico').textContent     = `${porcFisico.toFixed(3)}%`
+    document.getElementById('kpi-fisico').textContent     = `${porcFisico % 1 === 0 ? porcFisico : porcFisico.toFixed(3)}%`
 
     // Charts
     const labels = dataItems.map(d => d.item.descripcion.substring(0, 20))

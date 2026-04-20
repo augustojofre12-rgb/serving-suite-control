@@ -49,6 +49,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#2c3e50;min-heig
 
 /* ---- MAIN ---- */
 .main{margin-left:250px;flex:1;padding:28px 32px;position:relative}
+.dashboard-sticky{position:sticky;top:-28px;z-index:50;background:#f0f5f1;margin:-28px -32px 24px;padding:22px 32px 18px;border-bottom:2px solid #d4e6da;box-shadow:0 4px 16px rgba(30,107,64,.08)}
 .main::before{content:'';position:fixed;bottom:20px;right:30px;width:300px;height:110px;background:url('logo.png') no-repeat center/contain;opacity:.04;pointer-events:none;z-index:0}
 .main > *{position:relative;z-index:1}
 
