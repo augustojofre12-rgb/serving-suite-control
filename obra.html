@@ -316,7 +316,7 @@ async function renderDetalle() {
         ${verFin ? (() => {
           const presupCD = d.presup / k
           const desvioCD = presupCD - d.real
-          const porcDesv = presupCD > 0 ? Math.round(desvioCD / presupCD * 100) : 0
+          const porcDesv = presupCD > 0 ? Math.round(desvioCD / presupCD * 100000) / 1000 : 0
           return `
           <td class="tr">${formatPeso(presupCD)}</td>
           <td class="tr">${formatPeso(d.real)}</td>
@@ -359,8 +359,8 @@ async function renderDetalle() {
     const totalPresupFinal = dataItems.reduce((s, d) => s + d.presup, 0)
     const totalPresupCD    = totalPresupFinal / k
     const totalReal        = dataItems.reduce((s, d) => s + d.real, 0)
-    const porcFin          = totalPresupCD > 0 ? Math.round(totalReal / totalPresupCD * 100) : 0
-    const porcFisico       = Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length)
+    const porcFin          = totalPresupCD > 0 ? Math.round(totalReal / totalPresupCD * 100000) / 1000 : 0
+    const porcFisico       = Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length * 1000) / 1000
 
     // Valor ganado: presupuesto CD que "ganamos" según el avance físico real cargado
     // Si no hay partes cargados, earnedCD = 0 → Resultado = 0
@@ -370,7 +370,7 @@ async function renderDetalle() {
     document.getElementById('kpi-presup').textContent     = formatPeso(totalPresupCD)
     document.getElementById('kpi-items-count').textContent = `${items.length} ítems · K=${k}`
     document.getElementById('kpi-real').textContent       = formatPeso(totalReal)
-    document.getElementById('kpi-porc-fin').textContent   = `${porcFin}% del presupuesto CD`
+    document.getElementById('kpi-porc-fin').textContent   = `${porcFin.toFixed(3)}% del presupuesto CD`
     document.getElementById('kpi-margen').textContent     = totalEarnedCD > 0 || totalReal > 0
       ? (resultado >= 0 ? '+' : '') + formatPeso(resultado)
       : '$0'
@@ -378,7 +378,7 @@ async function renderDetalle() {
     document.getElementById('kpi-margen-sub').textContent = totalEarnedCD > 0 || totalReal > 0
       ? (resultado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto')
       : 'Sin partes cargados aún'
-    document.getElementById('kpi-fisico').textContent     = `${porcFisico}%`
+    document.getElementById('kpi-fisico').textContent     = `${porcFisico.toFixed(3)}%`
 
     // Charts
     const labels = dataItems.map(d => d.item.descripcion.substring(0, 20))
@@ -426,12 +426,12 @@ async function calcItem(item, partes) {
 
   const ejecutado = partesItem.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
   const porcFisico = item.cantidad_presupuestada > 0
-    ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100))
+    ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100000) / 1000)
     : 0
 
   const desvio = presup - real
-  const porcDesvio = presup > 0 ? Math.round(desvio / presup * 100) : 0
-  // Valor ganado: presupuesto correspondiente al avance físico ejecutado
+  const porcDesvio = presup > 0 ? Math.round(desvio / presup * 100000) / 1000 : 0
+  // Valor ganado: presupuesto correspondiente al avance físico ejecutado (precisión completa)
   const earnedValue = presup * (porcFisico / 100)
 
   return { item, presup, real, ejecutado, desvio, porcDesvio, porcFisico, earnedValue }
