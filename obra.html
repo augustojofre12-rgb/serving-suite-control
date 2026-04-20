@@ -197,36 +197,36 @@ async function renderDetalle() {
 
   document.getElementById('main-content').innerHTML = `
     <a class="back" href="dashboard.html">← Volver a Mis Obras / Contrataciones</a>
-    <div class="ph">
-      <div class="ph-left">
-        <h1>${obra.nombre}</h1>
-        <p>
-          ${obra.numero_expediente ? `<span style="font-size:12px;font-weight:700;color:var(--gray);margin-right:10px">📄 Exp: ${obra.numero_expediente}</span>` : ''}
-          ${obra.descripcion || obra.ubicacion || ''}
-          &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span>
-        </p>
+    <div class="ph" style="display:block">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px">
+        <h1 style="margin:0">${obra.nombre}</h1>
+        <div class="obra-actions">
+          ${esCoord ? `
+          <button class="btn-accion" onclick="abrirEditarObra()">
+            <span class="icono">✏️</span>
+            <span class="label">Editar Obra</span>
+          </button>` : ''}
+          ${esCoord ? `
+          <button class="btn-accion" onclick="abrirEditarItems()">
+            <span class="icono">📋</span>
+            <span class="label">Editar Ítems</span>
+          </button>` : ''}
+          <a href="historial-partes.html?id=${obra.id}" class="btn-accion">
+            <span class="icono">🗂️</span>
+            <span class="label">Historial</span>
+          </a>
+          ${!esDir ? `
+          <a href="parte.html?obra_id=${obra.id}" class="btn-parte">
+            <span class="icono">＋</span>
+            <span class="label">Parte Diario</span>
+          </a>` : ''}
+        </div>
       </div>
-      <div class="obra-actions">
-        ${esCoord ? `
-        <button class="btn-accion" onclick="abrirEditarObra()">
-          <span class="icono">✏️</span>
-          <span class="label">Editar Obra</span>
-        </button>` : ''}
-        ${esCoord ? `
-        <button class="btn-accion" onclick="abrirEditarItems()">
-          <span class="icono">📋</span>
-          <span class="label">Editar Ítems</span>
-        </button>` : ''}
-        <a href="historial-partes.html?id=${obra.id}" class="btn-accion">
-          <span class="icono">🗂️</span>
-          <span class="label">Historial</span>
-        </a>
-        ${!esDir ? `
-        <a href="parte.html?obra_id=${obra.id}" class="btn-parte">
-          <span class="icono">＋</span>
-          <span class="label">Parte Diario</span>
-        </a>` : ''}
-      </div>
+      <p style="margin:0">
+        ${obra.numero_expediente ? `<span style="font-size:12px;font-weight:700;color:var(--gray);margin-right:10px">📄 Exp: ${obra.numero_expediente}</span>` : ''}
+        ${obra.descripcion || obra.ubicacion || ''}
+        &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span>
+      </p>
     </div>
     ${htmlCards}
     <div class="tbl-wrap" id="tabla-items-wrap">
