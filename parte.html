@@ -86,8 +86,8 @@
         </tr></thead>
         <tbody id="tbody-pers">
           <tr>
-            <td><input type="text" placeholder="Apellido, Nombre"></td>
-            <td><select><option>Oficial</option><option>Ayudante</option><option>Medio Oficial</option><option>Capataz</option><option>Operador</option></select></td>
+            <td><input type="text" placeholder="Apellido, Nombre" list="personal-list" oninput="autoFillCategoria(this)"></td>
+            <td><input type="text" placeholder="Categoría" id="cat-0" style="background:#f8f9fa"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
@@ -182,18 +182,34 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<datalist id="personal-list"></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
 let usuario = null
+let personalDB = []
 
 async function init() {
   usuario = await requireAuth()
   if (!usuario) return
   renderSidebar(usuario, 'parte')
   document.getElementById('fecha').valueAsDate = new Date()
+
+  // Cargar nómina de RRHH para autocompletado
+  const { data: nomina } = await db.from('recursos_humanos')
+    .select('nombre_completo, funcion').eq('activo', true).order('orden').order('nombre_completo')
+  personalDB = nomina || []
+
+  // Poblar datalist de personal
+  const dl = document.getElementById('personal-list')
+  personalDB.forEach(p => {
+    const opt = document.createElement('option')
+    opt.value = p.nombre_completo
+    opt.dataset.funcion = p.funcion || ''
+    dl.appendChild(opt)
+  })
 
   // Cargar obras activas
   const { data: obras } = await db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre')

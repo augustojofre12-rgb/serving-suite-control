@@ -129,6 +129,7 @@ async function renderObraCard(obra, verFinanciero) {
         <div><div class="obra-title">${obra.nombre}</div><div class="obra-sub">${obra.ubicacion || obra.descripcion || ''}</div></div>
         <span class="badge ${badgeEstado}">${labelEstado}</span>
       </div>
+      ${obra.numero_expediente ? `<div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:8px">📄 Exp: ${obra.numero_expediente}</div>` : ''}
       <div style="display:flex;gap:16px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--primary)">
         <span>${monto}</span>
         <span>${plazo}</span>

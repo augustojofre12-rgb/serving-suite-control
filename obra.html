@@ -200,7 +200,11 @@ async function renderDetalle() {
     <div class="ph">
       <div class="ph-left">
         <h1>${obra.nombre}</h1>
-        <p>${obra.descripcion || obra.ubicacion || ''} &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span></p>
+        <p>
+          ${obra.numero_expediente ? `<span style="font-size:12px;font-weight:700;color:var(--gray);margin-right:10px">📄 Exp: ${obra.numero_expediente}</span>` : ''}
+          ${obra.descripcion || obra.ubicacion || ''}
+          &nbsp;<span class="badge ${badgeEstado}">${labelEstado}</span>
+        </p>
       </div>
       <div class="obra-actions">
         ${esCoord ? `
