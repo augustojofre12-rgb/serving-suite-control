@@ -77,7 +77,7 @@
       <table class="dtbl">
         <thead><tr>
           <th>Nombre y Apellido</th>
-          <th style="width:120px">Categoría</th>
+          <th style="width:140px">Función</th>
           <th style="width:95px">Ingreso</th>
           <th style="width:95px">Egreso</th>
           <th style="width:80px">Hs. Trab.</th>
@@ -86,8 +86,8 @@
         </tr></thead>
         <tbody id="tbody-pers">
           <tr>
-            <td><input type="text" placeholder="Apellido, Nombre" list="personal-list" oninput="autoFillCategoria(this)"></td>
-            <td><input type="text" placeholder="Categoría" id="cat-0" style="background:#f8f9fa"></td>
+            <td><select onchange="fillPersData(this)"><option value="">— Seleccioná una obra primero —</option></select></td>
+            <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
@@ -114,8 +114,8 @@
         </tr></thead>
         <tbody id="tbody-eq">
           <tr>
-            <td><input type="text" placeholder="Ej: Camión Mixer M-01"></td>
-            <td><select><option>Propio</option><option>Alquilado</option></select></td>
+            <td><select onchange="fillEqData(this)"><option value="">— Seleccioná una obra primero —</option></select></td>
+            <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
@@ -182,34 +182,20 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
-<datalist id="personal-list"></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
 let usuario = null
-let personalDB = []
+let obraEquipos = []
+let obraPersonal = []
 
 async function init() {
   usuario = await requireAuth()
   if (!usuario) return
   renderSidebar(usuario, 'parte')
   document.getElementById('fecha').valueAsDate = new Date()
-
-  // Cargar nómina de RRHH para autocompletado
-  const { data: nomina } = await db.from('recursos_humanos')
-    .select('nombre_completo, funcion').eq('activo', true).order('orden').order('nombre_completo')
-  personalDB = nomina || []
-
-  // Poblar datalist de personal
-  const dl = document.getElementById('personal-list')
-  personalDB.forEach(p => {
-    const opt = document.createElement('option')
-    opt.value = p.nombre_completo
-    opt.dataset.funcion = p.funcion || ''
-    dl.appendChild(opt)
-  })
 
   // Cargar obras activas
   const { data: obras } = await db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre')
@@ -229,6 +215,13 @@ async function cargarItems() {
   const obraId = document.getElementById('sel-obra').value
   const selItem = document.getElementById('sel-item')
   selItem.innerHTML = '<option value="">— Seleccioná el ítem —</option>'
+
+  // Resetear recursos al cambiar obra
+  obraEquipos = []
+  obraPersonal = []
+  actualizarSelectsEq()
+  actualizarSelectsPers()
+
   if (!obraId) return
 
   const { data: items } = await db.from('items_obra').select('id, codigo, descripcion, unidad')
@@ -237,11 +230,81 @@ async function cargarItems() {
     selItem.insertAdjacentHTML('beforeend', `<option value="${i.id}" data-unidad="${i.unidad}">${i.codigo ? i.codigo+' - ' : ''}${i.descripcion}</option>`)
   })
 
-  // Actualizar unidad de rendimiento
   selItem.onchange = () => {
     const opt = selItem.options[selItem.selectedIndex]
     if (opt.dataset.unidad) document.getElementById('unidad-ejec').value = opt.dataset.unidad
   }
+
+  // Cargar recursos asignados a esta obra
+  await cargarRecursosParte(obraId)
+}
+
+async function cargarRecursosParte(obraId) {
+  const { data: eqData } = await db.from('obra_equipos')
+    .select('equipo_id, precio_hora, flota_equipos(nombre, numero_interno, tipo)')
+    .eq('obra_id', obraId)
+  obraEquipos = eqData || []
+
+  const { data: persData } = await db.from('obra_personal')
+    .select('persona_id, precio_hora, recursos_humanos(nombre_completo, funcion)')
+    .eq('obra_id', obraId)
+  obraPersonal = persData || []
+
+  actualizarSelectsEq()
+  actualizarSelectsPers()
+}
+
+function actualizarSelectsEq() {
+  document.querySelectorAll('#tbody-eq tr').forEach(row => {
+    const sel = row.querySelector('select')
+    if (!sel) return
+    const currentVal = sel.value
+    if (obraEquipos.length === 0) {
+      sel.innerHTML = '<option value="">— Sin equipos asignados a la obra —</option>'
+    } else {
+      sel.innerHTML = '<option value="">— Seleccioná equipo —</option>'
+      obraEquipos.forEach(e => {
+        const name = (e.flota_equipos?.numero_interno ? e.flota_equipos.numero_interno + ' — ' : '') + (e.flota_equipos?.nombre || '')
+        sel.insertAdjacentHTML('beforeend', `<option value="${e.equipo_id}">${name}</option>`)
+      })
+      if (currentVal) sel.value = currentVal
+    }
+  })
+}
+
+function actualizarSelectsPers() {
+  document.querySelectorAll('#tbody-pers tr').forEach(row => {
+    const sel = row.querySelector('select')
+    if (!sel) return
+    const currentVal = sel.value
+    if (obraPersonal.length === 0) {
+      sel.innerHTML = '<option value="">— Sin personal asignado a la obra —</option>'
+    } else {
+      sel.innerHTML = '<option value="">— Seleccioná persona —</option>'
+      obraPersonal.forEach(p => {
+        sel.insertAdjacentHTML('beforeend', `<option value="${p.persona_id}">${p.recursos_humanos?.nombre_completo || ''}</option>`)
+      })
+      if (currentVal) sel.value = currentVal
+    }
+  })
+}
+
+function fillEqData(sel) {
+  const asig = obraEquipos.find(e => e.equipo_id === sel.value)
+  if (!asig) return
+  const inputs = sel.closest('tr').querySelectorAll('input')
+  // inputs: tipo(0), inicio(1), fin(2), horas(3), precio(4)
+  if (inputs[0]) inputs[0].value = asig.flota_equipos?.tipo || ''
+  if (inputs[4]) inputs[4].value = asig.precio_hora || ''
+}
+
+function fillPersData(sel) {
+  const asig = obraPersonal.find(p => p.persona_id === sel.value)
+  if (!asig) return
+  const inputs = sel.closest('tr').querySelectorAll('input')
+  // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
+  if (inputs[0]) inputs[0].value = asig.recursos_humanos?.funcion || ''
+  if (inputs[4]) inputs[4].value = asig.precio_hora || ''
 }
 
 // Helpers para filas
@@ -258,8 +321,8 @@ function rowTemplate(type) {
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
     pers: `<tr>
-      <td><input type="text" placeholder="Apellido, Nombre"></td>
-      <td><select><option>Oficial</option><option>Ayudante</option><option>Medio Oficial</option><option>Capataz</option><option>Operador</option></select></td>
+      <td><select onchange="fillPersData(this)"><option value="">— Seleccioná persona —</option></select></td>
+      <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
@@ -267,8 +330,8 @@ function rowTemplate(type) {
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
     eq: `<tr>
-      <td><input type="text" placeholder="Nombre del equipo"></td>
-      <td><select><option>Propio</option><option>Alquilado</option></select></td>
+      <td><select onchange="fillEqData(this)"><option value="">— Seleccioná equipo —</option></select></td>
+      <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
@@ -280,8 +343,14 @@ function rowTemplate(type) {
 }
 
 function addMat()  { document.getElementById('tbody-mat').insertAdjacentHTML('beforeend', rowTemplate('mat')) }
-function addPers() { document.getElementById('tbody-pers').insertAdjacentHTML('beforeend', rowTemplate('pers')) }
-function addEq()   { document.getElementById('tbody-eq').insertAdjacentHTML('beforeend', rowTemplate('eq')) }
+function addPers() {
+  document.getElementById('tbody-pers').insertAdjacentHTML('beforeend', rowTemplate('pers'))
+  actualizarSelectsPers()
+}
+function addEq() {
+  document.getElementById('tbody-eq').insertAdjacentHTML('beforeend', rowTemplate('eq'))
+  actualizarSelectsEq()
+}
 function addComb() {
   document.getElementById('tbody-comb').insertAdjacentHTML('beforeend', `
     <tr>
@@ -318,7 +387,7 @@ function calcHorasEq(input) {
   row.querySelectorAll('input[type="number"]')[0].value = hs > 0 ? hs : ''
 }
 
-function calcTotal(input) { /* solo visual, el total real se calcula al guardar */ }
+function calcTotal(input) { /* solo visual */ }
 
 async function guardarParte() {
   const obraId = document.getElementById('sel-obra').value
@@ -364,31 +433,35 @@ async function guardarParte() {
   })
   if (materiales.length > 0) await db.from('parte_materiales').insert(materiales)
 
-  // Personal
+  // Personal — select + inputs (funcion, ingreso, egreso, horas, precio)
   const persRows = document.querySelectorAll('#tbody-pers tr')
   const personal = []
   persRows.forEach(row => {
-    const inputs = row.querySelectorAll('input, select')
-    const nombre = inputs[0].value.trim()
-    const hs = parseFloat(inputs[4].value) || 0
-    if (!nombre) return
-    personal.push({ parte_id: pid, nombre, categoria: inputs[1].value, hora_ingreso: inputs[2].value || null, hora_egreso: inputs[3].value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[5].value) || 0 })
+    const sel = row.querySelector('select')
+    if (!sel || !sel.value) return
+    const nombre = sel.options[sel.selectedIndex]?.text || ''
+    const inputs = row.querySelectorAll('input')
+    // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
+    const hs = parseFloat(inputs[3]?.value) || 0
+    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0 })
   })
   if (personal.length > 0) await db.from('parte_personal').insert(personal)
 
-  // Equipos
+  // Equipos — select + inputs (tipo, inicio, fin, horas, precio)
   const eqRows = document.querySelectorAll('#tbody-eq tr')
   const equipos = []
   eqRows.forEach(row => {
-    const inputs = row.querySelectorAll('input, select')
-    const desc = inputs[0].value.trim()
-    const hs = parseFloat(inputs[4].value) || 0
-    if (!desc) return
-    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[1].value, hora_inicio: inputs[2].value || null, hora_fin: inputs[3].value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[5].value) || 0 })
+    const sel = row.querySelector('select')
+    if (!sel || !sel.value) return
+    const desc = sel.options[sel.selectedIndex]?.text || ''
+    const inputs = row.querySelectorAll('input')
+    // inputs: tipo(0), inicio(1), fin(2), horas(3), precio(4)
+    const hs = parseFloat(inputs[3]?.value) || 0
+    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[0]?.value || '', hora_inicio: inputs[1]?.value || null, hora_fin: inputs[2]?.value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0 })
   })
   if (equipos.length > 0) await db.from('parte_equipos').insert(equipos)
 
-  // Gas Oil — se guarda como material con tipo especial
+  // Gas Oil
   const combRows = document.querySelectorAll('#tbody-comb tr')
   const combustibles = []
   combRows.forEach(row => {
@@ -396,12 +469,11 @@ async function guardarParte() {
     const desc = inputs[0].value.trim()
     const lts  = parseFloat(inputs[1].value) || 0
     if (!desc || lts <= 0) return
-    combustibles.push({ parte_id: pid, descripcion: desc, cantidad: lts, unidad: 'lt', precio_unitario: parseFloat(inputs[2].value) || 0, remito: inputs[3].value.trim() })
+    combustibles.push({ parte_id: pid, descripcion: '⛽ ' + desc, cantidad: lts, unidad: 'lt', precio_unitario: parseFloat(inputs[2].value) || 0, remito: inputs[3].value.trim() })
   })
-  // Guardamos combustible en parte_materiales con descripción identificatoria
-  if (combustibles.length > 0) await db.from('parte_materiales').insert(combustibles.map(c => ({ ...c, descripcion: '⛽ ' + c.descripcion })))
+  if (combustibles.length > 0) await db.from('parte_materiales').insert(combustibles)
 
-  // Herramientas menores — se guardan en parte_materiales con prefijo 🔧
+  // Herramientas
   const herrRows = document.querySelectorAll('#tbody-herr tr')
   const herramientas = []
   herrRows.forEach(row => {

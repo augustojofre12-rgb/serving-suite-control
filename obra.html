@@ -136,6 +136,44 @@
   </div>
 </div>
 
+<!-- MODAL ASIGNAR EQUIPO A OBRA -->
+<div class="modal-bg" id="modal-eq-obra">
+  <div class="modal" style="width:420px;max-width:95vw">
+    <h2>🚜 Asignar Equipo a la Obra</h2>
+    <div class="fg">
+      <label>Equipo *</label>
+      <select id="oeq-equipo-id" style="width:100%"><option value="">— Seleccioná un equipo —</option></select>
+    </div>
+    <div class="fg">
+      <label>Precio / Hora $ *</label>
+      <input type="number" id="oeq-precio" placeholder="0" min="0" step="0.01">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModalEq()">Cancelar</button>
+      <button class="btn btn-success" onclick="guardarEqObra()">✓ Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ASIGNAR PERSONAL A OBRA -->
+<div class="modal-bg" id="modal-pers-obra">
+  <div class="modal" style="width:420px;max-width:95vw">
+    <h2>👷 Asignar Personal a la Obra</h2>
+    <div class="fg">
+      <label>Persona *</label>
+      <select id="opers-persona-id" style="width:100%"><option value="">— Seleccioná una persona —</option></select>
+    </div>
+    <div class="fg">
+      <label>Precio / Hora $ *</label>
+      <input type="number" id="opers-precio" placeholder="0" min="0" step="0.01">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModalPers()">Cancelar</button>
+      <button class="btn btn-success" onclick="guardarPersObra()">✓ Asignar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="config.js"></script>
@@ -239,6 +277,8 @@ async function renderDetalle() {
       </div>
       <div class="loading"><div class="spinner"></div> Calculando...</div>
     </div>
+    <div id="wrap-obra-eq" style="margin-top:20px"></div>
+    <div id="wrap-obra-pers" style="margin-top:20px;margin-bottom:40px"></div>
   `
 
   // Cargar ítems y datos
@@ -358,6 +398,9 @@ async function renderDetalle() {
     // Distribución real por tipo (necesito query adicional)
     calcDistribucion()
   }
+
+  // Recursos afectados a la obra
+  await cargarRecursosObra()
 }
 
 async function calcItem(item, partes) {
@@ -643,6 +686,152 @@ async function guardarItems() {
   btn.textContent = '✓ Guardar cambios'
   btn.disabled = false
   await renderDetalle()
+}
+
+// ---- RECURSOS AFECTADOS A LA OBRA ----
+async function cargarRecursosObra() {
+  const esCoord = usuario.rol === 'coordinador'
+
+  const { data: eqData } = await db.from('obra_equipos')
+    .select('id, precio_hora, equipo_id, flota_equipos(nombre, numero_interno, tipo)')
+    .eq('obra_id', obraId)
+
+  const { data: persData } = await db.from('obra_personal')
+    .select('id, precio_hora, persona_id, recursos_humanos(nombre_completo, funcion)')
+    .eq('obra_id', obraId)
+
+  const colsEq   = esCoord ? 5 : 4
+  const colsPers = esCoord ? 4 : 3
+
+  document.getElementById('wrap-obra-eq').innerHTML = `
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>🚜 Equipos Afectados a la Obra</h3>
+        ${esCoord ? `<button class="btn btn-accent btn-sm" onclick="abrirModalEq()">+ Asignar Equipo</button>` : ''}
+      </div>
+      <table><thead><tr>
+        <th style="width:100px">N° Interno</th>
+        <th>Equipo</th>
+        <th style="width:110px">Tipo</th>
+        <th style="width:160px" class="tr">Precio / Hora $</th>
+        ${esCoord ? '<th style="width:50px"></th>' : ''}
+      </tr></thead><tbody>
+        ${eqData && eqData.length > 0 ? eqData.map(e => `
+          <tr>
+            <td><strong>${e.flota_equipos?.numero_interno || '—'}</strong></td>
+            <td>${e.flota_equipos?.nombre || '—'}</td>
+            <td><span class="badge ${e.flota_equipos?.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.flota_equipos?.tipo || '—'}</span></td>
+            <td class="tr"><strong>${formatPeso(e.precio_hora)}</strong> / hs</td>
+            ${esCoord ? `<td class="tc"><button class="btn-icon" onclick="eliminarEqObra('${e.id}')" title="Quitar">✕</button></td>` : ''}
+          </tr>`).join('') :
+          `<tr><td colspan="${colsEq}" style="text-align:center;padding:20px;color:var(--gray)">Sin equipos asignados a esta obra</td></tr>`}
+      </tbody></table>
+    </div>`
+
+  document.getElementById('wrap-obra-pers').innerHTML = `
+    <div class="tbl-wrap" style="margin-top:20px">
+      <div class="tbl-head">
+        <h3>👷 Personal Afectado a la Obra</h3>
+        ${esCoord ? `<button class="btn btn-accent btn-sm" onclick="abrirModalPers()">+ Asignar Personal</button>` : ''}
+      </div>
+      <table><thead><tr>
+        <th>Nombre</th>
+        <th style="width:170px">Función</th>
+        <th style="width:160px" class="tr">Precio / Hora $</th>
+        ${esCoord ? '<th style="width:50px"></th>' : ''}
+      </tr></thead><tbody>
+        ${persData && persData.length > 0 ? persData.map(p => `
+          <tr>
+            <td><strong>${p.recursos_humanos?.nombre_completo || '—'}</strong></td>
+            <td><span class="badge b-ok" style="font-size:12px">${p.recursos_humanos?.funcion || '—'}</span></td>
+            <td class="tr"><strong>${formatPeso(p.precio_hora)}</strong> / hs</td>
+            ${esCoord ? `<td class="tc"><button class="btn-icon" onclick="eliminarPersObra('${p.id}')" title="Quitar">✕</button></td>` : ''}
+          </tr>`).join('') :
+          `<tr><td colspan="${colsPers}" style="text-align:center;padding:20px;color:var(--gray)">Sin personal asignado a esta obra</td></tr>`}
+      </tbody></table>
+    </div>`
+}
+
+async function abrirModalEq() {
+  const { data: flota } = await db.from('flota_equipos').select('id, nombre, numero_interno').eq('activo', true).order('orden').order('nombre')
+  const { data: yaAsig } = await db.from('obra_equipos').select('equipo_id').eq('obra_id', obraId)
+  const yaIds = yaAsig?.map(e => e.equipo_id) || []
+  const disponibles = (flota || []).filter(e => !yaIds.includes(e.id))
+
+  const sel = document.getElementById('oeq-equipo-id')
+  sel.innerHTML = '<option value="">— Seleccioná un equipo —</option>'
+  if (disponibles.length === 0) {
+    sel.innerHTML = '<option value="">— Todos los equipos ya están asignados —</option>'
+  } else {
+    disponibles.forEach(e => sel.insertAdjacentHTML('beforeend',
+      `<option value="${e.id}">${e.numero_interno ? e.numero_interno + ' — ' : ''}${e.nombre}</option>`))
+  }
+  document.getElementById('oeq-precio').value = ''
+  document.getElementById('modal-eq-obra').classList.add('open')
+}
+
+function cerrarModalEq() { document.getElementById('modal-eq-obra').classList.remove('open') }
+
+async function guardarEqObra() {
+  const equipoId = document.getElementById('oeq-equipo-id').value
+  const precio   = parseFloat(document.getElementById('oeq-precio').value) || 0
+  if (!equipoId) { toast('Seleccioná un equipo', 'error'); return }
+  if (precio <= 0) { toast('Ingresá el precio por hora', 'error'); return }
+
+  const { error } = await db.from('obra_equipos').insert({ obra_id: obraId, equipo_id: equipoId, precio_hora: precio })
+  if (error) { toast('Error al asignar equipo', 'error'); return }
+  toast('Equipo asignado correctamente')
+  cerrarModalEq()
+  await cargarRecursosObra()
+}
+
+async function eliminarEqObra(id) {
+  if (!confirm('¿Quitás este equipo de la obra?')) return
+  const { error } = await db.from('obra_equipos').delete().eq('id', id)
+  if (error) { toast('Error al quitar equipo', 'error'); return }
+  toast('Equipo quitado de la obra')
+  await cargarRecursosObra()
+}
+
+async function abrirModalPers() {
+  const { data: rrhh } = await db.from('recursos_humanos').select('id, nombre_completo, funcion').eq('activo', true).order('orden').order('nombre_completo')
+  const { data: yaAsig } = await db.from('obra_personal').select('persona_id').eq('obra_id', obraId)
+  const yaIds = yaAsig?.map(p => p.persona_id) || []
+  const disponibles = (rrhh || []).filter(p => !yaIds.includes(p.id))
+
+  const sel = document.getElementById('opers-persona-id')
+  sel.innerHTML = '<option value="">— Seleccioná una persona —</option>'
+  if (disponibles.length === 0) {
+    sel.innerHTML = '<option value="">— Todo el personal ya está asignado —</option>'
+  } else {
+    disponibles.forEach(p => sel.insertAdjacentHTML('beforeend',
+      `<option value="${p.id}">${p.nombre_completo}${p.funcion ? ' (' + p.funcion + ')' : ''}</option>`))
+  }
+  document.getElementById('opers-precio').value = ''
+  document.getElementById('modal-pers-obra').classList.add('open')
+}
+
+function cerrarModalPers() { document.getElementById('modal-pers-obra').classList.remove('open') }
+
+async function guardarPersObra() {
+  const personaId = document.getElementById('opers-persona-id').value
+  const precio    = parseFloat(document.getElementById('opers-precio').value) || 0
+  if (!personaId) { toast('Seleccioná una persona', 'error'); return }
+  if (precio <= 0) { toast('Ingresá el precio por hora', 'error'); return }
+
+  const { error } = await db.from('obra_personal').insert({ obra_id: obraId, persona_id: personaId, precio_hora: precio })
+  if (error) { toast('Error al asignar persona', 'error'); return }
+  toast('Persona asignada correctamente')
+  cerrarModalPers()
+  await cargarRecursosObra()
+}
+
+async function eliminarPersObra(id) {
+  if (!confirm('¿Quitás esta persona de la obra?')) return
+  const { error } = await db.from('obra_personal').delete().eq('id', id)
+  if (error) { toast('Error al quitar persona', 'error'); return }
+  toast('Persona quitada de la obra')
+  await cargarRecursosObra()
 }
 
 init()
