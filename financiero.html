@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Control Financiero</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="ph">
+      <div class="ph-left">
+        <h1>Control Financiero</h1>
+        <p>Próximamente disponible</p>
+      </div>
+    </div>
+    <div class="empty">
+      <div class="empty-icon">📊</div>
+      <h3>En desarrollo</h3>
+      <p>Esta sección estará disponible próximamente</p>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+async function init() {
+  const usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'financiero')
+}
+init()
+</script>
+</body>
+</html>
