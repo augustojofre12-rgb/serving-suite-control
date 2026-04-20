@@ -59,9 +59,9 @@ function renderSidebar(usuario, paginaActiva) {
       <div class="nav-sec">Principal</div>
       <a class="nav-item ${paginaActiva==='obras'?'active':''}" href="dashboard.html">🏗️&nbsp; Mis Obras / Contrataciones</a>
       ${esCoord ? `<a class="nav-item ${paginaActiva==='nueva-obra'?'active':''}" href="nueva-obra.html">➕&nbsp; Nueva Obra / Contratación</a>` : ''}
+      ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='presupuesto'?'active':''}" href="presupuesto.html">💰&nbsp; Presupuesto Base</a>` : ''}
       <div class="nav-sec">Gestión Diaria</div>
       ${!esDir ? `<a class="nav-item ${paginaActiva==='parte'?'active':''}" href="parte.html">📋&nbsp; Parte Diario</a>` : ''}
-      ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='presupuesto'?'active':''}" href="presupuesto.html">💰&nbsp; Presupuesto Base</a>` : ''}
       <div class="nav-sec">Reportes</div>
       <a class="nav-item ${paginaActiva==='avance'?'active':''}" href="avance.html">📈&nbsp; Avance Físico</a>
       ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='financiero'?'active':''}" href="financiero.html">📊&nbsp; Control Financiero</a>` : ''}
