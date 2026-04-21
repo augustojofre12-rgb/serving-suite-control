@@ -324,7 +324,7 @@ async function generarVista() {
   try {
     // Buscar partes del período
     const { data: partes } = await db
-      .from('partes')
+      .from('partes_diarios')
       .select('id, fecha')
       .eq('obra_id', obraId)
       .gte('fecha', desde)
@@ -343,7 +343,7 @@ async function generarVista() {
     // Buscar equipos de esos partes
     const { data: equipos } = await db
       .from('parte_equipos')
-      .select('descripcion, tipo, horas, precio_hora')
+      .select('descripcion, tipo, horas_utilizadas, precio_hora')
       .in('parte_id', parteIds)
 
     if (!equipos || equipos.length === 0) {
@@ -366,7 +366,7 @@ async function generarVista() {
           horas_total: 0
         }
       }
-      agrupado[key].horas_total += parseFloat(eq.horas) || 0
+      agrupado[key].horas_total += parseFloat(eq.horas_utilizadas) || 0
     })
 
     itemsCertActual = Object.values(agrupado)
