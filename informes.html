@@ -582,7 +582,7 @@ async function generarInforme() {
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq] = await Promise.all([
         db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
-        db.from('parte_personal').select('descripcion, horas_trabajadas, precio_hora').in('parte_id', parteIds),
+        db.from('parte_personal').select('nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds),
         db.from('parte_equipos').select('descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds)
       ])
       mat  = rMat.data  || []
@@ -890,7 +890,7 @@ function renderDetalles(mat, pers, eq) {
   filasTbl(agrupar(soloMat, m => m.descripcion, m => m.cantidad, m => m.precio_unitario), 'tbody-det-mat')
 
   // Mano de Obra
-  filasTbl(agrupar(pers || [], p => p.descripcion || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora), 'tbody-det-mo')
+  filasTbl(agrupar(pers || [], p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora), 'tbody-det-mo')
 
   // Equipos
   filasTbl(agrupar(eq || [], e => e.descripcion || 'Equipo', e => e.horas_utilizadas, e => e.precio_hora), 'tbody-det-eq')
