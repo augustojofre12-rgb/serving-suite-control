@@ -118,7 +118,7 @@
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
-            <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" readonly style="background:#f8f9fa;width:60px" step="0.5"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
+            <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
@@ -341,7 +341,7 @@ function rowTemplate(type) {
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
-      <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" readonly style="background:#f8f9fa;width:60px" step="0.5"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
+      <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`
@@ -390,8 +390,14 @@ function calcHorasPers(input) {
 function calcHorasEq(input) {
   const row = input.closest('tr')
   const times = row.querySelectorAll('input[type="time"]')
+  const cantInput = row.querySelectorAll('input[type="number"]')[0]
   const hs = calcHoras(times[0].value, times[1].value)
-  row.querySelectorAll('input[type="number"]')[0].value = hs > 0 ? hs : ''
+  // Solo auto-calcula si el campo está vacío o si la unidad es Hs
+  const badge = row.querySelector('.badge.b-blue')
+  const unidad = badge ? badge.textContent.trim() : 'Hs'
+  if (unidad === 'Hs' || !cantInput.value) {
+    cantInput.value = hs > 0 ? hs : ''
+  }
 }
 
 function calcTotal(input) { /* solo visual */ }
