@@ -27,10 +27,7 @@
         </div>
         <div class="fg"><label>Fecha *</label><input type="date" id="fecha"></div>
       </div>
-      <div class="row2">
-        <div class="fg"><label>Ubicación / Progresiva</label><input type="text" id="ubicacion" placeholder="Ej: Km 18+500 a Km 19+200"></div>
-        <div class="fg"><label>Observaciones</label><input type="text" id="observaciones" placeholder="Condiciones climáticas, incidentes, novedades..."></div>
-      </div>
+      <div class="fg"><label>Ubicación / Progresiva</label><input type="text" id="ubicacion" placeholder="Ej: Km 18+500 a Km 19+200"></div>
     </div>
 
     <!-- RENDIMIENTO -->
@@ -175,7 +172,23 @@
       <button class="add-row-btn" onclick="addHerr()">+ Agregar herramienta</button>
     </div>
 
-    <div style="display:flex;gap:14px;justify-content:flex-end;margin-bottom:40px">
+    <!-- OBSERVACIONES -->
+    <div class="fsec" style="margin-top:8px">
+      <div class="fsec-title">📝 Observaciones del Día</div>
+      <div class="fg">
+        <label style="font-size:13px;color:var(--gray);font-weight:500;margin-bottom:6px;display:block">
+          Anotá todo lo relevante: condiciones climáticas, incidentes, decisiones tomadas, novedades de obra, etc.
+        </label>
+        <textarea id="observaciones" rows="5"
+          placeholder="Ej: Viento fuerte durante la mañana, se suspendió fresado entre las 9 y las 11hs. Por la tarde retomó con normalidad. Se detectó bacheo en zona Km 19+400 que requiere atención antes del riego..."
+          style="width:100%;padding:12px 14px;border:1.5px solid #dde3dd;border-radius:10px;font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.6;color:var(--text);background:#fafcfa;box-sizing:border-box"
+          onfocus="this.style.borderColor='var(--primary)'"
+          onblur="this.style.borderColor='#dde3dd'"
+        ></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:14px;justify-content:flex-end;margin-bottom:40px;margin-top:8px">
       <a href="dashboard.html" class="btn btn-outline">Cancelar</a>
       <button class="btn btn-success" onclick="guardarParte()">✓ Guardar Parte Diario</button>
     </div>

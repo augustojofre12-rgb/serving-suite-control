@@ -187,7 +187,10 @@ function renderTabla(partes, desde, hasta) {
       <tr>
         <td><strong>${fecha}</strong></td>
         <td>${itemLabel}</td>
-        <td style="color:var(--gray);font-size:13px">${p.ubicacion || '—'}</td>
+        <td style="color:var(--gray);font-size:13px">
+          ${p.ubicacion || '—'}
+          ${p.observaciones ? `<span title="${p.observaciones.substring(0,120)}${p.observaciones.length>120?'...':''}" style="margin-left:6px;cursor:help;font-size:13px">📝</span>` : ''}
+        </td>
         <td class="tc"><strong>${formatNum(p.cantidad_ejecutada)}</strong> <span style="color:var(--gray);font-size:12px">${p.unidad_ejecutada || ''}</span></td>
         <td class="tc">
           <span style="background:#f0faf4;color:var(--primary);font-size:12px;font-weight:600;padding:3px 8px;border-radius:12px">
@@ -434,6 +437,18 @@ async function renderDetalleParte(parteId) {
         <span style="font-size:15px;font-weight:700;color:var(--primary)">
           💰 Costo Total del Parte: ${formatPeso(costTotal)}
         </span>
+      </div>`
+  }
+
+  // Observaciones del parte
+  const parteObj = todosPartes.find(p => p.id === parteId)
+  if (parteObj?.observaciones) {
+    html += `
+      <div style="margin-top:14px;padding:14px 16px;background:#fffdf0;border:1.5px solid #f0e0a0;border-radius:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#a07800;margin-bottom:8px">
+          📝 Observaciones
+        </div>
+        <p style="margin:0;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${parteObj.observaciones}</p>
       </div>`
   }
 
