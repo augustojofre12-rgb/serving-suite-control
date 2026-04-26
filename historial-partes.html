@@ -150,6 +150,7 @@ function limpiarFiltros() {
 
 function renderTabla(partes, desde, hasta) {
   const verFin = usuario.rol !== 'jefe_obra'
+  const esCoord = usuario.rol === 'coordinador'
   const wrap   = document.getElementById('tabla-wrap')
 
   if (partes.length === 0) {
@@ -193,12 +194,15 @@ function renderTabla(partes, desde, hasta) {
             ${p.creado_por_nombre || '—'}
           </span>
         </td>
-        <td class="tc">
+        <td class="tc" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="toggleDetalleParte('det-${p.id}','${p.id}')">Ver detalle</button>
+          ${esCoord ? `
+          <a href="parte.html?parte_id=${p.id}&obra_id=${obraId}" class="btn btn-outline btn-sm">✏️</a>
+          <button class="btn btn-danger btn-sm" onclick="eliminarParte('${p.id}')">🗑️</button>` : ''}
         </td>
       </tr>
       <tr id="det-${p.id}" style="display:none;background:#f8faff">
-        <td colspan="6" style="padding:0">
+        <td colspan="${esCoord ? 6 : 6}" style="padding:0">
           <div id="det-content-${p.id}" style="padding:16px 12px">
             <div class="loading"><div class="spinner"></div></div>
           </div>
@@ -434,6 +438,19 @@ async function renderDetalleParte(parteId) {
   }
 
   container.innerHTML = html
+}
+
+async function eliminarParte(parteId) {
+  if (!confirm('¿Eliminar este parte diario? Esta acción no se puede deshacer.')) return
+  await Promise.all([
+    db.from('parte_materiales').delete().eq('parte_id', parteId),
+    db.from('parte_personal').delete().eq('parte_id', parteId),
+    db.from('parte_equipos').delete().eq('parte_id', parteId)
+  ])
+  const { error } = await db.from('partes_diarios').delete().eq('id', parteId)
+  if (error) { toast('Error al eliminar el parte', 'err'); return }
+  toast('Parte eliminado correctamente')
+  await cargarPartes()
 }
 
 function seccionDetalle(titulo, contenido) {

@@ -190,6 +190,7 @@
 let usuario = null
 let obraEquipos = []
 let obraPersonal = []
+let parteEditId = null
 
 async function init() {
   usuario = await requireAuth()
@@ -205,13 +206,127 @@ async function init() {
     sel.insertAdjacentHTML('beforeend', `<option value="${o.id}">${label}</option>`)
   })
 
-  // Si viene ?obra_id en la URL, preseleccionar
   const params = new URLSearchParams(window.location.search)
+
+  // Modo edición: viene con ?parte_id=
+  if (params.get('parte_id')) {
+    parteEditId = params.get('parte_id')
+    document.querySelector('.ph-left h1').textContent = 'Editar Parte Diario'
+    document.getElementById('parte-subtitulo').textContent = 'Modificando parte existente'
+    document.querySelector('button[onclick="guardarParte()"]').textContent = '✓ Guardar Cambios'
+    await cargarParteExistente(parteEditId)
+    return
+  }
+
+  // Modo nuevo: viene con ?obra_id=
   if (params.get('obra_id')) {
     sel.value = params.get('obra_id')
     await cargarItems()
     if (params.get('item_id')) document.getElementById('sel-item').value = params.get('item_id')
   }
+}
+
+async function cargarParteExistente(parteId) {
+  const { data: parte } = await db.from('partes_diarios').select('*').eq('id', parteId).single()
+  if (!parte) { toast('Parte no encontrado', 'err'); return }
+
+  // Preseleccionar obra e ítems
+  const sel = document.getElementById('sel-obra')
+  sel.value = parte.obra_id
+  await cargarItems()
+  document.getElementById('sel-item').value = parte.item_id || ''
+  document.getElementById('fecha').value = parte.fecha
+  document.getElementById('ubicacion').value = parte.ubicacion || ''
+  document.getElementById('observaciones').value = parte.observaciones || ''
+  document.getElementById('cant-ejecutada').value = parte.cantidad_ejecutada || ''
+  document.getElementById('unidad-ejec').value = parte.unidad_ejecutada || 'm²'
+
+  // Cargar recursos
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('*').eq('parte_id', parteId),
+    db.from('parte_personal').select('*').eq('parte_id', parteId),
+    db.from('parte_equipos').select('*').eq('parte_id', parteId)
+  ])
+
+  const materiales   = mat?.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧')) || []
+  const combustibles = mat?.filter(m => m.descripcion.startsWith('⛽')) || []
+  const herramientas = mat?.filter(m => m.descripcion.startsWith('🔧')) || []
+
+  // Materiales
+  const tbodyMat = document.getElementById('tbody-mat')
+  tbodyMat.innerHTML = ''
+  materiales.forEach(m => {
+    tbodyMat.insertAdjacentHTML('beforeend', `<tr>
+      <td><input type="text" value="${m.descripcion}"></td>
+      <td><input type="number" value="${m.cantidad}" min="0" step="0.01" oninput="calcTotal(this)"></td>
+      <td><select>${['m³','m²','kg','tn','u','lt'].map(u=>`<option${m.unidad===u?' selected':''}>${u}</option>`).join('')}</select></td>
+      <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01" oninput="calcTotal(this)"></td>
+      <td><input type="text" value="${m.remito||''}"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+  })
+
+  // Personal
+  const tbodyPers = document.getElementById('tbody-pers')
+  tbodyPers.innerHTML = ''
+  if (pers && pers.length > 0) {
+    pers.forEach(p => {
+      tbodyPers.insertAdjacentHTML('beforeend', `<tr>
+        <td><select onchange="fillPersData(this)"><option value="${p.nombre}">${p.nombre}</option></select></td>
+        <td><input type="text" value="${p.categoria||''}" readonly style="background:#f8f9fa"></td>
+        <td><input type="time" value="${p.hora_ingreso||''}" onchange="calcHorasPers(this)"></td>
+        <td><input type="time" value="${p.hora_egreso||''}" onchange="calcHorasPers(this)"></td>
+        <td><input type="number" value="${p.horas_trabajadas||''}" step="0.5"></td>
+        <td><input type="number" value="${p.precio_hora||''}" min="0" step="0.01"></td>
+        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+      </tr>`)
+    })
+    actualizarSelectsPers()
+  }
+
+  // Equipos
+  const tbodyEq = document.getElementById('tbody-eq')
+  tbodyEq.innerHTML = ''
+  if (eq && eq.length > 0) {
+    eq.forEach(e => {
+      tbodyEq.insertAdjacentHTML('beforeend', `<tr>
+        <td><select onchange="fillEqData(this)"><option value="${e.descripcion}">${e.descripcion}</option></select></td>
+        <td><input type="text" value="${e.tipo||''}" readonly style="background:#f8f9fa"></td>
+        <td><input type="time" value="${e.hora_inicio||''}" onchange="calcHorasEq(this)"></td>
+        <td><input type="time" value="${e.hora_fin||''}" onchange="calcHorasEq(this)"></td>
+        <td style="display:flex;align-items:center;gap:4px"><input type="number" value="${e.horas_utilizadas||''}" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
+        <td><input type="number" value="${e.precio_hora||''}" min="0" step="0.01"></td>
+        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+      </tr>`)
+    })
+    actualizarSelectsEq()
+  }
+
+  // Combustibles
+  const tbodyComb = document.getElementById('tbody-comb')
+  tbodyComb.innerHTML = ''
+  combustibles.forEach(m => {
+    tbodyComb.insertAdjacentHTML('beforeend', `<tr>
+      <td><input type="text" value="${m.descripcion.replace('⛽ ','')}"></td>
+      <td><input type="number" value="${m.cantidad}" min="0" step="0.01"></td>
+      <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01"></td>
+      <td><input type="text" value="${m.remito||''}"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+  })
+
+  // Herramientas
+  const tbodyHerr = document.getElementById('tbody-herr')
+  tbodyHerr.innerHTML = ''
+  herramientas.forEach(m => {
+    tbodyHerr.insertAdjacentHTML('beforeend', `<tr>
+      <td><input type="text" value="${m.descripcion.replace('🔧 ','')}"></td>
+      <td><input type="number" value="${m.cantidad}" min="0" step="0.01"></td>
+      <td><select>${['u','m²','ml','kg'].map(u=>`<option${m.unidad===u?' selected':''}>${u}</option>`).join('')}</select></td>
+      <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+  })
 }
 
 async function cargarItems() {
@@ -418,21 +533,38 @@ async function guardarParte() {
   btn.textContent = 'Guardando...'
   btn.disabled = true
 
-  // Crear parte diario
-  const { data: parte, error: errParte } = await db.from('partes_diarios').insert({
-    obra_id: obraId,
-    item_id: itemId,
-    fecha,
-    ubicacion: document.getElementById('ubicacion').value.trim(),
-    observaciones: document.getElementById('observaciones').value.trim(),
-    cantidad_ejecutada: cantEjec,
-    unidad_ejecutada: document.getElementById('unidad-ejec').value,
-    creado_por_nombre: usuario.nombre || usuario.email
-  }).select().single()
+  let pid
 
-  if (errParte) { toast('Error al guardar el parte', 'error'); btn.textContent = '✓ Guardar Parte Diario'; btn.disabled = false; return }
-
-  const pid = parte.id
+  if (parteEditId) {
+    // MODO EDICIÓN: actualizar cabecera y borrar detalles para re-insertar
+    const { error: errUpd } = await db.from('partes_diarios').update({
+      obra_id: obraId, item_id: itemId, fecha,
+      ubicacion: document.getElementById('ubicacion').value.trim(),
+      observaciones: document.getElementById('observaciones').value.trim(),
+      cantidad_ejecutada: cantEjec,
+      unidad_ejecutada: document.getElementById('unidad-ejec').value
+    }).eq('id', parteEditId)
+    if (errUpd) { toast('Error al actualizar el parte', 'error'); btn.textContent = '✓ Guardar Cambios'; btn.disabled = false; return }
+    // Borrar detalles existentes para re-insertar
+    await Promise.all([
+      db.from('parte_materiales').delete().eq('parte_id', parteEditId),
+      db.from('parte_personal').delete().eq('parte_id', parteEditId),
+      db.from('parte_equipos').delete().eq('parte_id', parteEditId)
+    ])
+    pid = parteEditId
+  } else {
+    // MODO NUEVO
+    const { data: parte, error: errParte } = await db.from('partes_diarios').insert({
+      obra_id: obraId, item_id: itemId, fecha,
+      ubicacion: document.getElementById('ubicacion').value.trim(),
+      observaciones: document.getElementById('observaciones').value.trim(),
+      cantidad_ejecutada: cantEjec,
+      unidad_ejecutada: document.getElementById('unidad-ejec').value,
+      creado_por_nombre: usuario.nombre || usuario.email
+    }).select().single()
+    if (errParte) { toast('Error al guardar el parte', 'error'); btn.textContent = '✓ Guardar Parte Diario'; btn.disabled = false; return }
+    pid = parte.id
+  }
 
   // Materiales
   const matRows = document.querySelectorAll('#tbody-mat tr')
@@ -498,8 +630,8 @@ async function guardarParte() {
   })
   if (herramientas.length > 0) await db.from('parte_materiales').insert(herramientas)
 
-  toast('Parte diario guardado correctamente')
-  setTimeout(() => window.location.href = `obra.html?id=${obraId}`, 1200)
+  toast(parteEditId ? 'Parte actualizado correctamente' : 'Parte diario guardado correctamente')
+  setTimeout(() => window.location.href = `historial-partes.html?id=${obraId}`, 1200)
 }
 
 init()
