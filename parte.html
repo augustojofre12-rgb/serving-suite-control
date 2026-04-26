@@ -266,40 +266,50 @@ async function cargarParteExistente(parteId) {
     </tr>`)
   })
 
-  // Personal
+  // Personal — crear filas vacías, poblar selects, luego asignar valores
   const tbodyPers = document.getElementById('tbody-pers')
   tbodyPers.innerHTML = ''
   if (pers && pers.length > 0) {
-    pers.forEach(p => {
-      tbodyPers.insertAdjacentHTML('beforeend', `<tr>
-        <td><select onchange="fillPersData(this)"><option value="${p.nombre}">${p.nombre}</option></select></td>
-        <td><input type="text" value="${p.categoria||''}" readonly style="background:#f8f9fa"></td>
-        <td><input type="time" value="${p.hora_ingreso||''}" onchange="calcHorasPers(this)"></td>
-        <td><input type="time" value="${p.hora_egreso||''}" onchange="calcHorasPers(this)"></td>
-        <td><input type="number" value="${p.horas_trabajadas||''}" step="0.5"></td>
-        <td><input type="number" value="${p.precio_hora||''}" min="0" step="0.01"></td>
-        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
-      </tr>`)
-    })
+    pers.forEach(() => tbodyPers.insertAdjacentHTML('beforeend', rowTemplate('pers')))
     actualizarSelectsPers()
+    tbodyPers.querySelectorAll('tr').forEach((row, i) => {
+      const p = pers[i]
+      if (!p) return
+      const sel = row.querySelector('select')
+      const opt = Array.from(sel.options).find(o => o.text === p.nombre)
+      if (opt) sel.value = opt.value
+      const inputs = row.querySelectorAll('input')
+      if (inputs[0]) inputs[0].value = p.categoria || ''
+      if (inputs[1]) inputs[1].value = p.hora_ingreso || ''
+      if (inputs[2]) inputs[2].value = p.hora_egreso || ''
+      if (inputs[3]) inputs[3].value = p.horas_trabajadas || ''
+      if (inputs[4]) inputs[4].value = p.precio_hora || ''
+    })
   }
 
-  // Equipos
+  // Equipos — crear filas vacías, poblar selects, luego asignar valores
   const tbodyEq = document.getElementById('tbody-eq')
   tbodyEq.innerHTML = ''
   if (eq && eq.length > 0) {
-    eq.forEach(e => {
-      tbodyEq.insertAdjacentHTML('beforeend', `<tr>
-        <td><select onchange="fillEqData(this)"><option value="${e.descripcion}">${e.descripcion}</option></select></td>
-        <td><input type="text" value="${e.tipo||''}" readonly style="background:#f8f9fa"></td>
-        <td><input type="time" value="${e.hora_inicio||''}" onchange="calcHorasEq(this)"></td>
-        <td><input type="time" value="${e.hora_fin||''}" onchange="calcHorasEq(this)"></td>
-        <td style="display:flex;align-items:center;gap:4px"><input type="number" value="${e.horas_utilizadas||''}" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
-        <td><input type="number" value="${e.precio_hora||''}" min="0" step="0.01"></td>
-        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
-      </tr>`)
-    })
+    eq.forEach(() => tbodyEq.insertAdjacentHTML('beforeend', rowTemplate('eq')))
     actualizarSelectsEq()
+    tbodyEq.querySelectorAll('tr').forEach((row, i) => {
+      const e = eq[i]
+      if (!e) return
+      const sel = row.querySelector('select')
+      const opt = Array.from(sel.options).find(o => o.text === e.descripcion)
+      if (opt) sel.value = opt.value
+      const inputs = row.querySelectorAll('input')
+      if (inputs[0]) inputs[0].value = e.tipo || ''
+      if (inputs[1]) inputs[1].value = e.hora_inicio || ''
+      if (inputs[2]) inputs[2].value = e.hora_fin || ''
+      if (inputs[3]) inputs[3].value = e.horas_utilizadas || ''
+      if (inputs[4]) inputs[4].value = e.precio_hora || ''
+      // Actualizar badge de unidad
+      const asig = obraEquipos.find(oe => oe.equipo_id === sel.value)
+      const badge = row.querySelector('.badge.b-blue')
+      if (badge && asig) badge.textContent = asig.flota_equipos?.unidad_medida || 'Hs'
+    })
   }
 
   // Combustibles
