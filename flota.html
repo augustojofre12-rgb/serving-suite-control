@@ -93,12 +93,13 @@
             <th style="width:70px" class="tc">Orden</th>
             <th style="width:100px">N° Interno</th>
             <th>Nombre del Equipo</th>
+            <th style="width:130px">Unidad</th>
             <th style="width:120px">Tipo</th>
             <th style="width:90px">Estado</th>
             <th style="width:120px"></th>
           </tr></thead>
           <tbody id="tbody-flota">
-            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -137,12 +138,23 @@
       <label>Nombre del Equipo *</label>
       <input type="text" id="eq-nombre" placeholder="Ej: Fresadora Wirtgen W200">
     </div>
-    <div class="fg" style="max-width:160px">
-      <label>Estado</label>
-      <select id="eq-activo">
-        <option value="true">Activo</option>
-        <option value="false">Inactivo</option>
-      </select>
+    <div class="row2">
+      <div class="fg">
+        <label>Unidad de Medida</label>
+        <select id="eq-unidad">
+          <option value="Hs">Por Hora (Hs)</option>
+          <option value="Día">Por Día</option>
+          <option value="Tn">Por Tonelada (Tn)</option>
+          <option value="Mensual">Mensual</option>
+        </select>
+      </div>
+      <div class="fg" style="max-width:160px">
+        <label>Estado</label>
+        <select id="eq-activo">
+          <option value="true">Activo</option>
+          <option value="false">Inactivo</option>
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
@@ -197,6 +209,7 @@ function renderTabla(lista) {
       <td class="tc" style="font-size:13px;color:var(--gray);font-weight:600">${e.orden ?? '—'}</td>
       <td><strong>${e.numero_interno || '—'}</strong></td>
       <td>${e.nombre}</td>
+      <td><span class="badge b-blue">${e.unidad_medida || 'Hs'}</span></td>
       <td><span class="badge ${e.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.tipo}</span></td>
       <td><span class="badge ${e.activo ? 'b-ok' : 'b-blue'}">${e.activo ? 'Activo' : 'Inactivo'}</span></td>
       <td class="tc">
@@ -230,6 +243,7 @@ function abrirModal(equipo = null) {
   document.getElementById('eq-nombre').value  = equipo?.nombre || ''
   document.getElementById('eq-tipo').value    = equipo?.tipo || 'Propio'
   document.getElementById('eq-orden').value   = equipo?.orden ?? ''
+  document.getElementById('eq-unidad').value  = equipo?.unidad_medida || 'Hs'
   document.getElementById('eq-activo').value  = equipo ? String(equipo.activo) : 'true'
   document.getElementById('modal-titulo').textContent = equipo ? 'Editar Equipo' : 'Agregar Equipo'
   document.getElementById('modal-equipo').classList.add('open')
@@ -258,9 +272,10 @@ async function guardarEquipo() {
   const datos  = {
     numero_interno: document.getElementById('eq-numero').value.trim() || null,
     nombre,
-    tipo:   document.getElementById('eq-tipo').value,
-    orden:  ordenVal !== '' ? parseInt(ordenVal) : null,
-    activo: document.getElementById('eq-activo').value === 'true'
+    tipo:          document.getElementById('eq-tipo').value,
+    orden:         ordenVal !== '' ? parseInt(ordenVal) : null,
+    unidad_medida: document.getElementById('eq-unidad').value,
+    activo:        document.getElementById('eq-activo').value === 'true'
   }
 
   const { error } = id

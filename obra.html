@@ -695,7 +695,7 @@ async function cargarRecursosObra() {
   const esCoord = usuario.rol === 'coordinador'
 
   const { data: eqData } = await db.from('obra_equipos')
-    .select('id, precio_hora, equipo_id, flota_equipos(nombre, numero_interno, tipo)')
+    .select('id, precio_hora, equipo_id, flota_equipos(nombre, numero_interno, tipo, unidad_medida)')
     .eq('obra_id', obraId)
 
   const { data: persData } = await db.from('obra_personal')
@@ -723,7 +723,7 @@ async function cargarRecursosObra() {
             <td><strong>${e.flota_equipos?.numero_interno || '—'}</strong></td>
             <td>${e.flota_equipos?.nombre || '—'}</td>
             <td><span class="badge ${e.flota_equipos?.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.flota_equipos?.tipo || '—'}</span></td>
-            <td class="tr"><strong>${formatPeso(e.precio_hora)}</strong> / hs</td>
+            <td class="tr"><strong>${formatPeso(e.precio_hora)}</strong> / ${e.flota_equipos?.unidad_medida || 'Hs'}</td>
             ${esCoord ? `<td class="tc"><button class="btn-icon" onclick="eliminarEqObra('${e.id}')" title="Quitar">✕</button></td>` : ''}
           </tr>`).join('') :
           `<tr><td colspan="${colsEq}" style="text-align:center;padding:20px;color:var(--gray)">Sin equipos asignados a esta obra</td></tr>`}

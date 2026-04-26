@@ -108,8 +108,8 @@
           <th style="width:110px">Tipo</th>
           <th style="width:95px">H. Inicio</th>
           <th style="width:95px">H. Fin</th>
-          <th style="width:80px">Hs. Util.</th>
-          <th style="width:130px">Precio / Hora $</th>
+          <th style="width:100px">Cantidad</th>
+          <th style="width:140px">Precio / Unidad $</th>
           <th style="width:40px"></th>
         </tr></thead>
         <tbody id="tbody-eq">
@@ -118,7 +118,7 @@
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
-            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+            <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" readonly style="background:#f8f9fa;width:60px" step="0.5"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
@@ -197,10 +197,13 @@ async function init() {
   renderSidebar(usuario, 'parte')
   document.getElementById('fecha').valueAsDate = new Date()
 
-  // Cargar obras activas
-  const { data: obras } = await db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre')
+  // Cargar obras (activas y suspendidas, no finalizadas)
+  const { data: obras } = await db.from('obras').select('id, nombre, estado').neq('estado', 'finalizada').order('nombre')
   const sel = document.getElementById('sel-obra')
-  obras?.forEach(o => sel.insertAdjacentHTML('beforeend', `<option value="${o.id}">${o.nombre}</option>`))
+  obras?.forEach(o => {
+    const label = o.estado === 'suspendida' ? `${o.nombre} ⏸️` : o.nombre
+    sel.insertAdjacentHTML('beforeend', `<option value="${o.id}">${label}</option>`)
+  })
 
   // Si viene ?obra_id en la URL, preseleccionar
   const params = new URLSearchParams(window.location.search)
@@ -241,7 +244,7 @@ async function cargarItems() {
 
 async function cargarRecursosParte(obraId) {
   const { data: eqData } = await db.from('obra_equipos')
-    .select('equipo_id, precio_hora, flota_equipos(nombre, numero_interno, tipo)')
+    .select('equipo_id, precio_hora, flota_equipos(nombre, numero_interno, tipo, unidad_medida)')
     .eq('obra_id', obraId)
   obraEquipos = eqData || []
 
@@ -292,10 +295,14 @@ function actualizarSelectsPers() {
 function fillEqData(sel) {
   const asig = obraEquipos.find(e => e.equipo_id === sel.value)
   if (!asig) return
-  const inputs = sel.closest('tr').querySelectorAll('input')
+  const row = sel.closest('tr')
+  const inputs = row.querySelectorAll('input')
   // inputs: tipo(0), inicio(1), fin(2), horas(3), precio(4)
   if (inputs[0]) inputs[0].value = asig.flota_equipos?.tipo || ''
   if (inputs[4]) inputs[4].value = asig.precio_hora || ''
+  const unidad = asig.flota_equipos?.unidad_medida || 'Hs'
+  const badge = row.querySelector('.badge.b-blue')
+  if (badge) badge.textContent = unidad
 }
 
 function fillPersData(sel) {
@@ -334,7 +341,7 @@ function rowTemplate(type) {
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+      <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" readonly style="background:#f8f9fa;width:60px" step="0.5"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`
