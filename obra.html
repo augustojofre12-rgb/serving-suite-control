@@ -543,13 +543,48 @@ async function calcDistribucion() {
   const costEq   = eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0
 
   if (chartDist) chartDist.destroy()
+  const distData  = [Math.round(costMat), Math.round(costPers), Math.round(costEq)]
+  const distTotal = distData.reduce((a, b) => a + b, 0)
   chartDist = new Chart(document.getElementById('ch-dist'), {
     type: 'doughnut',
     data: {
       labels: ['Materiales', 'Mano de Obra', 'Equipos'],
-      datasets: [{ data: [Math.round(costMat), Math.round(costPers), Math.round(costEq)], backgroundColor: ['#1e6b40','#f39c12','#27ae60'], borderWidth: 0 }]
+      datasets: [{ data: distData, backgroundColor: ['#1e6b40','#f39c12','#27ae60'], borderWidth: 0 }]
     },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 16,
+            generateLabels: function(chart) {
+              const d = chart.data
+              const total = d.datasets[0].data.reduce((a, b) => a + b, 0)
+              return d.labels.map((label, i) => {
+                const val = d.datasets[0].data[i]
+                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0'
+                return {
+                  text: `${label}  ${formatPeso(val)}  (${pct}%)`,
+                  fillStyle: d.datasets[0].backgroundColor[i],
+                  strokeStyle: d.datasets[0].backgroundColor[i],
+                  hidden: false,
+                  index: i
+                }
+              })
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const pct = distTotal > 0 ? ((ctx.parsed / distTotal) * 100).toFixed(1) : '0.0'
+              return `  ${ctx.label}: ${formatPeso(ctx.parsed)}  (${pct}%)`
+            }
+          }
+        }
+      }
+    }
   })
 }
 
