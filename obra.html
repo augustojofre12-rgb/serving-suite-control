@@ -385,14 +385,14 @@ async function renderDetalle() {
     // Charts
     const labels = dataItems.map(d => d.item.descripcion.substring(0, 20))
     const presups = dataItems.map(d => Math.round(d.presup))
-    const reales  = dataItems.map(d => Math.round(d.real))
+    const realesContrato = dataItems.map(d => Math.round(d.real * k))
 
     if (chartItems) chartItems.destroy()
     chartItems = new Chart(document.getElementById('ch-items'), {
       type: 'bar',
       data: { labels, datasets: [
-        { label: 'Presupuesto', data: presups, backgroundColor: 'rgba(30,107,64,.2)', borderColor: 'rgba(30,107,64,.8)', borderWidth: 2 },
-        { label: 'Real', data: reales, backgroundColor: 'rgba(243,156,18,.7)', borderColor: 'rgba(243,156,18,1)', borderWidth: 2 }
+        { label: 'Presupuesto (contrato)', data: presups, backgroundColor: 'rgba(30,107,64,.2)', borderColor: 'rgba(30,107,64,.8)', borderWidth: 2 },
+        { label: 'Real × K (a valor contrato)', data: realesContrato, backgroundColor: 'rgba(243,156,18,.7)', borderColor: 'rgba(243,156,18,1)', borderWidth: 2 }
       ]},
       options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } } } }
     })
