@@ -3,36 +3,753 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Serving Suite Control — Informes Mensuales</title>
+<title>Serving Suite Control — Informe Mensual</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+/* ── Print ───────────────────────────────────────────── */
+@media print {
+  .sidebar, .no-print { display: none !important; }
+  .app { display: block !important; }
+  .main { padding: 0 !important; overflow: visible !important;
+          height: auto !important; background: white !important; }
+  body { background: white !important; }
+  .informe-wrap { box-shadow: none !important; border: none !important;
+                  border-radius: 0 !important; }
+  .informe-section { break-inside: avoid; }
+  .inf-items-table tbody tr { break-inside: avoid; }
+}
+
+/* ── Layout principal ────────────────────────────────── */
+.inf-main {
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden; padding-bottom: 0;
+}
+.inf-controls {
+  flex-shrink: 0;
+  background: #c8dfd2;
+  margin: -28px -32px 0;
+  padding: 22px 32px 18px;
+  border-bottom: 2px solid #a8c9b8;
+  box-shadow: 0 4px 16px rgba(30,107,64,.12);
+}
+.inf-scroll { flex: 1; overflow-y: auto; padding: 28px 0 40px; }
+
+/* ── Selector de obra ────────────────────────────────── */
+.sel-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.sel-row select {
+  padding: 9px 14px; border: 1.5px solid #dde3dd;
+  border-radius: 8px; font-size: 13px; outline: none;
+  background: #fff; min-width: 320px; flex: 1; max-width: 480px;
+}
+.sel-row .btn { flex-shrink: 0; }
+
+/* ── Informe ─────────────────────────────────────────── */
+.informe-wrap {
+  background: white;
+  border-radius: 14px;
+  border: 1.5px solid #e0e8e0;
+  box-shadow: 0 2px 16px rgba(0,0,0,.07);
+  overflow: hidden;
+  max-width: 960px;
+}
+
+/* Encabezado del informe */
+.inf-head {
+  background: linear-gradient(135deg, #1e6b40 0%, #2d8f58 100%);
+  color: white;
+  padding: 28px 36px 24px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 20px;
+}
+.inf-head-left h2 {
+  font-size: 20px; font-weight: 800; margin: 0 0 4px; letter-spacing: -.02em;
+}
+.inf-head-left p { font-size: 13px; opacity: .85; margin: 0; }
+.inf-head-right { text-align: right; }
+.inf-head-right .company {
+  font-size: 15px; font-weight: 700; margin-bottom: 2px;
+}
+.inf-head-right .date {
+  font-size: 12px; opacity: .8;
+}
+.inf-badge {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.4);
+  margin-top: 6px;
+}
+
+/* Secciones del informe */
+.inf-sec {
+  padding: 22px 36px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.inf-sec:last-child { border-bottom: none; }
+.inf-sec-title {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--primary);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8f0ec;
+}
+
+/* Grid de datos de obra */
+.datos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 28px;
+}
+.dato-item label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gray); font-weight: 700; display: block; margin-bottom: 2px;
+}
+.dato-item span {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+
+/* Cards financieras */
+.fin-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.fin-card {
+  background: #f7faf8;
+  border: 1.5px solid #e0e8e0;
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  text-align: center;
+}
+.fin-card.primary { background: #1e6b40; border-color: #1e6b40; }
+.fin-card.primary .fin-lbl { color: rgba(255,255,255,.75); }
+.fin-card.primary .fin-val { color: white; }
+.fin-card.positivo { background: #f0faf5; border-color: #27ae60; }
+.fin-card.negativo { background: #fff5f5; border-color: #e74c3c; }
+.fin-lbl {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gray); font-weight: 700; margin-bottom: 6px;
+}
+.fin-val {
+  font-size: 14px; font-weight: 800; color: var(--text);
+  line-height: 1.25; word-break: break-all;
+}
+.fin-sub { font-size: 10px; color: var(--gray); margin-top: 4px; }
+
+/* Barra de progreso */
+.prog-bar-outer {
+  background: #ece8e0; border-radius: 8px; height: 20px;
+  overflow: hidden; margin-bottom: 8px;
+}
+.prog-bar-inner {
+  height: 100%; border-radius: 8px;
+  background: linear-gradient(90deg, #1e6b40, #27ae60);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 11px; font-weight: 700; color: white;
+  min-width: 36px;
+  transition: width .6s ease;
+}
+.prog-bar-inner.warn { background: linear-gradient(90deg, #e67e22, #f39c12); }
+.prog-bar-meta {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--gray); font-weight: 500;
+}
+
+/* Tabla recursos */
+.tbl-inf {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.tbl-inf thead th {
+  background: #f0f5f2; padding: 9px 14px;
+  text-align: left; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray); font-weight: 700;
+  border-bottom: 2px solid #dde8e0;
+}
+.tbl-inf thead th.tr { text-align: right; }
+.tbl-inf thead th.tc { text-align: center; }
+.tbl-inf tbody td {
+  padding: 10px 14px; border-bottom: 1px solid #f0f0f0; color: var(--text);
+}
+.tbl-inf tbody td.tr { text-align: right; }
+.tbl-inf tbody td.tc { text-align: center; }
+.tbl-inf tbody tr:last-child td { border-bottom: none; }
+.tbl-inf .total-row td {
+  background: #f0f5f2; font-weight: 700;
+  border-top: 2px solid #dde8e0; border-bottom: none;
+}
+.tbl-inf .total-row td:first-child { border-radius: 0 0 0 0; }
+
+/* Cat icons */
+.cat-dot {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 6px; vertical-align: middle;
+}
+/* Barra % en tabla */
+.pct-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.pct-bar {
+  height: 8px; border-radius: 4px; min-width: 2px;
+  transition: width .4s ease;
+}
+/* Estado badge */
+.badge-estado {
+  display: inline-block; padding: 2px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.be-activa { background: #e8f5ee; color: #1e6b40; }
+.be-suspendida { background: #fff8e8; color: #c07a00; }
+.be-finalizada { background: #f0f0f0; color: #888; }
+
+/* Resultado badge inline */
+.result-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-left: 8px;
+}
+.rb-pos { background: #e8f5ee; color: #1e6b40; }
+.rb-neg { background: #ffecec; color: #c0392b; }
+
+/* Tabla ítems */
+.inf-items-table thead th { font-size: 10.5px; }
+.inf-items-table tbody td { font-size: 12px; padding: 8px 14px; }
+.pf-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #f0f0f0; border-radius: 20px;
+  padding: 2px 8px; font-size: 11px; font-weight: 600;
+}
+.pf-pill.ok { background: #e8f5ee; color: #1e6b40; }
+.pf-pill.mid { background: #fff8e8; color: #c07a00; }
+.pf-pill.low { background: #ffecec; color: #c0392b; }
+
+/* Vacío */
+.inf-empty {
+  text-align: center; padding: 60px 20px; color: var(--gray);
+}
+.inf-empty .big-icon { font-size: 56px; margin-bottom: 12px; }
+.inf-empty h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.inf-empty p { font-size: 14px; }
+</style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar" id="sidebar"></div>
-  <div class="main">
-    <div class="ph">
-      <div class="ph-left">
-        <h1>Informes Mensuales</h1>
-        <p>Próximamente disponible</p>
+  <div class="main inf-main">
+
+    <!-- CONTROLES (no se imprimen) -->
+    <div class="inf-controls no-print">
+      <div class="ph" style="margin-bottom:14px">
+        <div class="ph-left">
+          <h1>Informes Mensuales</h1>
+          <p>Generá un informe ejecutivo de cualquier obra para los dueños de la empresa</p>
+        </div>
+      </div>
+      <div class="sel-row">
+        <select id="sel-obra" onchange="generarInforme()">
+          <option value="">— Seleccioná una obra —</option>
+        </select>
+        <button class="btn btn-outline no-print" id="btn-imprimir" onclick="window.print()" style="display:none">
+          🖨️ Imprimir / PDF
+        </button>
       </div>
     </div>
-    <div class="empty">
-      <div class="empty-icon">📄</div>
-      <h3>En desarrollo</h3>
-      <p>Esta sección estará disponible próximamente</p>
-    </div>
-  </div>
-</div>
+
+    <!-- ÁREA CON SCROLL -->
+    <div class="inf-scroll">
+
+      <!-- ESTADO VACÍO INICIAL -->
+      <div id="inf-empty" class="inf-empty">
+        <div class="big-icon">📄</div>
+        <h3>Seleccioná una obra</h3>
+        <p>Elegí la obra en el selector de arriba para generar el informe ejecutivo.</p>
+      </div>
+
+      <!-- INFORME (oculto hasta seleccionar obra) -->
+      <div id="informe-contenido" style="display:none">
+        <div class="informe-wrap">
+
+          <!-- Encabezado del informe -->
+          <div class="inf-head">
+            <div class="inf-head-left">
+              <p style="font-size:11px;opacity:.7;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">Informe Ejecutivo de Obra</p>
+              <h2 id="inf-nombre-obra">—</h2>
+              <p id="inf-comitente"></p>
+              <div id="inf-badge-estado"></div>
+            </div>
+            <div class="inf-head-right">
+              <div class="company">Serving Suite Control</div>
+              <div class="date" id="inf-fecha-gen"></div>
+            </div>
+          </div>
+
+          <!-- Datos básicos -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Datos de la Obra</div>
+            <div class="datos-grid">
+              <div class="dato-item">
+                <label>Ubicación</label>
+                <span id="d-ubicacion">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Expediente</label>
+                <span id="d-expediente">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Estado</label>
+                <span id="d-estado">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Fecha de Inicio</label>
+                <span id="d-inicio">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Fin Estimado</label>
+                <span id="d-fin">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Plazo de Obra</label>
+                <span id="d-plazo">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Monto de Contrato</label>
+                <span id="d-monto" style="color:var(--primary);font-weight:700">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Coef. de Pase (K)</label>
+                <span id="d-k">—</span>
+              </div>
+              <div class="dato-item">
+                <label>Presupuesto Costo Directo</label>
+                <span id="d-cd" style="color:var(--primary);font-weight:700">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen financiero -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Resumen Financiero</div>
+            <div class="fin-grid">
+              <div class="fin-card primary">
+                <div class="fin-lbl">Presupuesto<br>Contrato</div>
+                <div class="fin-val" id="f-presup-contrato">—</div>
+                <div class="fin-sub" style="color:rgba(255,255,255,.65)">Valor a certificar</div>
+              </div>
+              <div class="fin-card">
+                <div class="fin-lbl">Presupuesto<br>Costo Directo</div>
+                <div class="fin-val" id="f-presup-cd">—</div>
+                <div class="fin-sub" id="f-presup-cd-sub">Base de análisis</div>
+              </div>
+              <div class="fin-card">
+                <div class="fin-lbl">Costo Real<br>Directo a la fecha</div>
+                <div class="fin-val" id="f-real-cd">—</div>
+                <div class="fin-sub" id="f-real-cd-sub">De partes cargados</div>
+              </div>
+              <div class="fin-card">
+                <div class="fin-lbl">Valor Ganado<br>(Earned Value)</div>
+                <div class="fin-val" id="f-earned">—</div>
+                <div class="fin-sub">Avance × Presup CD</div>
+              </div>
+              <div class="fin-card" id="f-resultado-card">
+                <div class="fin-lbl">Resultado<br>(Ganado − Real)</div>
+                <div class="fin-val" id="f-resultado">—</div>
+                <div class="fin-sub" id="f-resultado-sub">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avance físico -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Avance Físico de la Obra</div>
+            <div class="prog-bar-outer">
+              <div class="prog-bar-inner" id="prog-bar-fill" style="width:0%">0%</div>
+            </div>
+            <div class="prog-bar-meta">
+              <span id="prog-meta-izq">—</span>
+              <span id="prog-meta-der">—</span>
+            </div>
+          </div>
+
+          <!-- Distribución de costos reales -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Distribución del Costo Real Directo</div>
+            <table class="tbl-inf">
+              <thead>
+                <tr>
+                  <th style="width:200px">Categoría</th>
+                  <th class="tr">Costo Real CD</th>
+                  <th class="tc" style="width:160px">% del Costo Real</th>
+                  <th class="tr">% sobre Presup CD</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-distribucion"></tbody>
+            </table>
+          </div>
+
+          <!-- Detalle por ítem -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Detalle por Ítem de Obra</div>
+            <table class="tbl-inf inf-items-table">
+              <thead>
+                <tr>
+                  <th>Ítem</th>
+                  <th>Unidad</th>
+                  <th class="tr">Ejec. / Total</th>
+                  <th class="tc" style="width:100px">Avance Fís.</th>
+                  <th class="tr">Presupuesto CD</th>
+                  <th class="tr">Real CD</th>
+                  <th class="tr">Desvío CD</th>
+                  <th class="tr">Valor Ganado</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-items"></tbody>
+            </table>
+          </div>
+
+          <!-- Pie del informe -->
+          <div class="inf-sec" style="background:#f7faf8;padding:14px 36px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <span style="font-size:11px;color:var(--gray)">
+                Generado por <strong>Serving Suite Control</strong> · <span id="pie-fecha"></span>
+              </span>
+              <span style="font-size:11px;color:var(--gray)" id="pie-partes"></span>
+            </div>
+          </div>
+
+        </div><!-- /informe-wrap -->
+      </div><!-- /informe-contenido -->
+
+    </div><!-- /inf-scroll -->
+  </div><!-- /main -->
+</div><!-- /app -->
 <div class="toast" id="toast"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
+let usuario = null
+let obras   = []
+
 async function init() {
-  const usuario = await requireAuth()
+  usuario = await requireAuth()
   if (!usuario) return
   renderSidebar(usuario, 'informes')
+  await cargarObras()
 }
+
+async function cargarObras() {
+  const { data } = await db.from('obras').select('id, nombre, cliente_comitente, estado').order('nombre')
+  obras = data || []
+  const sel = document.getElementById('sel-obra')
+  obras.forEach(o => {
+    const opt = document.createElement('option')
+    opt.value = o.id
+    const icon = o.estado === 'suspendida' ? '⏸️ ' : o.estado === 'finalizada' ? '✓ ' : ''
+    opt.textContent = icon + o.nombre + (o.cliente_comitente ? ' — ' + o.cliente_comitente : '')
+    sel.appendChild(opt)
+  })
+}
+
+async function generarInforme() {
+  const obraId = document.getElementById('sel-obra').value
+  document.getElementById('informe-contenido').style.display = 'none'
+  document.getElementById('inf-empty').style.display         = 'block'
+  document.getElementById('btn-imprimir').style.display      = 'none'
+
+  if (!obraId) return
+
+  // Mostrar loading
+  document.getElementById('inf-empty').innerHTML = `
+    <div class="loading"><div class="spinner"></div> Generando informe...</div>`
+
+  try {
+    // 1. Datos de la obra
+    const { data: obra } = await db.from('obras').select('*').eq('id', obraId).single()
+    if (!obra) { toast('No se encontró la obra', 'error'); return }
+
+    const k = obra.coeficiente_pase || 1
+
+    // 2. Ítems de la obra
+    const { data: items } = await db.from('items_obra')
+      .select('*').eq('obra_id', obraId).order('orden')
+
+    // 3. Todos los partes de la obra
+    const { data: partes } = await db.from('partes_diarios')
+      .select('id, item_id, cantidad_ejecutada, fecha').eq('obra_id', obraId)
+
+    const parteIds = (partes || []).map(p => p.id)
+
+    // 4. Datos reales (paralelo)
+    let mat = [], pers = [], eq = []
+    if (parteIds.length > 0) {
+      const [rMat, rPers, rEq] = await Promise.all([
+        db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
+        db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
+        db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+      ])
+      mat  = rMat.data  || []
+      pers = rPers.data || []
+      eq   = rEq.data   || []
+    }
+
+    // 5. Presupuesto items (paralelo para todos los ítems)
+    let presupItemsAll = []
+    if (items && items.length > 0) {
+      const itemIds = items.map(i => i.id)
+      const { data: pi } = await db.from('presupuesto_items')
+        .select('item_id, cantidad, precio_unitario').in('item_id', itemIds)
+      presupItemsAll = pi || []
+    }
+
+    // ── Cálculos ──────────────────────────────────────────────
+
+    // Costos reales por categoría
+    const soloMat  = mat.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+    const combust  = mat.filter(m => m.descripcion.startsWith('⛽'))
+    const herr     = mat.filter(m => m.descripcion.startsWith('🔧'))
+
+    const realMat   = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+    const realComb  = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+    const realHerr  = herr.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+    const realPers  = pers.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+    const realEq    = eq.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
+    const realTotal = realMat + realComb + realHerr + realPers + realEq
+
+    // Presupuesto y earned value por ítem
+    const dataItems = (items || []).map(item => {
+      const piItem = presupItemsAll.filter(p => p.item_id === item.id)
+      const presup  = piItem.reduce((s, p) => s + p.cantidad * p.precio_unitario, 0)  // contrato
+      const presupCD = presup / k
+
+      const partesItem = (partes || []).filter(p => p.item_id === item.id)
+      const ejecutado  = partesItem.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
+      const porcFisico = item.cantidad_presupuestada > 0
+        ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100000) / 1000)
+        : 0
+
+      const realItem = (() => {
+        if (parteIds.length === 0) return 0
+        const ids = partesItem.map(p => p.id)
+        const mI = mat.filter(m => ids.includes(m.parte_id))
+        const pI = pers.filter(p => ids.includes(p.parte_id))
+        const eI = eq.filter(e => ids.includes(e.parte_id))
+        return (mI.reduce((s,m) => s + m.cantidad * m.precio_unitario, 0))
+             + (pI.reduce((s,p) => s + p.horas_trabajadas * p.precio_hora, 0))
+             + (eI.reduce((s,e) => s + e.horas_utilizadas * e.precio_hora, 0))
+      })()
+
+      const earnedValue  = presupCD * (porcFisico / 100)
+      const desvioCD     = presupCD - realItem
+
+      return { item, presup, presupCD, realItem, ejecutado, porcFisico, earnedValue, desvioCD }
+    })
+
+    const totalPresupContrato = dataItems.reduce((s, d) => s + d.presup, 0)
+    const totalPresupCD       = dataItems.reduce((s, d) => s + d.presupCD, 0)
+    const totalEarnedCD       = dataItems.reduce((s, d) => s + d.earnedValue, 0)
+    const resultado           = totalEarnedCD - realTotal
+    const porcFisicoGlobal    = dataItems.length > 0
+      ? Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length * 1000) / 1000
+      : 0
+
+    // ── Renderizar ────────────────────────────────────────────
+    renderEncabezado(obra, k, totalPresupContrato, totalPresupCD)
+    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalEarnedCD, resultado)
+    renderAvance(obra, porcFisicoGlobal, partes || [])
+    renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
+    renderItems(dataItems, k)
+
+    // Pie
+    const ahora = new Date()
+    const fechaGen = ahora.toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+                   + ' · ' + ahora.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+    document.getElementById('pie-fecha').textContent = fechaGen
+    document.getElementById('inf-fecha-gen').textContent = 'Generado el ' + fechaGen
+    document.getElementById('pie-partes').textContent =
+      `${(partes || []).length} partes diarios cargados`
+
+    document.getElementById('informe-contenido').style.display = 'block'
+    document.getElementById('inf-empty').style.display         = 'none'
+    document.getElementById('btn-imprimir').style.display      = 'inline-flex'
+
+  } catch (err) {
+    console.error(err)
+    toast('Error al generar el informe', 'error')
+    document.getElementById('inf-empty').innerHTML = `
+      <div class="big-icon">⚠️</div>
+      <h3>Error al generar</h3>
+      <p>Revisá la consola para más detalles</p>`
+  }
+}
+
+function renderEncabezado(obra, k, presupContrato, presupCD) {
+  document.getElementById('inf-nombre-obra').textContent = obra.nombre
+  document.getElementById('inf-comitente').textContent   =
+    obra.cliente_comitente ? 'Comitente: ' + obra.cliente_comitente : ''
+
+  const estadoLabel = { activa: 'En Ejecución', suspendida: 'Suspendida', finalizada: 'Finalizada' }
+  const estadoClass = { activa: 'be-activa', suspendida: 'be-suspendida', finalizada: 'be-finalizada' }
+  document.getElementById('inf-badge-estado').innerHTML =
+    `<span class="inf-badge">${estadoLabel[obra.estado] || obra.estado}</span>`
+
+  // Datos básicos
+  const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+  document.getElementById('d-ubicacion').textContent  = obra.ubicacion || '—'
+  document.getElementById('d-expediente').textContent = obra.numero_expediente || '—'
+  document.getElementById('d-estado').innerHTML       =
+    `<span class="badge-estado ${estadoClass[obra.estado] || ''}">${estadoLabel[obra.estado] || obra.estado || '—'}</span>`
+  document.getElementById('d-inicio').textContent  = fmt(obra.fecha_inicio)
+  document.getElementById('d-fin').textContent     = fmt(obra.fecha_fin_estimada || obra.fecha_fin)
+  document.getElementById('d-plazo').textContent   = obra.plazo_dias ? obra.plazo_dias + ' días' : '—'
+  document.getElementById('d-monto').textContent   = formatPeso(obra.monto_contrato)
+  document.getElementById('d-k').textContent       = k.toFixed(2)
+  document.getElementById('d-cd').textContent      = formatPeso(presupCD)
+}
+
+function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, earnedCD, resultado) {
+  document.getElementById('f-presup-contrato').textContent = formatPeso(obra.monto_contrato || presupContrato)
+  document.getElementById('f-presup-cd').textContent       = formatPeso(presupCD)
+  document.getElementById('f-presup-cd-sub').textContent   = presupCD > 0
+    ? `K = ${k.toFixed(2)}`
+    : 'Sin ítems cargados'
+
+  document.getElementById('f-real-cd').textContent   = formatPeso(realTotal)
+  const porcConsumo = presupCD > 0 ? Math.round(realTotal / presupCD * 1000) / 10 : 0
+  document.getElementById('f-real-cd-sub').textContent = `${porcConsumo}% del presup CD`
+
+  document.getElementById('f-earned').textContent = formatPeso(earnedCD)
+
+  const resEl   = document.getElementById('f-resultado')
+  const cardEl  = document.getElementById('f-resultado-card')
+  const subEl   = document.getElementById('f-resultado-sub')
+  resEl.textContent  = (resultado >= 0 ? '+' : '') + formatPeso(resultado)
+  resEl.style.color  = resultado >= 0 ? '#27ae60' : '#c0392b'
+  subEl.textContent  = resultado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto'
+  if (earnedCD > 0 || realTotal > 0) {
+    cardEl.classList.add(resultado >= 0 ? 'positivo' : 'negativo')
+  }
+}
+
+function renderAvance(obra, porcFisico, partes) {
+  const bar = document.getElementById('prog-bar-fill')
+  bar.style.width   = porcFisico + '%'
+  bar.textContent   = porcFisico + '%'
+  if (porcFisico < 30) bar.classList.add('warn')
+
+  // Días transcurridos
+  const metaIzq = document.getElementById('prog-meta-izq')
+  const metaDer = document.getElementById('prog-meta-der')
+
+  if (obra.fecha_inicio) {
+    const inicio = new Date(obra.fecha_inicio + 'T00:00:00')
+    const hoy    = new Date()
+    const diff   = Math.floor((hoy - inicio) / 86400000)
+    metaIzq.textContent = `${diff} días desde el inicio`
+  } else {
+    metaIzq.textContent = 'Fecha de inicio no registrada'
+  }
+
+  const fechas = partes.map(p => p.fecha).filter(Boolean).sort()
+  if (fechas.length > 0) {
+    const ult = new Date(fechas[fechas.length - 1] + 'T00:00:00')
+      .toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+    metaDer.textContent = `Último parte: ${ult}`
+  } else {
+    metaDer.textContent = 'Sin partes cargados'
+  }
+}
+
+function renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, presupCD) {
+  const cats = [
+    { nombre: 'Materiales',       color: '#1e6b40', val: realMat },
+    { nombre: 'Mano de Obra',     color: '#f39c12', val: realPers },
+    { nombre: 'Equipos',          color: '#27ae60', val: realEq },
+    { nombre: 'Combustible',      color: '#2980b9', val: realComb },
+    { nombre: 'Herramientas',     color: '#8e44ad', val: realHerr },
+  ].filter(c => c.val > 0)
+
+  if (cats.length === 0) {
+    document.getElementById('tbody-distribucion').innerHTML =
+      `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--gray)">Sin costos reales registrados</td></tr>`
+    return
+  }
+
+  const maxVal = Math.max(...cats.map(c => c.val))
+  const rows = cats.map(c => {
+    const pctReal   = realTotal > 0 ? (c.val / realTotal * 100).toFixed(1) : '0.0'
+    const pctPresup = presupCD  > 0 ? (c.val / presupCD  * 100).toFixed(1) : '0.0'
+    const barW      = maxVal > 0 ? Math.round(c.val / maxVal * 100) : 0
+    return `
+      <tr>
+        <td><span class="cat-dot" style="background:${c.color}"></span>${c.nombre}</td>
+        <td class="tr"><strong>${formatPeso(c.val)}</strong></td>
+        <td class="tc">
+          <div class="pct-bar-wrap">
+            <div class="pct-bar" style="width:${barW}px;background:${c.color};opacity:.7"></div>
+            <span style="font-size:12px;font-weight:600;min-width:38px">${pctReal}%</span>
+          </div>
+        </td>
+        <td class="tr" style="font-size:12px;color:var(--gray)">${pctPresup}%</td>
+      </tr>`
+  })
+
+  const pctTotalPresup = presupCD > 0 ? (realTotal / presupCD * 100).toFixed(1) : '0.0'
+  rows.push(`
+    <tr class="total-row">
+      <td><strong>TOTAL</strong></td>
+      <td class="tr"><strong>${formatPeso(realTotal)}</strong></td>
+      <td class="tc"><strong>100%</strong></td>
+      <td class="tr"><strong>${pctTotalPresup}%</strong></td>
+    </tr>`)
+
+  document.getElementById('tbody-distribucion').innerHTML = rows.join('')
+}
+
+function renderItems(dataItems, k) {
+  if (!dataItems || dataItems.length === 0) {
+    document.getElementById('tbody-items').innerHTML =
+      `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray)">Sin ítems registrados</td></tr>`
+    return
+  }
+
+  const rows = dataItems.map(d => {
+    const pf       = d.porcFisico
+    const pfClass  = pf >= 80 ? 'ok' : pf >= 40 ? 'mid' : 'low'
+    const desvClass = d.desvioCD >= 0 ? 'color:#27ae60' : 'color:#c0392b'
+    return `
+      <tr>
+        <td><strong>${d.item.codigo ? d.item.codigo + ' — ' : ''}${d.item.descripcion}</strong></td>
+        <td>${d.item.unidad || '—'}</td>
+        <td class="tr" style="font-size:12px">${formatNum(d.ejecutado)} / ${formatNum(d.item.cantidad_presupuestada)}</td>
+        <td class="tc"><span class="pf-pill ${pfClass}">${pf}%</span></td>
+        <td class="tr">${formatPeso(d.presupCD)}</td>
+        <td class="tr">${formatPeso(d.realItem)}</td>
+        <td class="tr" style="${desvClass}">${d.desvioCD >= 0 ? '+' : ''}${formatPeso(d.desvioCD)}</td>
+        <td class="tr">${formatPeso(d.earnedValue)}</td>
+      </tr>`
+  })
+
+  const totalPresupCD = dataItems.reduce((s, d) => s + d.presupCD,    0)
+  const totalReal     = dataItems.reduce((s, d) => s + d.realItem,    0)
+  const totalDesvio   = dataItems.reduce((s, d) => s + d.desvioCD,    0)
+  const totalEarned   = dataItems.reduce((s, d) => s + d.earnedValue, 0)
+  const desvClass     = totalDesvio >= 0 ? 'color:#27ae60' : 'color:#c0392b'
+
+  rows.push(`
+    <tr class="total-row">
+      <td colspan="4"><strong>TOTALES</strong></td>
+      <td class="tr"><strong>${formatPeso(totalPresupCD)}</strong></td>
+      <td class="tr"><strong>${formatPeso(totalReal)}</strong></td>
+      <td class="tr" style="${desvClass}"><strong>${totalDesvio >= 0 ? '+' : ''}${formatPeso(totalDesvio)}</strong></td>
+      <td class="tr"><strong>${formatPeso(totalEarned)}</strong></td>
+    </tr>`)
+
+  document.getElementById('tbody-items').innerHTML = rows.join('')
+}
+
 init()
 </script>
 </body>
