@@ -509,7 +509,8 @@ function renderCertDoc(modoReimprimir) {
   const repr     = document.getElementById('inp-representante').value || '—'
   const orden    = document.getElementById('inp-orden-compra').value || '—'
   const descuento = parseFloat(document.getElementById('inp-descuento').value) || 0
-  const ivaPct   = parseFloat(document.getElementById('inp-iva').value) || 21
+  const ivaEl    = document.getElementById('inp-iva')
+  const ivaPct   = ivaEl.value === '' ? 21 : parseFloat(ivaEl.value)
 
   const fmtF = s => {
     if (!s) return '—'
@@ -711,7 +712,8 @@ async function guardarYGenerarPDF() {
   const subc       = document.getElementById('inp-subcontratista').value || null
   const repr       = document.getElementById('inp-representante').value || null
   const descuento  = parseFloat(document.getElementById('inp-descuento').value) || 0
-  const ivaPct     = parseFloat(document.getElementById('inp-iva').value) || 21
+  const ivaEl2     = document.getElementById('inp-iva')
+  const ivaPct     = ivaEl2.value === '' ? 21 : parseFloat(ivaEl2.value)
 
   const totalAcum   = itemsCertActual.reduce((s,i) => s + i.montoAcum, 0)
   const neto        = totalAcum - descuento
