@@ -533,23 +533,27 @@ async function calcDistribucion() {
   const ids = partes.map(p => p.id)
 
   const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
-    db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', ids),
+    db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', ids),
     db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', ids),
     db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids)
   ])
 
-  const costMat  = mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0
+  const soloMat  = mat?.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧')) || []
+  const combust  = mat?.filter(m => m.descripcion.startsWith('⛽')) || []
+
+  const costMat  = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const costComb = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
   const costPers = pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0
   const costEq   = eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0
 
   if (chartDist) chartDist.destroy()
-  const distData  = [Math.round(costMat), Math.round(costPers), Math.round(costEq)]
+  const distData  = [Math.round(costMat), Math.round(costPers), Math.round(costEq), Math.round(costComb)]
   const distTotal = distData.reduce((a, b) => a + b, 0)
   chartDist = new Chart(document.getElementById('ch-dist'), {
     type: 'doughnut',
     data: {
-      labels: ['Materiales', 'Mano de Obra', 'Equipos'],
-      datasets: [{ data: distData, backgroundColor: ['#1e6b40','#f39c12','#27ae60'], borderWidth: 0 }]
+      labels: ['Materiales', 'Mano de Obra', 'Equipos', 'Combustible'],
+      datasets: [{ data: distData, backgroundColor: ['#1e6b40','#f39c12','#27ae60','#2980b9'], borderWidth: 0 }]
     },
     options: {
       responsive: true,
