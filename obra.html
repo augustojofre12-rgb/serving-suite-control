@@ -230,6 +230,23 @@ async function renderDetalle() {
         <div class="card bl-ok"><div class="card-label">Valor Ganado a Costo Directo</div><div class="card-value" id="kpi-margen">—</div><div class="card-sub" id="kpi-margen-sub">—</div></div>
         <div class="card bl-primary"><div class="card-label">Avance Físico</div><div class="card-value" id="kpi-fisico">—</div><div class="card-sub" id="kpi-fisico-sub">Promedio entre ítems</div></div>
       </div>
+      <div class="cards3" style="margin-bottom:20px" id="wrap-ci" style="display:none">
+        <div class="card" style="border-left:4px solid #8e44ad">
+          <div class="card-label">Costos Indirectos Acumulados</div>
+          <div class="card-value" id="kpi-ci-total">—</div>
+          <div class="card-sub">No incluidos en el costo directo</div>
+        </div>
+        <div class="card" style="border-left:4px solid #8e44ad">
+          <div class="card-label">Costo Total (CD + CI)</div>
+          <div class="card-value" id="kpi-costo-total">—</div>
+          <div class="card-sub" id="kpi-costo-total-sub">Costo real consolidado</div>
+        </div>
+        <div class="card" style="border-left:4px solid #8e44ad">
+          <div class="card-label">CI / Costo Directo Real</div>
+          <div class="card-value" id="kpi-ci-porc">—</div>
+          <div class="card-sub">Incidencia de indirectos</div>
+        </div>
+      </div>
       <div class="charts2">
         <div class="chart-card"><h3>Presupuesto vs Real por Ítem</h3><canvas id="ch-items" height="200"></canvas></div>
         <div class="chart-card"><h3>Distribución de Costos Reales</h3><canvas id="ch-dist" height="200"></canvas></div>
@@ -383,6 +400,9 @@ async function renderDetalle() {
       : 'Sin partes cargados aún'
     document.getElementById('kpi-fisico').textContent     = `${porcFisico % 1 === 0 ? porcFisico : porcFisico.toFixed(3)}%`
 
+    // Costos Indirectos (separado del CD)
+    calcCostosIndirectos(totalReal)
+
     // Charts
     const labels = dataItems.map(d => d.item.descripcion.substring(0, 20))
     const presups = dataItems.map(d => Math.round(d.presup))
@@ -526,6 +546,23 @@ async function renderDetalleItem(itemId) {
         }).join('')}
       </tbody>
     </table>`
+}
+
+async function calcCostosIndirectos(totalRealCD) {
+  const { data: partes } = await db.from('partes_diarios').select('id').eq('obra_id', obraId)
+  if (!partes || partes.length === 0) return
+  const ids = partes.map(p => p.id)
+  const { data: ci } = await db.from('parte_costos_indirectos').select('monto').in('parte_id', ids)
+  if (!ci || ci.length === 0) return
+
+  const totalCI    = ci.reduce((s, r) => s + (r.monto || 0), 0)
+  const totalTotal = totalRealCD + totalCI
+  const porcCI     = totalRealCD > 0 ? (totalCI / totalRealCD * 100).toFixed(1) : '0.0'
+
+  document.getElementById('kpi-ci-total').textContent    = formatPeso(totalCI)
+  document.getElementById('kpi-costo-total').textContent  = formatPeso(totalTotal)
+  document.getElementById('kpi-ci-porc').textContent      = porcCI + '%'
+  document.getElementById('wrap-ci').style.display        = ''
 }
 
 async function calcDistribucion() {

@@ -172,6 +172,39 @@
       <button class="add-row-btn" onclick="addHerr()">+ Agregar herramienta</button>
     </div>
 
+    <!-- COSTOS INDIRECTOS -->
+    <div class="fsec">
+      <div class="fsec-title">💼 Costos Indirectos</div>
+      <table class="dtbl">
+        <thead><tr>
+          <th style="width:200px">Categoría</th>
+          <th>Descripción</th>
+          <th style="width:90px">Unidad</th>
+          <th style="width:140px">Monto $</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="tbody-ci">
+          <tr>
+            <td><select>
+              <option value="">— Categoría —</option>
+              <option>Gastos Generales</option>
+              <option>Movilidad y Viáticos</option>
+              <option>Seguros y Garantías</option>
+              <option>Honorarios Profesionales</option>
+              <option>Seguridad Vial</option>
+              <option>Gastos Administrativos</option>
+              <option>Otros</option>
+            </select></td>
+            <td><input type="text" placeholder="Descripción del gasto..."></td>
+            <td><input type="text" placeholder="gl, u, mes..."></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-row-btn" onclick="addCI()">+ Agregar costo indirecto</button>
+    </div>
+
     <!-- OBSERVACIONES -->
     <div class="fsec" style="margin-top:8px">
       <div class="fsec-title">📝 Observaciones del Día</div>
@@ -364,6 +397,30 @@ async function cargarParteExistente(parteId) {
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`)
   })
+
+  // Costos Indirectos
+  const { data: ciData } = await db.from('parte_costos_indirectos').select('*').eq('parte_id', parteId)
+  const tbodyCI = document.getElementById('tbody-ci')
+  tbodyCI.innerHTML = ''
+  const cats = ['Gastos Generales','Movilidad y Viáticos','Seguros y Garantías','Honorarios Profesionales','Seguridad Vial','Gastos Administrativos','Otros']
+  const opsCats = cats.map(c => `<option value="${c}">${c}</option>`).join('')
+  if (ciData && ciData.length > 0) {
+    ciData.forEach(ci => {
+      tbodyCI.insertAdjacentHTML('beforeend', `<tr>
+        <td><select><option value="">— Categoría —</option>${opsCats}</select></td>
+        <td><input type="text" value="${ci.descripcion || ''}"></td>
+        <td><input type="text" value="${ci.unidad || ''}"></td>
+        <td><input type="number" value="${ci.monto}" min="0" step="0.01"></td>
+        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+      </tr>`)
+      // Seleccionar la categoría correcta
+      const lastRow = tbodyCI.lastElementChild
+      const selCI = lastRow.querySelector('select')
+      selCI.value = ci.categoria
+    })
+  } else {
+    addCI()
+  }
 }
 
 async function cargarItems() {
@@ -553,6 +610,26 @@ function addHerr() {
     </tr>`)
 }
 
+function addCI() {
+  document.getElementById('tbody-ci').insertAdjacentHTML('beforeend', `
+    <tr>
+      <td><select>
+        <option value="">— Categoría —</option>
+        <option>Gastos Generales</option>
+        <option>Movilidad y Viáticos</option>
+        <option>Seguros y Garantías</option>
+        <option>Honorarios Profesionales</option>
+        <option>Seguridad Vial</option>
+        <option>Gastos Administrativos</option>
+        <option>Otros</option>
+      </select></td>
+      <td><input type="text" placeholder="Descripción del gasto..."></td>
+      <td><input type="text" placeholder="gl, u, mes..."></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+    </tr>`)
+}
+
 function calcHorasPers(input) {
   const row = input.closest('tr')
   const times = row.querySelectorAll('input[type="time"]')
@@ -607,7 +684,8 @@ async function guardarParte() {
     await Promise.all([
       db.from('parte_materiales').delete().eq('parte_id', parteEditId),
       db.from('parte_personal').delete().eq('parte_id', parteEditId),
-      db.from('parte_equipos').delete().eq('parte_id', parteEditId)
+      db.from('parte_equipos').delete().eq('parte_id', parteEditId),
+      db.from('parte_costos_indirectos').delete().eq('parte_id', parteEditId)
     ])
     pid = parteEditId
   } else {
@@ -688,6 +766,26 @@ async function guardarParte() {
     herramientas.push({ parte_id: pid, descripcion: '🔧 ' + desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: '' })
   })
   if (herramientas.length > 0) await db.from('parte_materiales').insert(herramientas)
+
+  // Costos Indirectos
+  const ciRows = document.querySelectorAll('#tbody-ci tr')
+  const costosIndirectos = []
+  ciRows.forEach(row => {
+    const sel = row.querySelector('select')
+    const inputs = row.querySelectorAll('input')
+    const categoria = sel?.value?.trim() || ''
+    const descripcion = inputs[0]?.value?.trim() || ''
+    const monto = parseFloat(inputs[2]?.value) || 0
+    if (!categoria || monto <= 0) return
+    costosIndirectos.push({
+      parte_id: pid,
+      categoria,
+      descripcion,
+      unidad: inputs[1]?.value?.trim() || '',
+      monto
+    })
+  })
+  if (costosIndirectos.length > 0) await db.from('parte_costos_indirectos').insert(costosIndirectos)
 
   toast(parteEditId ? 'Parte actualizado correctamente' : 'Parte diario guardado correctamente')
   setTimeout(() => window.location.href = `historial-partes.html?id=${obraId}`, 1200)

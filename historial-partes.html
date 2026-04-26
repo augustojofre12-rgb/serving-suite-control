@@ -282,10 +282,11 @@ async function renderDetalleParte(parteId) {
   const container = document.getElementById(`det-content-${parteId}`)
   const verFin    = usuario.rol !== 'jefe_obra'
 
-  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+  const [{ data: mat }, { data: pers }, { data: eq }, { data: ci }] = await Promise.all([
     db.from('parte_materiales').select('*').eq('parte_id', parteId),
     db.from('parte_personal').select('*').eq('parte_id', parteId),
-    db.from('parte_equipos').select('*').eq('parte_id', parteId)
+    db.from('parte_equipos').select('*').eq('parte_id', parteId),
+    db.from('parte_costos_indirectos').select('*').eq('parte_id', parteId)
   ])
 
   const materiales   = mat?.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧')) || []
@@ -438,6 +439,29 @@ async function renderDetalleParte(parteId) {
           💰 Costo Total del Parte: ${formatPeso(costTotal)}
         </span>
       </div>`
+  }
+
+  // Costos Indirectos
+  if (ci && ci.length > 0) {
+    const totalCI = ci.reduce((s, r) => s + (r.monto || 0), 0)
+    html += seccionDetalle('💼 Costos Indirectos', `
+      <table class="dtbl" style="margin-top:6px">
+        <thead><tr>
+          <th>Categoría</th>
+          <th>Descripción</th>
+          <th class="tc">Unidad</th>
+          ${verFin ? '<th class="tr">Monto</th>' : ''}
+        </tr></thead>
+        <tbody>
+          ${ci.map(r => `<tr>
+            <td><span class="badge b-blue" style="font-size:11px">${r.categoria}</span></td>
+            <td>${r.descripcion || '—'}</td>
+            <td class="tc">${r.unidad || '—'}</td>
+            ${verFin ? `<td class="tr">${formatPeso(r.monto)}</td>` : ''}
+          </tr>`).join('')}
+          ${verFin ? `<tr class="tfoot-sum"><td colspan="3">Subtotal Indirectos</td><td class="tr">${formatPeso(totalCI)}</td></tr>` : ''}
+        </tbody>
+      </table>`)
   }
 
   // Observaciones del parte
