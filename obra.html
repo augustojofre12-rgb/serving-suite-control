@@ -163,6 +163,33 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR EQUIPO DE OBRA -->
+<div class="modal-bg" id="modal-eq-edit">
+  <div class="modal" style="width:480px;max-width:95vw">
+    <h2>✏️ Editar Equipo Asignado</h2>
+    <div class="fg" style="margin-bottom:16px">
+      <label>Equipo</label>
+      <div id="eeq-nombre" style="padding:10px 14px;background:#f0faf4;border-radius:8px;font-weight:700;color:var(--primary);font-size:14px"></div>
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label>Precio / Unidad $ — <span style="color:var(--primary);font-weight:700">Costo Directo</span></label>
+        <input type="number" id="eeq-precio" placeholder="0" min="0" step="0.01">
+        <small style="color:var(--gray);font-size:11px;margin-top:4px;display:block">⚠️ Valor a <strong>costo directo</strong>, sin K.</small>
+      </div>
+      <div class="fg">
+        <label>Cantidad Contratada</label>
+        <input type="number" id="eeq-cantidad" placeholder="0" min="0" step="0.01">
+        <small style="color:var(--gray);font-size:11px;margin-top:4px;display:block">Total de horas (o unidades) contratadas para la certificación.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarEditarEq()">Cancelar</button>
+      <button class="btn btn-success" onclick="guardarEditarEq()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ASIGNAR PERSONAL A OBRA -->
 <div class="modal-bg" id="modal-pers-obra">
   <div class="modal" style="width:420px;max-width:95vw">
@@ -827,7 +854,10 @@ async function cargarRecursosObra() {
             <td><span class="badge ${e.flota_equipos?.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.flota_equipos?.tipo || '—'}</span></td>
             <td class="tr"><strong>${formatPeso(e.precio_hora)}</strong> / ${e.flota_equipos?.unidad_medida || 'Hs'}</td>
             <td class="tr">${e.cantidad_contratada ? formatNum(e.cantidad_contratada) + ' ' + (e.flota_equipos?.unidad_medida || 'Hs') : '<span style="color:var(--gray);font-size:11px">no cargada</span>'}</td>
-            ${esCoord ? `<td class="tc"><button class="btn-icon" onclick="eliminarEqObra('${e.id}')" title="Quitar">✕</button></td>` : ''}
+            ${esCoord ? `<td class="tc" style="white-space:nowrap">
+              <button class="btn-icon" title="Editar" onclick="abrirEditarEq('${e.id}', ${e.precio_hora}, ${e.cantidad_contratada || 0}, '${(e.flota_equipos?.numero_interno ? e.flota_equipos.numero_interno + ' — ' : '') + (e.flota_equipos?.nombre || '')}')">✏️</button>
+              <button class="btn-icon" onclick="eliminarEqObra('${e.id}')" title="Quitar" style="margin-left:4px">✕</button>
+            </td>` : ''}
           </tr>`).join('') :
           `<tr><td colspan="${colsEq}" style="text-align:center;padding:20px;color:var(--gray)">Sin equipos asignados a esta obra</td></tr>`}
       </tbody></table>
@@ -891,6 +921,42 @@ async function guardarEqObra() {
   if (error) { toast('Error al asignar equipo', 'error'); return }
   toast('Equipo asignado correctamente')
   cerrarModalEq()
+  await cargarRecursosObra()
+}
+
+let editandoEqId = null
+
+function abrirEditarEq(id, precio, cantidad, nombre) {
+  editandoEqId = id
+  document.getElementById('eeq-nombre').textContent  = nombre
+  document.getElementById('eeq-precio').value         = precio
+  document.getElementById('eeq-cantidad').value       = cantidad || ''
+  document.getElementById('modal-eq-edit').classList.add('open')
+}
+
+function cerrarEditarEq() {
+  editandoEqId = null
+  document.getElementById('modal-eq-edit').classList.remove('open')
+}
+
+async function guardarEditarEq() {
+  if (!editandoEqId) return
+  const precio   = parseFloat(document.getElementById('eeq-precio').value) || 0
+  const cantidad = parseFloat(document.getElementById('eeq-cantidad').value) || 0
+  if (precio <= 0) { toast('Ingresá el precio por unidad', 'error'); return }
+
+  const btn = document.querySelector('#modal-eq-edit .btn-success')
+  btn.textContent = 'Guardando...'; btn.disabled = true
+
+  const { error } = await db.from('obra_equipos')
+    .update({ precio_hora: precio, cantidad_contratada: cantidad })
+    .eq('id', editandoEqId)
+
+  btn.textContent = '✓ Guardar cambios'; btn.disabled = false
+
+  if (error) { toast('Error al guardar', 'error'); return }
+  toast('Equipo actualizado correctamente')
+  cerrarEditarEq()
   await cargarRecursosObra()
 }
 
