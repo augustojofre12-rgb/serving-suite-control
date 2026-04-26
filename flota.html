@@ -42,8 +42,10 @@
 <body>
 <div class="app">
   <div class="sidebar" id="sidebar"></div>
-  <div class="main">
-    <div class="dashboard-sticky" style="top:0;padding-top:28px">
+  <div class="main" style="display:flex;flex-direction:column;height:100vh;overflow:hidden;padding-bottom:0">
+
+    <!-- HEADER FIJO -->
+    <div style="flex-shrink:0;background:#c8dfd2;margin:-28px -32px 0;padding:28px 32px 18px;border-bottom:2px solid #a8c9b8;box-shadow:0 4px 16px rgba(30,107,64,.12)">
       <div class="ph" style="margin-bottom:16px">
         <div class="ph-left">
           <h1>Flota de Equipos</h1>
@@ -51,9 +53,7 @@
         </div>
         <button class="btn btn-accent" id="btn-agregar" onclick="abrirModal()" style="display:none">+ Agregar Equipo</button>
       </div>
-
-      <!-- Cards resumen -->
-      <div class="cards3" style="margin-bottom:0">
+      <div class="cards3" style="margin-bottom:16px">
         <div class="card bl-primary">
           <div class="card-label">Total Equipos</div>
           <div class="card-value" id="cnt-total">—</div>
@@ -70,8 +70,7 @@
           <div class="card-sub">Externos / subcontratados</div>
         </div>
       </div>
-      <!-- Header tabla dentro del sticky -->
-      <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <h3 style="font-size:15px;font-weight:700;color:var(--text)">Listado de Equipos</h3>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="text" id="buscador" placeholder="Buscar equipo..." oninput="filtrarTabla()"
@@ -86,22 +85,25 @@
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="tbl-wrap" style="margin-top:16px">
-      <table id="tabla-flota">
-        <thead><tr>
-          <th style="width:70px" class="tc">Orden</th>
-          <th style="width:100px">N° Interno</th>
-          <th>Nombre del Equipo</th>
-          <th style="width:120px">Tipo</th>
-          <th style="width:90px">Estado</th>
-          <th style="width:120px"></th>
-        </tr></thead>
-        <tbody id="tbody-flota">
-          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
-        </tbody>
-      </table>
+    <!-- TABLA CON SCROLL PROPIO -->
+    <div style="flex:1;overflow-y:auto;padding:20px 0 28px">
+      <div class="tbl-wrap">
+        <table id="tabla-flota">
+          <thead><tr>
+            <th style="width:70px" class="tc">Orden</th>
+            <th style="width:100px">N° Interno</th>
+            <th>Nombre del Equipo</th>
+            <th style="width:120px">Tipo</th>
+            <th style="width:90px">Estado</th>
+            <th style="width:120px"></th>
+          </tr></thead>
+          <tbody id="tbody-flota">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+
   </div>
 </div>
 <div class="toast" id="toast"></div>
