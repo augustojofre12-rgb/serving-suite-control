@@ -140,7 +140,7 @@
         </tr></thead>
         <tbody id="tbody-comb">
           <tr>
-            <td><input type="text" placeholder="Ej: Fresadora / Camión M-01"></td>
+            <td><select><option value="">— Seleccioná una obra primero —</option></select></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
             <td><input type="text" placeholder="Remito"></td>
@@ -315,16 +315,30 @@ async function cargarParteExistente(parteId) {
   // Combustibles
   const tbodyComb = document.getElementById('tbody-comb')
   tbodyComb.innerHTML = ''
-  combustibles.forEach(m => {
-    tbodyComb.insertAdjacentHTML('beforeend', `<tr>
-      <td><input type="text" value="${m.descripcion.replace('⛽ ','')}"></td>
-      <td><input type="number" value="${m.cantidad}" min="0" step="0.01"></td>
-      <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01"></td>
-      <td><input type="text" value="${m.remito||''}"></td>
-      <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
-    </tr>`)
-  })
-
+  if (combustibles.length > 0) {
+    combustibles.forEach(() => {
+      tbodyComb.insertAdjacentHTML('beforeend', `<tr>
+        <td><select><option value="">— Seleccioná equipo —</option></select></td>
+        <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+        <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+        <td><input type="text" placeholder="Remito"></td>
+        <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
+      </tr>`)
+    })
+    actualizarSelectsComb()
+    tbodyComb.querySelectorAll('tr').forEach((row, i) => {
+      const m = combustibles[i]
+      if (!m) return
+      const desc = m.descripcion.replace('⛽ ', '')
+      const sel = row.querySelector('select')
+      const opt = Array.from(sel.options).find(o => o.value === desc)
+      if (opt) sel.value = opt.value
+      const inputs = row.querySelectorAll('input')
+      if (inputs[0]) inputs[0].value = m.cantidad || ''
+      if (inputs[1]) inputs[1].value = m.precio_unitario || ''
+      if (inputs[2]) inputs[2].value = m.remito || ''
+    })
+  }
   // Herramientas
   const tbodyHerr = document.getElementById('tbody-herr')
   tbodyHerr.innerHTML = ''
@@ -349,6 +363,7 @@ async function cargarItems() {
   obraPersonal = []
   actualizarSelectsEq()
   actualizarSelectsPers()
+  actualizarSelectsComb()
 
   if (!obraId) return
 
@@ -380,6 +395,7 @@ async function cargarRecursosParte(obraId) {
 
   actualizarSelectsEq()
   actualizarSelectsPers()
+  actualizarSelectsComb()
 }
 
 function actualizarSelectsEq() {
@@ -483,15 +499,34 @@ function addEq() {
   document.getElementById('tbody-eq').insertAdjacentHTML('beforeend', rowTemplate('eq'))
   actualizarSelectsEq()
 }
+function actualizarSelectsComb() {
+  document.querySelectorAll('#tbody-comb tr').forEach(row => {
+    const sel = row.querySelector('select')
+    if (!sel) return
+    const currentVal = sel.value
+    if (obraEquipos.length === 0) {
+      sel.innerHTML = '<option value="">— Sin equipos asignados a la obra —</option>'
+    } else {
+      sel.innerHTML = '<option value="">— Seleccioná equipo —</option>'
+      obraEquipos.forEach(e => {
+        const name = (e.flota_equipos?.numero_interno ? e.flota_equipos.numero_interno + ' — ' : '') + (e.flota_equipos?.nombre || '')
+        sel.insertAdjacentHTML('beforeend', `<option value="${name}">${name}</option>`)
+      })
+      if (currentVal) sel.value = currentVal
+    }
+  })
+}
+
 function addComb() {
   document.getElementById('tbody-comb').insertAdjacentHTML('beforeend', `
     <tr>
-      <td><input type="text" placeholder="Equipo / Máquina"></td>
-      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td><select><option value="">— Seleccioná equipo —</option></select></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
       <td><input type="text" placeholder="Remito"></td>
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`)
+  actualizarSelectsComb()
 }
 
 function addHerr() {
@@ -620,11 +655,12 @@ async function guardarParte() {
   const combRows = document.querySelectorAll('#tbody-comb tr')
   const combustibles = []
   combRows.forEach(row => {
+    const sel = row.querySelector('select')
+    const desc = sel ? sel.value.trim() : ''
     const inputs = row.querySelectorAll('input')
-    const desc = inputs[0].value.trim()
-    const lts  = parseFloat(inputs[1].value) || 0
+    const lts = parseFloat(inputs[0]?.value) || 0
     if (!desc || lts <= 0) return
-    combustibles.push({ parte_id: pid, descripcion: '⛽ ' + desc, cantidad: lts, unidad: 'lt', precio_unitario: parseFloat(inputs[2].value) || 0, remito: inputs[3].value.trim() })
+    combustibles.push({ parte_id: pid, descripcion: '⛽ ' + desc, cantidad: lts, unidad: 'lt', precio_unitario: parseFloat(inputs[1]?.value) || 0, remito: inputs[2]?.value.trim() || '' })
   })
   if (combustibles.length > 0) await db.from('parte_materiales').insert(combustibles)
 
