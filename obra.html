@@ -231,8 +231,8 @@ async function renderDetalle() {
         <div class="card bl-primary"><div class="card-label">Avance Físico</div><div class="card-value" id="kpi-fisico">—</div><div class="card-sub" id="kpi-fisico-sub">Promedio entre ítems</div></div>
       </div>
       <div class="cards3" style="margin-bottom:20px" id="wrap-ci" style="display:none">
-        <div class="card" style="border-left:4px solid #8e44ad">
-          <div class="card-label">Costos Indirectos Acumulados</div>
+        <div class="card" style="border-left:4px solid #8e44ad;cursor:pointer;transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(142,68,173,.18)'" onmouseleave="this.style.boxShadow=''" onclick="window.location.href='costos-indirectos.html?obra_id='+obraId">
+          <div class="card-label">Costos Indirectos Acumulados <span style="font-size:10px;opacity:.7">↗ ver detalle</span></div>
           <div class="card-value" id="kpi-ci-total">—</div>
           <div class="card-sub">No incluidos en el costo directo</div>
         </div>
