@@ -43,48 +43,52 @@
 <div class="app">
   <div class="sidebar" id="sidebar"></div>
   <div class="main">
-    <div class="ph">
-      <div class="ph-left">
-        <h1>Flota de Equipos</h1>
-        <p>Administrá los equipos y maquinarias disponibles</p>
+    <div class="dashboard-sticky">
+      <div class="ph" style="margin-bottom:16px">
+        <div class="ph-left">
+          <h1>Flota de Equipos</h1>
+          <p>Administrá los equipos y maquinarias disponibles</p>
+        </div>
+        <button class="btn btn-accent" id="btn-agregar" onclick="abrirModal()" style="display:none">+ Agregar Equipo</button>
       </div>
-      <button class="btn btn-accent" id="btn-agregar" onclick="abrirModal()" style="display:none">+ Agregar Equipo</button>
-    </div>
 
-    <!-- Cards resumen -->
-    <div class="cards3" style="margin-bottom:24px">
-      <div class="card bl-primary">
-        <div class="card-label">Total Equipos</div>
-        <div class="card-value" id="cnt-total">—</div>
-        <div class="card-sub">En el sistema</div>
+      <!-- Cards resumen -->
+      <div class="cards3" style="margin-bottom:0">
+        <div class="card bl-primary">
+          <div class="card-label">Total Equipos</div>
+          <div class="card-value" id="cnt-total">—</div>
+          <div class="card-sub">En el sistema</div>
+        </div>
+        <div class="card bl-ok">
+          <div class="card-label">Equipos Propios</div>
+          <div class="card-value" id="cnt-propios">—</div>
+          <div class="card-sub">De la empresa</div>
+        </div>
+        <div class="card bl-warn">
+          <div class="card-label">Equipos Alquilados</div>
+          <div class="card-value" id="cnt-alquilados">—</div>
+          <div class="card-sub">Externos / subcontratados</div>
+        </div>
       </div>
-      <div class="card bl-ok">
-        <div class="card-label">Equipos Propios</div>
-        <div class="card-value" id="cnt-propios">—</div>
-        <div class="card-sub">De la empresa</div>
-      </div>
-      <div class="card bl-warn">
-        <div class="card-label">Equipos Alquilados</div>
-        <div class="card-value" id="cnt-alquilados">—</div>
-        <div class="card-sub">Externos / subcontratados</div>
-      </div>
-    </div>
-
-    <!-- Tabla -->
-    <div class="tbl-wrap">
-      <div class="tbl-head">
-        <h3>Listado de Equipos</h3>
+      <!-- Header tabla dentro del sticky -->
+      <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <h3 style="font-size:15px;font-weight:700;color:var(--text)">Listado de Equipos</h3>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="text" id="buscador" placeholder="Buscar equipo..." oninput="filtrarTabla()"
-            style="padding:8px 14px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;width:220px">
+            style="padding:8px 14px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;width:220px;background:#fff">
           <select id="filtro-tipo" onchange="filtrarTabla()"
-            style="padding:8px 12px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none">
+            style="padding:8px 12px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
             <option value="">Todos los tipos</option>
             <option value="Propio">Propios</option>
             <option value="Alquilado">Alquilados</option>
           </select>
         </div>
       </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tbl-wrap" style="margin-top:16px">
+      <div style="display:none">
       <table id="tabla-flota">
         <thead><tr>
           <th style="width:70px" class="tc">Orden</th>
