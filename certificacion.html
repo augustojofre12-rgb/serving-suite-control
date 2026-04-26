@@ -20,6 +20,7 @@
 .cert-form h3{font-size:15px;font-weight:700;margin-bottom:18px;color:var(--primary)}
 .form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
 .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px}
 .form-group{display:flex;flex-direction:column;gap:6px}
 .form-group label{font-size:12px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
 .form-group select,.form-group input{padding:10px 14px;border:1.5px solid #e0e6e0;border-radius:8px;font-size:14px;color:var(--text);background:#fff;transition:border-color .2s}
@@ -27,43 +28,81 @@
 .form-group select:disabled{background:#f8f9fa;color:#999}
 .cert-actions{display:flex;gap:12px;margin-top:4px;align-items:center}
 
-/* ---- CERT PREVIEW ---- */
-.cert-preview-wrap{background:#fff;border-radius:12px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:24px;display:none}
-.cert-preview-wrap h3{font-size:15px;font-weight:700;margin-bottom:18px;color:var(--primary)}
-.preview-actions{display:flex;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #eee;flex-wrap:wrap;align-items:center}
+/* ---- CERT PREVIEW WRAP ---- */
+.cert-preview-wrap{background:#f4f6f4;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:24px;display:none}
+.cert-preview-wrap h3{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--primary)}
+.preview-actions{display:flex;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #ddd;flex-wrap:wrap;align-items:center}
+.preview-scroll{overflow-x:auto;background:#888;padding:20px;border-radius:8px}
 
-/* ---- EL CERTIFICADO EN SI ---- */
-#cert-doc{background:#fff;padding:40px;max-width:780px;margin:0 auto;font-family:'Segoe UI',sans-serif;font-size:13px;color:#1a1a1a}
-.cert-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #1e6b40}
-.cert-logo-block{display:flex;flex-direction:column;gap:4px}
-.cert-logo-title{font-size:22px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
-.cert-logo-sub{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px}
-.cert-num-block{text-align:right}
-.cert-num-block .cert-num{font-size:28px;font-weight:800;color:#1e6b40}
-.cert-num-block .cert-num-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px}
-.cert-title-main{text-align:center;margin-bottom:28px}
-.cert-title-main h2{font-size:17px;font-weight:700;color:#1a1a1a;letter-spacing:.3px}
-.cert-title-main p{font-size:12px;color:#666;margin-top:4px}
-.cert-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:24px}
-.cert-info-item{padding:10px 16px;border-bottom:1px solid #eee}
-.cert-info-item:nth-last-child(-n+2){border-bottom:none}
-.cert-info-item label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:2px}
-.cert-info-item span{font-size:13px;font-weight:600;color:#1a1a1a}
-.cert-info-item.full{grid-column:1/-1}
-.cert-section-title{font-size:12px;font-weight:700;color:#1e6b40;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:20px;padding-bottom:4px;border-bottom:2px solid #e8f4ed}
-.cert-table{width:100%;border-collapse:collapse;font-size:12.5px}
-.cert-table th{background:#1e6b40;color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
-.cert-table th:last-child,.cert-table td:last-child{text-align:right}
-.cert-table td{padding:9px 12px;border-bottom:1px solid #f0f0f0;color:#2c3e50}
-.cert-table tr:last-child td{border-bottom:none}
-.cert-table tr:nth-child(even) td{background:#f9fbf9}
-.cert-total-row{background:#1e6b40!important}
-.cert-total-row td{color:#fff!important;font-weight:700;font-size:13px;border-bottom:none!important;background:none!important}
-.cert-footer{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
-.cert-firma{text-align:center}
-.cert-firma-line{border-top:1.5px solid #333;margin-top:60px;padding-top:8px;font-size:12px;font-weight:600;color:#333}
-.cert-firma-sub{font-size:11px;color:#888;margin-top:2px}
-.cert-nota{margin-top:24px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:12px}
+/* ---- EL CERTIFICADO (diseñado para A4 horizontal) ---- */
+#cert-doc{
+  background:#fff;
+  padding:32px 36px;
+  width:1050px;
+  margin:0 auto;
+  font-family:'Segoe UI',Arial,sans-serif;
+  font-size:12px;
+  color:#1a1a1a;
+  box-shadow:0 4px 24px rgba(0,0,0,.3);
+}
+
+/* Header */
+.cd-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  border-bottom:3px solid #1e6b40;
+  padding-bottom:14px;
+  margin-bottom:16px;
+}
+.cd-logo-title{font-size:20px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
+.cd-logo-sub{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.cd-doc-title{text-align:center}
+.cd-doc-title h2{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px}
+.cd-doc-title p{font-size:11px;color:#666;margin:0}
+.cd-num-block{text-align:right}
+.cd-num-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.7px}
+.cd-num{font-size:28px;font-weight:800;color:#1e6b40;line-height:1}
+.cd-num-sub{font-size:10px;color:#888;margin-top:3px}
+
+/* Info grid */
+.cd-info{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11.5px}
+.cd-info td{padding:5px 10px;border:1px solid #ccc}
+.cd-info .lbl{font-size:9.5px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:1%;background:#f8f9fa}
+.cd-info .val{font-weight:600;color:#1a1a1a}
+
+/* Main table */
+.cd-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:0}
+.cd-table th{background:#1e6b40;color:#fff;padding:7px 6px;text-align:center;font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;border:1px solid #155532;white-space:nowrap}
+.cd-table th.th-left{text-align:left}
+.cd-table td{padding:6px 6px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle}
+.cd-table td.tr{text-align:right}
+.cd-table td.tc{text-align:center}
+.cd-table tbody tr:nth-child(even) td{background:#f9fbf9}
+.cd-table tbody tr:hover td{background:#eef8f2}
+.cd-table .td-desc{font-weight:600}
+.cd-table .td-num{text-align:center;font-weight:700;color:#1e6b40}
+.cd-table tfoot td{font-weight:700;background:#f0f7f3;border:1px solid #ccc}
+.cd-table tfoot .total-row td{background:#1e6b40;color:#fff;font-weight:800;font-size:12px;border:1px solid #155532}
+.th-sub{background:#155532!important;font-size:9px!important}
+
+/* Footer financiero */
+.cd-fin{margin-top:18px;display:flex;justify-content:flex-end}
+.cd-fin-table{border-collapse:collapse;font-size:12px;min-width:340px}
+.cd-fin-table td{padding:7px 14px;border:1px solid #ddd}
+.cd-fin-table .fin-lbl{font-weight:700;text-align:right;color:#555;background:#f8f9fa;white-space:nowrap}
+.cd-fin-table .fin-val{text-align:right;font-weight:600;min-width:130px}
+.cd-fin-table .fin-total td{background:#1e6b40;color:#fff;font-weight:800;font-size:14px;border-color:#155532}
+.cd-fin-table .fin-neto td{background:#e8f4ed;color:#1e6b40;font-weight:700}
+
+/* Firmas */
+.cd-firmas{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:32px;padding-top:0}
+.cd-firma{text-align:center}
+.cd-firma-line{border-top:1.5px solid #333;margin-top:52px;padding-top:7px;font-size:12px;font-weight:700;color:#1a1a1a}
+.cd-firma-sub{font-size:10px;color:#888;margin-top:2px}
+
+/* Nota al pie */
+.cd-nota{margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px}
 
 /* ---- HISTORIAL ---- */
 .historial-wrap{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -93,6 +132,11 @@
 
 .info-box{background:#e8f4ed;border:1.5px solid #b8dfc9;border-radius:8px;padding:12px 16px;font-size:13px;color:#1e6b40;margin-bottom:16px}
 .warn-box{background:#fff8ec;border:1.5px solid #f5d97a;border-radius:8px;padding:12px 16px;font-size:13px;color:#875a00;margin-bottom:16px;display:none}
+.sep{height:1px;background:#eee;margin:16px 0}
+
+@media print {
+  #cert-doc { box-shadow: none; }
+}
 </style>
 </head>
 <body>
@@ -102,7 +146,7 @@
     <div class="ph">
       <div class="ph-left">
         <h1>Certificación</h1>
-        <p>Gestión de certificaciones de subcontratistas y equipos</p>
+        <p>Gestión de certificaciones de equipos y subcontratistas</p>
       </div>
     </div>
 
@@ -115,27 +159,66 @@
     <!-- TAB: EQUIPOS -->
     <div class="tab-content active" id="tab-equipos">
 
-      <!-- FORMULARIO DE GENERACIÓN -->
+      <!-- FORMULARIO -->
       <div class="cert-form">
         <h3>📋 Generar Certificado de Equipos</h3>
+
         <div class="form-row">
           <div class="form-group">
-            <label>Obra</label>
+            <label>Obra *</label>
             <select id="sel-obra" onchange="obraSeleccionada()">
               <option value="">— Seleccioná una obra —</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Fecha Desde</label>
+            <label>Período (texto)</label>
+            <input type="text" id="inp-periodo" placeholder="Ej: OCTUBRE 2025">
+          </div>
+          <div class="form-group">
+            <label>Fecha de Medición</label>
+            <input type="date" id="inp-fecha-medicion">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Subcontratista / Proveedor</label>
+            <input type="text" id="inp-subcontratista" placeholder="Ej: RENTPAS S.A.">
+          </div>
+          <div class="form-group">
+            <label>Representante</label>
+            <input type="text" id="inp-representante" placeholder="Ej: Hugo Gatica">
+          </div>
+          <div class="form-group">
+            <label>Orden de Compra N°</label>
+            <input type="text" id="inp-orden-compra" placeholder="Ej: OC-2025-042">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="form-row-4">
+          <div class="form-group">
+            <label>Período Desde *</label>
             <input type="date" id="fecha-desde" onchange="validarFechas()">
           </div>
           <div class="form-group">
-            <label>Fecha Hasta</label>
+            <label>Período Hasta *</label>
             <input type="date" id="fecha-hasta" onchange="validarFechas()">
           </div>
+          <div class="form-group">
+            <label>Descuento $</label>
+            <input type="number" id="inp-descuento" placeholder="0" min="0" step="0.01" value="0">
+          </div>
+          <div class="form-group">
+            <label>IVA %</label>
+            <input type="number" id="inp-iva" placeholder="21" min="0" step="0.01" value="21">
+          </div>
         </div>
+
         <div id="info-obra" style="display:none" class="info-box"></div>
-        <div id="warn-fechas" class="warn-box">⚠️ El período seleccionado no contiene datos de partes de obra para esta obra.</div>
+        <div id="warn-fechas" class="warn-box">⚠️ No se encontraron equipos ni registros de partes para el período seleccionado.</div>
+
         <div class="cert-actions">
           <button class="btn btn-primary" onclick="generarVista()" id="btn-vista">
             👁️ Ver Vista Previa
@@ -144,22 +227,18 @@
         </div>
       </div>
 
-      <!-- PREVIEW DEL CERTIFICADO -->
+      <!-- PREVIEW -->
       <div class="cert-preview-wrap" id="preview-wrap">
         <h3>Vista Previa del Certificado</h3>
         <div class="preview-actions">
           <button class="btn btn-accent" onclick="guardarYGenerarPDF()" id="btn-pdf">
             💾 Guardar y Generar PDF
           </button>
-          <button class="btn btn-outline" onclick="cerrarVista()">
-            ✕ Cerrar Vista Previa
-          </button>
+          <button class="btn btn-outline" onclick="cerrarVista()">✕ Cerrar</button>
           <span id="pdf-status" style="font-size:12px;color:var(--gray);margin-left:8px"></span>
         </div>
-
-        <!-- DOCUMENTO DEL CERTIFICADO -->
-        <div id="cert-doc">
-          <!-- Se llena dinámicamente -->
+        <div class="preview-scroll">
+          <div id="cert-doc"><!-- dinámico --></div>
         </div>
       </div>
 
@@ -174,7 +253,7 @@
         </div>
       </div>
 
-    </div>
+    </div><!-- /tab-equipos -->
 
     <!-- TAB: SUBCONTRATISTAS -->
     <div class="tab-content" id="tab-subcontratistas">
@@ -185,8 +264,8 @@
       </div>
     </div>
 
-  </div>
-</div>
+  </div><!-- /main -->
+</div><!-- /app -->
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -197,13 +276,13 @@ let usuario = null
 let obras = []
 let obraActual = null
 let numCertActual = null
-let itemsCertActual = []
+let itemsCertActual = []   // computed items with ANT/ACTUAL/ACUM
 let certGuardado = false
 let certGuardadoId = null
 
-// =============================================
+// ============================================================
 //  INIT
-// =============================================
+// ============================================================
 async function init() {
   usuario = await requireAuth()
   if (!usuario) return
@@ -223,9 +302,9 @@ async function cargarObras() {
   })
 }
 
-// =============================================
+// ============================================================
 //  TABS
-// =============================================
+// ============================================================
 function cambiarTab(tab, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
@@ -233,9 +312,9 @@ function cambiarTab(tab, btn) {
   btn.classList.add('active')
 }
 
-// =============================================
-//  OBRA SELECCIONADA — cargar datos y defaults
-// =============================================
+// ============================================================
+//  OBRA SELECCIONADA
+// ============================================================
 async function obraSeleccionada() {
   const obraId = document.getElementById('sel-obra').value
   certGuardado = false
@@ -244,24 +323,24 @@ async function obraSeleccionada() {
   if (!obraId) {
     obraActual = null
     document.getElementById('info-obra').style.display = 'none'
-    document.getElementById('fecha-desde').value = ''
-    document.getElementById('fecha-hasta').value = ''
     document.getElementById('preview-wrap').style.display = 'none'
-    document.getElementById('historial-content').innerHTML = `<div class="empty" style="padding:30px 0"><div class="empty-icon">📂</div><p>Seleccioná una obra para ver su historial de certificados</p></div>`
+    document.getElementById('historial-content').innerHTML = `<div class="empty" style="padding:30px 0"><div class="empty-icon">📂</div><p>Seleccioná una obra para ver su historial</p></div>`
     return
   }
 
   obraActual = obras.find(o => o.id === obraId)
   if (!obraActual) return
 
-  // Defaults de fechas
+  // Defaults de fechas: primer día del mes actual → hoy
   const hoy = new Date()
-  const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)
-  const desde = obraActual.fecha_inicio ? obraActual.fecha_inicio.substring(0, 10) : hoy.toISOString().substring(0, 10)
-  const hasta = ultimoDia.toISOString().substring(0, 10)
+  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+  document.getElementById('fecha-desde').value = primerDia.toISOString().substring(0, 10)
+  document.getElementById('fecha-hasta').value  = hoy.toISOString().substring(0, 10)
 
-  document.getElementById('fecha-desde').value = desde
-  document.getElementById('fecha-hasta').value = hasta
+  // Default período texto
+  const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
+  document.getElementById('inp-periodo').value = meses[hoy.getMonth()] + ' ' + hoy.getFullYear()
+  document.getElementById('inp-fecha-medicion').value = hoy.toISOString().substring(0, 10)
 
   // Info box
   const infoEl = document.getElementById('info-obra')
@@ -270,13 +349,11 @@ async function obraSeleccionada() {
   infoEl.innerHTML = `<strong>${obraActual.nombre}</strong>${ubicacion}${expediente}`
   infoEl.style.display = 'block'
 
-  // Calcular próximo número
   await calcularNumCert()
-
-  // Cargar historial
   await cargarHistorial()
 
   document.getElementById('preview-wrap').style.display = 'none'
+  document.getElementById('warn-fechas').style.display = 'none'
 }
 
 async function calcularNumCert() {
@@ -294,26 +371,24 @@ async function calcularNumCert() {
 function validarFechas() {
   const d = document.getElementById('fecha-desde').value
   const h = document.getElementById('fecha-hasta').value
-  if (d && h && d > h) {
-    document.getElementById('fecha-hasta').value = d
-  }
+  if (d && h && d > h) document.getElementById('fecha-hasta').value = d
 }
 
-// =============================================
+// ============================================================
 //  GENERAR VISTA PREVIA
-// =============================================
+// ============================================================
 async function generarVista() {
   const obraId = document.getElementById('sel-obra').value
   if (!obraId) { toast('Seleccioná una obra primero', 'err'); return }
 
   const desde = document.getElementById('fecha-desde').value
-  const hasta = document.getElementById('fecha-hasta').value
+  const hasta  = document.getElementById('fecha-hasta').value
   if (!desde || !hasta) { toast('Ingresá las fechas del período', 'err'); return }
 
   certGuardado = false
   certGuardadoId = null
   document.getElementById('btn-pdf').disabled = false
-  document.getElementById('btn-pdf').textContent = '💾 Guardar y Generar PDF'
+  document.getElementById('btn-pdf').innerHTML = '💾 Guardar y Generar PDF'
 
   const btn = document.getElementById('btn-vista')
   btn.innerHTML = '<span class="loading-spin"></span> Cargando...'
@@ -322,71 +397,97 @@ async function generarVista() {
   document.getElementById('warn-fechas').style.display = 'none'
 
   try {
-    // Buscar partes del período
+    // 1. Equipos asignados a la obra (master list para la tabla)
+    const { data: obraEqs, error: errEqs } = await db
+      .from('obra_equipos')
+      .select('id, precio_hora, cantidad_contratada, flota_equipos(nombre, numero_interno, unidad_medida)')
+      .eq('obra_id', obraId)
+      .order('id')
+
+    if (errEqs) throw errEqs
+
+    if (!obraEqs || obraEqs.length === 0) {
+      document.getElementById('warn-fechas').style.display = 'block'
+      document.getElementById('warn-fechas').textContent = '⚠️ Esta obra no tiene equipos asignados. Asignales en la pestaña de la obra.'
+      btn.innerHTML = '👁️ Ver Vista Previa'; btn.disabled = false
+      return
+    }
+
+    // 2. Todos los partes de la obra (necesitamos fechas)
     const { data: partes } = await db
       .from('partes_diarios')
       .select('id, fecha')
       .eq('obra_id', obraId)
-      .gte('fecha', desde)
-      .lte('fecha', hasta)
 
-    if (!partes || partes.length === 0) {
-      document.getElementById('warn-fechas').style.display = 'block'
-      document.getElementById('preview-wrap').style.display = 'none'
-      btn.innerHTML = '👁️ Ver Vista Previa'
-      btn.disabled = false
-      return
+    const parteIds = (partes || []).map(p => p.id)
+    const fechaMap = {}
+    ;(partes || []).forEach(p => { fechaMap[p.id] = p.fecha })
+
+    // 3. Todos los parte_equipos de la obra
+    let allEqRows = []
+    if (parteIds.length > 0) {
+      const { data: eqRows } = await db
+        .from('parte_equipos')
+        .select('parte_id, descripcion, horas_utilizadas, precio_hora')
+        .in('parte_id', parteIds)
+      allEqRows = eqRows || []
     }
 
-    const parteIds = partes.map(p => p.id)
-
-    // Buscar equipos de esos partes
-    const { data: equipos } = await db
-      .from('parte_equipos')
-      .select('descripcion, tipo, horas_utilizadas, precio_hora')
-      .in('parte_id', parteIds)
-
-    if (!equipos || equipos.length === 0) {
-      document.getElementById('warn-fechas').style.display = 'block'
-      document.getElementById('preview-wrap').style.display = 'none'
-      btn.innerHTML = '👁️ Ver Vista Previa'
-      btn.disabled = false
-      return
-    }
-
-    // Agrupar por descripcion + tipo
-    const agrupado = {}
-    equipos.forEach(eq => {
-      const key = `${eq.descripcion}||${eq.tipo}||${eq.precio_hora}`
-      if (!agrupado[key]) {
-        agrupado[key] = {
-          descripcion: eq.descripcion || '—',
-          tipo: eq.tipo || '—',
-          precio_hora: parseFloat(eq.precio_hora) || 0,
-          horas_total: 0
-        }
-      }
-      agrupado[key].horas_total += parseFloat(eq.horas_utilizadas) || 0
-    })
-
-    itemsCertActual = Object.values(agrupado)
-    itemsCertActual.forEach(item => {
-      item.subtotal = item.horas_total * item.precio_hora
-    })
-
-    const totalMonto = itemsCertActual.reduce((s, i) => s + i.subtotal, 0)
-
-    // Recalcular número (por si se generó otro mientras tanto)
+    // 4. Construir items con ANT / ACTUAL / ACUM
     await calcularNumCert()
 
-    // Renderizar doc
-    renderCertDoc(desde, hasta, totalMonto)
+    itemsCertActual = obraEqs.map((oeq, idx) => {
+      const fe = oeq.flota_equipos
+      const desc = fe
+        ? (fe.numero_interno ? fe.numero_interno + ' — ' : '') + (fe.nombre || '')
+        : '—'
+      const unidad      = fe?.unidad_medida || 'Hs'
+      const cantContrat = parseFloat(oeq.cantidad_contratada) || 0
+      const precioUnit  = parseFloat(oeq.precio_hora) || 0
+      const totalAprox  = cantContrat * precioUnit
+
+      // Rows de este equipo en los partes
+      const rowsEq = allEqRows.filter(r => r.descripcion === desc)
+
+      const horasAnt = rowsEq
+        .filter(r => fechaMap[r.parte_id] && fechaMap[r.parte_id] < desde)
+        .reduce((s, r) => s + (parseFloat(r.horas_utilizadas) || 0), 0)
+
+      const horasActual = rowsEq
+        .filter(r => {
+          const f = fechaMap[r.parte_id]
+          return f && f >= desde && f <= hasta
+        })
+        .reduce((s, r) => s + (parseFloat(r.horas_utilizadas) || 0), 0)
+
+      const horasAcum  = horasAnt + horasActual
+      const montoAnt    = horasAnt * precioUnit
+      const montoActual = horasActual * precioUnit
+      const montoAcum   = horasAcum * precioUnit
+
+      return {
+        num: idx + 1,
+        descripcion: desc,
+        unidad,
+        cantContrat,
+        precioUnit,
+        totalAprox,
+        horasAnt,
+        horasActual,
+        horasAcum,
+        montoAnt,
+        montoActual,
+        montoAcum
+      }
+    })
+
+    renderCertDoc()
 
     document.getElementById('preview-wrap').style.display = 'block'
     document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  } catch (e) {
-    toast('Error al cargar los datos', 'err')
+  } catch(e) {
+    toast('Error al cargar los datos: ' + e.message, 'err')
     console.error(e)
   }
 
@@ -394,123 +495,184 @@ async function generarVista() {
   btn.disabled = false
 }
 
-// =============================================
-//  RENDERIZAR EL DOCUMENTO
-// =============================================
-function renderCertDoc(desde, hasta, totalMonto) {
-  const obra = obraActual
-  const num = numCertActual
+// ============================================================
+//  RENDERIZAR DOCUMENTO
+// ============================================================
+function renderCertDoc(modoReimprimir) {
+  const obra     = obraActual
+  const num      = numCertActual
+  const desde    = document.getElementById('fecha-desde').value
+  const hasta    = document.getElementById('fecha-hasta').value
+  const periodo  = document.getElementById('inp-periodo').value || '—'
+  const fechaMed = document.getElementById('inp-fecha-medicion').value
+  const subc     = document.getElementById('inp-subcontratista').value || '—'
+  const repr     = document.getElementById('inp-representante').value || '—'
+  const orden    = document.getElementById('inp-orden-compra').value || '—'
+  const descuento = parseFloat(document.getElementById('inp-descuento').value) || 0
+  const ivaPct   = parseFloat(document.getElementById('inp-iva').value) || 21
 
-  const formatFecha = (s) => {
+  const fmtF = s => {
     if (!s) return '—'
-    const [y, m, d] = s.split('-')
+    const [y, m, d] = (s.substring ? s.substring(0,10) : s).split('-')
     return `${d}/${m}/${y}`
   }
-
-  const rowsHtml = itemsCertActual.map(item => `
-    <tr>
-      <td>${item.descripcion}</td>
-      <td>${item.tipo}</td>
-      <td style="text-align:right">${item.horas_total % 1 === 0 ? item.horas_total : item.horas_total.toFixed(2)} hs</td>
-      <td style="text-align:right">${formatPeso(item.precio_hora)}</td>
-      <td style="text-align:right">${formatPeso(item.subtotal)}</td>
-    </tr>
-  `).join('')
+  const fmtN = (v, dec) => {
+    if (v === undefined || v === null) return '—'
+    const n = parseFloat(v)
+    if (isNaN(n)) return '—'
+    return dec !== undefined ? n.toFixed(dec) : (n % 1 === 0 ? n.toString() : n.toFixed(2))
+  }
 
   const hoy = new Date()
   const fechaEmision = `${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${hoy.getFullYear()}`
 
+  // Totales
+  const totalAprox   = itemsCertActual.reduce((s,i) => s + i.totalAprox, 0)
+  const totalAnt     = itemsCertActual.reduce((s,i) => s + i.montoAnt, 0)
+  const totalActual  = itemsCertActual.reduce((s,i) => s + i.montoActual, 0)
+  const totalAcum    = itemsCertActual.reduce((s,i) => s + i.montoAcum, 0)
+  const neto         = totalAcum - descuento
+  const ivaMonto     = neto * (ivaPct / 100)
+  const totalPagar   = neto + ivaMonto
+
+  // Filas
+  const rows = itemsCertActual.map(i => `
+    <tr>
+      <td class="td-num">${i.num}</td>
+      <td class="td-desc">${i.descripcion}</td>
+      <td class="tc">${i.unidad}</td>
+      <td class="tr">${fmtN(i.cantContrat)}</td>
+      <td class="tr">${formatPeso(i.precioUnit)}</td>
+      <td class="tr">${formatPeso(i.totalAprox)}</td>
+      <td class="tr">${fmtN(i.horasAnt)}</td>
+      <td class="tr">${fmtN(i.horasActual)}</td>
+      <td class="tr">${fmtN(i.horasAcum)}</td>
+      <td class="tr">${formatPeso(i.montoAnt)}</td>
+      <td class="tr">${formatPeso(i.montoActual)}</td>
+      <td class="tr" style="font-weight:700">${formatPeso(i.montoAcum)}</td>
+    </tr>`).join('')
+
   document.getElementById('cert-doc').innerHTML = `
-    <div class="cert-header">
-      <div class="cert-logo-block">
-        <div class="cert-logo-title">SERVING SUITE</div>
-        <div class="cert-logo-sub">Control de Gestión de Obra</div>
-        <div style="margin-top:8px;font-size:12px;color:#555">Fecha de emisión: <strong>${fechaEmision}</strong></div>
+    <!-- ENCABEZADO -->
+    <div class="cd-header">
+      <div>
+        <div class="cd-logo-title">SERVING SUITE</div>
+        <div class="cd-logo-sub">Control de Gestión de Obra</div>
+        <div style="margin-top:6px;font-size:11px;color:#555">Fecha de emisión: <strong>${fechaEmision}</strong></div>
       </div>
-      <div class="cert-num-block">
-        <div class="cert-num-label">Certificado N°</div>
-        <div class="cert-num">${String(num).padStart(3,'0')}</div>
-        <div style="font-size:11px;color:#888;margin-top:4px">Equipos — ${obra.nombre.substring(0,30)}${obra.nombre.length>30?'...':''}</div>
+      <div class="cd-doc-title">
+        <h2>CERTIFICADO DE ALQUILER DE EQUIPOS</h2>
+        <p>${fmtF(desde)} — ${fmtF(hasta)}</p>
       </div>
-    </div>
-
-    <div class="cert-title-main">
-      <h2>CERTIFICADO DE ALQUILER DE EQUIPOS</h2>
-      <p>Período: ${formatFecha(desde)} al ${formatFecha(hasta)}</p>
-    </div>
-
-    <div class="cert-section-title">Datos de la Obra</div>
-    <div class="cert-info-grid">
-      <div class="cert-info-item full">
-        <label>Obra / Contratación</label>
-        <span>${obra.nombre}</span>
-      </div>
-      ${obra.ubicacion ? `<div class="cert-info-item"><label>Ubicación</label><span>${obra.ubicacion}</span></div>` : ''}
-      ${obra.numero_expediente ? `<div class="cert-info-item"><label>N° de Expediente</label><span>${obra.numero_expediente}</span></div>` : ''}
-      <div class="cert-info-item">
-        <label>Fecha de Inicio</label>
-        <span>${formatFecha(obra.fecha_inicio ? obra.fecha_inicio.substring(0,10) : null)}</span>
-      </div>
-      <div class="cert-info-item">
-        <label>Estado</label>
-        <span>${obra.estado === 'activa' ? 'En ejecución' : obra.estado || '—'}</span>
+      <div class="cd-num-block">
+        <div class="cd-num-label">Certificado N°</div>
+        <div class="cd-num">${String(num).padStart(3,'0')}</div>
+        <div class="cd-num-sub">${(obra.nombre || '').substring(0,35)}${(obra.nombre || '').length > 35 ? '…' : ''}</div>
       </div>
     </div>
 
-    <div class="cert-section-title">Proveedor</div>
-    <div class="cert-info-grid">
-      <div class="cert-info-item">
-        <label>Razón Social</label>
-        <span>RENTPAS</span>
-      </div>
-      <div class="cert-info-item">
-        <label>Representante</label>
-        <span>Hugo Gatica</span>
-      </div>
-      <div class="cert-info-item">
-        <label>Período Certificado</label>
-        <span>${formatFecha(desde)} — ${formatFecha(hasta)}</span>
-      </div>
-      <div class="cert-info-item">
-        <label>N° de Certificado</label>
-        <span>N° ${String(num).padStart(3,'0')}</span>
-      </div>
-    </div>
+    <!-- INFO OBRA / PROVEEDOR -->
+    <table class="cd-info">
+      <tr>
+        <td class="lbl">OBRA</td>
+        <td class="val" colspan="3">${obra.nombre || '—'}</td>
+        <td class="lbl">FECHA MEDICIÓN</td>
+        <td class="val">${fmtF(fechaMed)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">PERÍODO</td>
+        <td class="val">${periodo}</td>
+        <td class="lbl">ORDEN DE COMPRA N°</td>
+        <td class="val">${orden}</td>
+        <td class="lbl">RUBRO</td>
+        <td class="val">Equipos</td>
+      </tr>
+      <tr>
+        <td class="lbl">SUBCONTRATISTA</td>
+        <td class="val" colspan="3">${subc}</td>
+        <td class="lbl">REPRESENTANTE</td>
+        <td class="val">${repr}</td>
+      </tr>
+    </table>
 
-    <div class="cert-section-title">Detalle de Equipos Utilizados</div>
-    <table class="cert-table">
+    <!-- TABLA PRINCIPAL -->
+    <table class="cd-table">
       <thead>
         <tr>
-          <th>Descripción</th>
-          <th>Tipo</th>
-          <th style="text-align:right">Horas Trabajadas</th>
-          <th style="text-align:right">Precio / Hora</th>
-          <th style="text-align:right">Subtotal</th>
+          <th rowspan="2" style="width:36px">ITEM</th>
+          <th rowspan="2" class="th-left">DESCRIPCIÓN</th>
+          <th rowspan="2" style="width:46px">UNID</th>
+          <th rowspan="2" style="width:62px">CANT</th>
+          <th rowspan="2" style="width:88px">P. UNITARIO</th>
+          <th rowspan="2" style="width:96px">TOTAL APROX</th>
+          <th colspan="3" style="width:204px">CANTIDAD</th>
+          <th colspan="3" style="width:282px">MONTO</th>
+        </tr>
+        <tr>
+          <th class="th-sub" style="width:68px">ANT.</th>
+          <th class="th-sub" style="width:68px">ACTUAL</th>
+          <th class="th-sub" style="width:68px">ACUM.</th>
+          <th class="th-sub" style="width:94px">ANT.</th>
+          <th class="th-sub" style="width:94px">ACTUAL</th>
+          <th class="th-sub" style="width:94px">ACUM.</th>
         </tr>
       </thead>
       <tbody>
-        ${rowsHtml}
-        <tr class="cert-total-row">
-          <td colspan="4" style="text-align:right;padding-right:20px">TOTAL A CERTIFICAR</td>
-          <td style="text-align:right">${formatPeso(totalMonto)}</td>
-        </tr>
+        ${rows}
       </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-weight:700;padding-right:10px">TOTALES</td>
+          <td class="tr">${formatPeso(totalAprox)}</td>
+          <td></td><td></td><td></td>
+          <td class="tr">${formatPeso(totalAnt)}</td>
+          <td class="tr">${formatPeso(totalActual)}</td>
+          <td class="tr" style="font-weight:800">${formatPeso(totalAcum)}</td>
+        </tr>
+      </tfoot>
     </table>
 
-    <div class="cert-footer">
-      <div class="cert-firma">
-        <div class="cert-firma-line">Hugo Gatica</div>
-        <div class="cert-firma-sub">Representante — RENTPAS</div>
-        <div class="cert-firma-sub">Proveedor</div>
+    <!-- FOOTER FINANCIERO -->
+    <div class="cd-fin">
+      <table class="cd-fin-table">
+        <tr>
+          <td class="fin-lbl">MONTO ACUMULADO</td>
+          <td class="fin-val">${formatPeso(totalAcum)}</td>
+        </tr>
+        <tr>
+          <td class="fin-lbl">DESCUENTOS</td>
+          <td class="fin-val" style="color:var(--danger)">- ${formatPeso(descuento)}</td>
+        </tr>
+        <tr class="fin-neto">
+          <td class="fin-lbl" style="color:#1e6b40">NETO A PAGAR</td>
+          <td class="fin-val" style="color:#1e6b40;font-weight:800">${formatPeso(neto)}</td>
+        </tr>
+        <tr>
+          <td class="fin-lbl">IVA (${ivaPct}%)</td>
+          <td class="fin-val">${formatPeso(ivaMonto)}</td>
+        </tr>
+        <tr class="fin-total">
+          <td class="fin-lbl" style="color:#fff;font-size:14px">TOTAL A PAGAR</td>
+          <td class="fin-val" style="color:#fff;font-size:16px">${formatPeso(totalPagar)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- FIRMAS -->
+    <div class="cd-firmas">
+      <div class="cd-firma">
+        <div class="cd-firma-line">${repr !== '—' ? repr : '&nbsp;'}</div>
+        <div class="cd-firma-sub">${subc !== '—' ? subc : 'Proveedor'}</div>
+        <div class="cd-firma-sub">Subcontratista</div>
       </div>
-      <div class="cert-firma">
-        <div class="cert-firma-line">Conformidad</div>
-        <div class="cert-firma-sub">Responsable de Obra</div>
-        <div class="cert-firma-sub">Serving Suite</div>
+      <div class="cd-firma">
+        <div class="cd-firma-line">Conformidad</div>
+        <div class="cd-firma-sub">Responsable de Obra</div>
+        <div class="cd-firma-sub">Serving Suite</div>
       </div>
     </div>
 
-    <div class="cert-nota">
+    <div class="cd-nota">
       Documento generado por Serving Suite Control · ${fechaEmision}
     </div>
   `
@@ -520,16 +682,16 @@ function cerrarVista() {
   document.getElementById('preview-wrap').style.display = 'none'
 }
 
-// =============================================
+// ============================================================
 //  GUARDAR EN BD Y GENERAR PDF
-// =============================================
+// ============================================================
 async function guardarYGenerarPDF() {
   if (!obraActual || !itemsCertActual.length) return
 
   const btn = document.getElementById('btn-pdf')
   const statusEl = document.getElementById('pdf-status')
 
-  // Si ya fue guardado, solo generar PDF
+  // Si ya fue guardado, solo reimprimir
   if (certGuardado && certGuardadoId) {
     statusEl.textContent = 'Generando PDF...'
     await generarPDF()
@@ -541,39 +703,66 @@ async function guardarYGenerarPDF() {
   btn.disabled = true
   statusEl.textContent = ''
 
-  const desde = document.getElementById('fecha-desde').value
-  const hasta = document.getElementById('fecha-hasta').value
-  const totalMonto = itemsCertActual.reduce((s, i) => s + i.subtotal, 0)
+  const desde      = document.getElementById('fecha-desde').value
+  const hasta      = document.getElementById('fecha-hasta').value
+  const periodo    = document.getElementById('inp-periodo').value || null
+  const fechaMed   = document.getElementById('inp-fecha-medicion').value || null
+  const orden      = document.getElementById('inp-orden-compra').value || null
+  const subc       = document.getElementById('inp-subcontratista').value || null
+  const repr       = document.getElementById('inp-representante').value || null
+  const descuento  = parseFloat(document.getElementById('inp-descuento').value) || 0
+  const ivaPct     = parseFloat(document.getElementById('inp-iva').value) || 21
+
+  const totalAcum   = itemsCertActual.reduce((s,i) => s + i.montoAcum, 0)
+  const neto        = totalAcum - descuento
+  const ivaMonto    = neto * (ivaPct / 100)
+  const totalPagar  = neto + ivaMonto
 
   try {
-    // Recalcular número justo antes de guardar (evitar duplicados)
     await calcularNumCert()
 
-    // Guardar certificado cabecera
     const { data: cert, error: errCert } = await db
       .from('certificados_equipos')
       .insert({
-        obra_id: obraActual.id,
-        numero: numCertActual,
-        fecha_desde: desde,
-        fecha_hasta: hasta,
-        proveedor: 'Hugo Gatica — RENTPAS',
-        monto_total: totalMonto,
-        creado_por: usuario.id
+        obra_id:        obraActual.id,
+        numero:         numCertActual,
+        fecha_desde:    desde,
+        fecha_hasta:    hasta,
+        proveedor:      subc,        // reutilizamos columna proveedor para subcontratista
+        monto_total:    totalAcum,
+        creado_por:     usuario.id,
+        // Nuevas columnas (requieren ALTER TABLE)
+        periodo:        periodo,
+        fecha_medicion: fechaMed,
+        orden_compra:   orden,
+        descuento:      descuento,
+        representante:  repr,
+        iva_porcentaje: ivaPct,
+        neto_pagar:     neto,
+        total_pagar:    totalPagar
       })
       .select()
       .single()
 
     if (errCert) throw errCert
 
-    // Guardar ítems
-    const items = itemsCertActual.map(item => ({
-      certificado_id: cert.id,
-      equipo_descripcion: item.descripcion,
-      tipo: item.tipo,
-      horas_total: item.horas_total,
-      precio_hora: item.precio_hora,
-      subtotal: item.subtotal
+    // Items
+    const items = itemsCertActual.map(i => ({
+      certificado_id:     cert.id,
+      equipo_descripcion: i.descripcion,
+      tipo:               i.unidad,       // reutilizamos 'tipo' para 'unidad'
+      horas_total:        i.horasAcum,
+      precio_hora:        i.precioUnit,
+      subtotal:           i.montoAcum,
+      // Nuevas columnas (requieren ALTER TABLE)
+      unidad:             i.unidad,
+      cantidad_contratada: i.cantContrat,
+      horas_ant:          i.horasAnt,
+      horas_actual:       i.horasActual,
+      horas_acum:         i.horasAcum,
+      monto_ant:          i.montoAnt,
+      monto_actual:       i.montoActual,
+      monto_acum:         i.montoAcum
     }))
 
     const { error: errItems } = await db.from('certificados_equipos_items').insert(items)
@@ -581,32 +770,33 @@ async function guardarYGenerarPDF() {
 
     certGuardado = true
     certGuardadoId = cert.id
-
-    // Incrementar para el próximo
+    const numGuardado = numCertActual
     numCertActual++
 
     toast('Certificado guardado correctamente', 'ok')
     statusEl.textContent = 'Generando PDF...'
 
-    // Actualizar doc con número confirmado (numCertActual - 1 = el guardado)
-    renderCertDoc(desde, hasta, totalMonto)
-    // Ajustar a número real guardado
-    const numGuardado = numCertActual - 1
-    numCertActual = numGuardado // revertir para que el doc muestre el correcto
-    renderCertDoc(desde, hasta, totalMonto)
-    numCertActual++ // volver a incrementar para el próximo
+    // Re-renderizar con número correcto
+    const prevNum = numCertActual
+    numCertActual = numGuardado
+    renderCertDoc()
+    numCertActual = prevNum
 
     await generarPDF()
     statusEl.textContent = '✓ Guardado y PDF generado'
     btn.innerHTML = '🖨️ Reimprimir PDF'
     btn.disabled = false
 
-    // Recargar historial
     await cargarHistorial()
 
-  } catch (e) {
-    toast('Error al guardar el certificado', 'err')
+  } catch(e) {
     console.error(e)
+    // Si fallan las columnas nuevas, avisar
+    if (e.message && e.message.includes('column')) {
+      toast('Faltan columnas en la BD. Ejecutá el SQL de actualización.', 'err')
+    } else {
+      toast('Error al guardar el certificado: ' + e.message, 'err')
+    }
     btn.innerHTML = '💾 Guardar y Generar PDF'
     btn.disabled = false
     statusEl.textContent = ''
@@ -614,28 +804,28 @@ async function guardarYGenerarPDF() {
 }
 
 async function generarPDF() {
-  const obra = obraActual
-  const num = numCertActual - 1
-  const desde = document.getElementById('fecha-desde').value
-  const hasta = document.getElementById('fecha-hasta').value
+  const obra   = obraActual
+  const num    = numCertActual - 1
+  const desde  = document.getElementById('fecha-desde').value
+  const hasta  = document.getElementById('fecha-hasta').value
 
-  const filename = `Cert_${String(num).padStart(3,'0')}_${obra.nombre.replace(/[^a-zA-Z0-9]/g,'_').substring(0,30)}_${desde}_${hasta}.pdf`
+  const filename = `Cert_${String(num).padStart(3,'0')}_${(obra.nombre || '').replace(/[^a-zA-Z0-9]/g,'_').substring(0,25)}_${desde}_${hasta}.pdf`
 
   const element = document.getElementById('cert-doc')
   const opt = {
-    margin: [10, 10, 10, 10],
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    margin:     [8, 6, 8, 6],
+    filename:   filename,
+    image:      { type: 'jpeg', quality: 0.95 },
+    html2canvas:{ scale: 1.6, useCORS: true, logging: false, width: 1050 },
+    jsPDF:      { unit: 'mm', format: 'a4', orientation: 'landscape' }
   }
 
   await html2pdf().set(opt).from(element).save()
 }
 
-// =============================================
+// ============================================================
 //  HISTORIAL
-// =============================================
+// ============================================================
 async function cargarHistorial() {
   const obraId = document.getElementById('sel-obra').value
   if (!obraId) return
@@ -653,7 +843,7 @@ async function cargarHistorial() {
     return
   }
 
-  const formatFecha = (s) => {
+  const fmtF = s => {
     if (!s) return '—'
     const [y, m, d] = s.substring(0,10).split('-')
     return `${d}/${m}/${y}`
@@ -662,108 +852,109 @@ async function cargarHistorial() {
   const rows = certs.map(c => `
     <tr>
       <td><span class="hist-num">N° ${String(c.numero).padStart(3,'0')}</span></td>
-      <td><span class="badge-cert">${c.proveedor || 'Hugo Gatica — RENTPAS'}</span></td>
-      <td>${formatFecha(c.fecha_desde)} — ${formatFecha(c.fecha_hasta)}</td>
-      <td style="font-weight:700;color:var(--primary)">${formatPeso(c.monto_total)}</td>
-      <td>${formatFecha(c.created_at)}</td>
+      <td>${c.periodo || '—'}</td>
+      <td>${fmtF(c.fecha_desde)} — ${fmtF(c.fecha_hasta)}</td>
+      <td><span class="badge-cert">${c.proveedor || '—'}</span></td>
+      <td style="font-weight:700;color:var(--primary)">${formatPeso(c.total_pagar || c.monto_total)}</td>
+      <td>${fmtF(c.created_at)}</td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="reimprimir('${c.id}')">🖨️ PDF</button>
-        <button class="btn btn-danger btn-sm" onclick="eliminarCert('${c.id}', ${c.numero})" style="margin-left:6px">🗑️</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="eliminarCert('${c.id}', ${c.numero})">🗑️</button>
       </td>
-    </tr>
-  `).join('')
+    </tr>`).join('')
 
   el.innerHTML = `
     <table class="hist-table">
-      <thead>
-        <tr>
-          <th>N°</th>
-          <th>Proveedor</th>
-          <th>Período</th>
-          <th>Monto Total</th>
-          <th>Fecha Emisión</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>N°</th>
+        <th>Período</th>
+        <th>Fechas</th>
+        <th>Subcontratista</th>
+        <th>Total a Pagar</th>
+        <th>Fecha Emisión</th>
+        <th>Acciones</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
-    </table>
-  `
+    </table>`
 }
 
-// =============================================
+// ============================================================
 //  REIMPRIMIR DESDE HISTORIAL
-// =============================================
+// ============================================================
 async function reimprimir(certId) {
   const btn = event.currentTarget
-  btn.innerHTML = '⏳'
-  btn.disabled = true
+  btn.innerHTML = '⏳'; btn.disabled = true
 
   try {
-    // Cargar cabecera
-    const { data: cert } = await db
-      .from('certificados_equipos')
-      .select('*')
-      .eq('id', certId)
-      .single()
-
-    // Cargar ítems
-    const { data: items } = await db
-      .from('certificados_equipos_items')
-      .select('*')
-      .eq('certificado_id', certId)
+    const { data: cert } = await db.from('certificados_equipos').select('*').eq('id', certId).single()
+    const { data: items } = await db.from('certificados_equipos_items').select('*').eq('certificado_id', certId)
 
     if (!cert || !items) { toast('No se pudo cargar el certificado', 'err'); return }
 
-    // Reconstruir
-    const obraId = cert.obra_id
-    const certObra = obras.find(o => o.id === obraId)
-    if (!certObra) { toast('Obra no encontrada', 'err'); return }
+    obraActual = obras.find(o => o.id === cert.obra_id)
+    if (!obraActual) { toast('Obra no encontrada', 'err'); return }
 
-    obraActual = certObra
-    numCertActual = cert.numero
-    itemsCertActual = items.map(i => ({
+    numCertActual = cert.numero + 1
+
+    // Reconstruir itemsCertActual desde los items guardados
+    itemsCertActual = items.map((i, idx) => ({
+      num:         idx + 1,
       descripcion: i.equipo_descripcion,
-      tipo: i.tipo,
-      horas_total: i.horas_total,
-      precio_hora: i.precio_hora,
-      subtotal: i.subtotal
+      unidad:      i.unidad || i.tipo || 'Hs',
+      cantContrat: i.cantidad_contratada || 0,
+      precioUnit:  i.precio_hora || 0,
+      totalAprox:  (i.cantidad_contratada || 0) * (i.precio_hora || 0),
+      horasAnt:    i.horas_ant || 0,
+      horasActual: i.horas_actual || 0,
+      horasAcum:   i.horas_acum || i.horas_total || 0,
+      montoAnt:    i.monto_ant || 0,
+      montoActual: i.monto_actual || 0,
+      montoAcum:   i.monto_acum || i.subtotal || 0
     }))
 
-    const totalMonto = itemsCertActual.reduce((s, i) => s + i.subtotal, 0)
+    // Restaurar campos del form para renderizar
+    document.getElementById('sel-obra').value          = cert.obra_id
+    document.getElementById('fecha-desde').value       = cert.fecha_desde
+    document.getElementById('fecha-hasta').value       = cert.fecha_hasta
+    document.getElementById('inp-periodo').value       = cert.periodo || ''
+    document.getElementById('inp-fecha-medicion').value = cert.fecha_medicion || ''
+    document.getElementById('inp-subcontratista').value = cert.proveedor || ''
+    document.getElementById('inp-representante').value = cert.representante || ''
+    document.getElementById('inp-orden-compra').value  = cert.orden_compra || ''
+    document.getElementById('inp-descuento').value     = cert.descuento || 0
+    document.getElementById('inp-iva').value           = cert.iva_porcentaje || 21
 
-    renderCertDoc(cert.fecha_desde, cert.fecha_hasta, totalMonto)
-    document.getElementById('preview-wrap').style.display = 'block'
-    document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' })
+    // Mostrar info-obra
+    const infoEl = document.getElementById('info-obra')
+    infoEl.innerHTML = `<strong>${obraActual.nombre}</strong>`
+    infoEl.style.display = 'block'
 
-    // Marcar como ya guardado
+    // Renderizar con número del certificado guardado
+    const numReal = numCertActual - 1
+    numCertActual = numReal
+    renderCertDoc(true)
+    numCertActual = numReal + 1
+
     certGuardado = true
     certGuardadoId = certId
-    numCertActual = cert.numero + 1 // para que generarPDF use el número correcto
 
-    document.getElementById('btn-pdf').textContent = '🖨️ Reimprimir PDF'
+    document.getElementById('btn-pdf').innerHTML = '🖨️ Reimprimir PDF'
     document.getElementById('btn-pdf').disabled = false
     document.getElementById('pdf-status').textContent = ''
-
-    // Actualizar selector de obra
-    document.getElementById('sel-obra').value = obraId
-    const infoEl = document.getElementById('info-obra')
-    infoEl.innerHTML = `<strong>${certObra.nombre}</strong>`
-    infoEl.style.display = 'block'
-    document.getElementById('fecha-desde').value = cert.fecha_desde
-    document.getElementById('fecha-hasta').value = cert.fecha_hasta
+    document.getElementById('preview-wrap').style.display = 'block'
+    document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' })
 
   } catch(e) {
     toast('Error al cargar el certificado', 'err')
     console.error(e)
   }
 
-  btn.innerHTML = '🖨️ PDF'
-  btn.disabled = false
+  btn.innerHTML = '🖨️ PDF'; btn.disabled = false
 }
 
-// =============================================
-//  ELIMINAR CERTIFICADO
-// =============================================
+// ============================================================
+//  ELIMINAR
+// ============================================================
 async function eliminarCert(certId, num) {
   if (!confirm(`¿Eliminar el Certificado N° ${String(num).padStart(3,'0')}? Esta acción no se puede deshacer.`)) return
 

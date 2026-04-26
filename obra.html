@@ -138,16 +138,23 @@
 
 <!-- MODAL ASIGNAR EQUIPO A OBRA -->
 <div class="modal-bg" id="modal-eq-obra">
-  <div class="modal" style="width:420px;max-width:95vw">
+  <div class="modal" style="width:500px;max-width:95vw">
     <h2>🚜 Asignar Equipo a la Obra</h2>
     <div class="fg">
       <label>Equipo *</label>
       <select id="oeq-equipo-id" style="width:100%"><option value="">— Seleccioná un equipo —</option></select>
     </div>
-    <div class="fg">
-      <label>Precio / Hora $ — <span style="color:var(--primary);font-weight:700">Costo Directo</span></label>
-      <input type="number" id="oeq-precio" placeholder="0" min="0" step="0.01">
-      <small style="color:var(--gray);font-size:11px;margin-top:4px;display:block">⚠️ Ingresá el valor a <strong>costo directo</strong>, sin aplicar coeficiente de pase (K). Este precio se usa para el análisis de costos reales de la obra.</small>
+    <div class="row2">
+      <div class="fg">
+        <label>Precio / Unidad $ — <span style="color:var(--primary);font-weight:700">Costo Directo</span></label>
+        <input type="number" id="oeq-precio" placeholder="0" min="0" step="0.01">
+        <small style="color:var(--gray);font-size:11px;margin-top:4px;display:block">⚠️ Valor a <strong>costo directo</strong>, sin K. Usado en el análisis de costos reales.</small>
+      </div>
+      <div class="fg">
+        <label>Cantidad Contratada</label>
+        <input type="number" id="oeq-cantidad" placeholder="0" min="0" step="0.01">
+        <small style="color:var(--gray);font-size:11px;margin-top:4px;display:block">Total de horas (o unidades) contratadas. Se usa en la certificación.</small>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="cerrarModalEq()">Cancelar</button>
@@ -789,14 +796,14 @@ async function cargarRecursosObra() {
   const esCoord = usuario.rol === 'coordinador'
 
   const { data: eqData } = await db.from('obra_equipos')
-    .select('id, precio_hora, equipo_id, flota_equipos(nombre, numero_interno, tipo, unidad_medida)')
+    .select('id, precio_hora, cantidad_contratada, equipo_id, flota_equipos(nombre, numero_interno, tipo, unidad_medida)')
     .eq('obra_id', obraId)
 
   const { data: persData } = await db.from('obra_personal')
     .select('id, precio_hora, persona_id, recursos_humanos(nombre_completo, funcion)')
     .eq('obra_id', obraId)
 
-  const colsEq   = esCoord ? 5 : 4
+  const colsEq   = esCoord ? 6 : 5
   const colsPers = esCoord ? 4 : 3
 
   document.getElementById('wrap-obra-eq').innerHTML = `
@@ -809,7 +816,8 @@ async function cargarRecursosObra() {
         <th style="width:100px">N° Interno</th>
         <th>Equipo</th>
         <th style="width:110px">Tipo</th>
-        <th style="width:160px" class="tr">Precio / Hora $</th>
+        <th style="width:160px" class="tr">Precio / Unidad $</th>
+        <th style="width:140px" class="tr">Cant. Contratada</th>
         ${esCoord ? '<th style="width:50px"></th>' : ''}
       </tr></thead><tbody>
         ${eqData && eqData.length > 0 ? eqData.map(e => `
@@ -818,6 +826,7 @@ async function cargarRecursosObra() {
             <td>${e.flota_equipos?.nombre || '—'}</td>
             <td><span class="badge ${e.flota_equipos?.tipo === 'Propio' ? 'b-ok' : 'b-warn'}">${e.flota_equipos?.tipo || '—'}</span></td>
             <td class="tr"><strong>${formatPeso(e.precio_hora)}</strong> / ${e.flota_equipos?.unidad_medida || 'Hs'}</td>
+            <td class="tr">${e.cantidad_contratada ? formatNum(e.cantidad_contratada) + ' ' + (e.flota_equipos?.unidad_medida || 'Hs') : '<span style="color:var(--gray);font-size:11px">no cargada</span>'}</td>
             ${esCoord ? `<td class="tc"><button class="btn-icon" onclick="eliminarEqObra('${e.id}')" title="Quitar">✕</button></td>` : ''}
           </tr>`).join('') :
           `<tr><td colspan="${colsEq}" style="text-align:center;padding:20px;color:var(--gray)">Sin equipos asignados a esta obra</td></tr>`}
@@ -863,6 +872,7 @@ async function abrirModalEq() {
       `<option value="${e.id}">${e.numero_interno ? e.numero_interno + ' — ' : ''}${e.nombre}</option>`))
   }
   document.getElementById('oeq-precio').value = ''
+  document.getElementById('oeq-cantidad').value = ''
   document.getElementById('modal-eq-obra').classList.add('open')
 }
 
@@ -871,10 +881,13 @@ function cerrarModalEq() { document.getElementById('modal-eq-obra').classList.re
 async function guardarEqObra() {
   const equipoId = document.getElementById('oeq-equipo-id').value
   const precio   = parseFloat(document.getElementById('oeq-precio').value) || 0
+  const cantidad = parseFloat(document.getElementById('oeq-cantidad').value) || 0
   if (!equipoId) { toast('Seleccioná un equipo', 'error'); return }
-  if (precio <= 0) { toast('Ingresá el precio por hora', 'error'); return }
+  if (precio <= 0) { toast('Ingresá el precio por unidad', 'error'); return }
 
-  const { error } = await db.from('obra_equipos').insert({ obra_id: obraId, equipo_id: equipoId, precio_hora: precio })
+  const { error } = await db.from('obra_equipos').insert({
+    obra_id: obraId, equipo_id: equipoId, precio_hora: precio, cantidad_contratada: cantidad
+  })
   if (error) { toast('Error al asignar equipo', 'error'); return }
   toast('Equipo asignado correctamente')
   cerrarModalEq()
