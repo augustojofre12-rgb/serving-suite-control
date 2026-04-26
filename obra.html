@@ -178,6 +178,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
@@ -551,6 +552,7 @@ async function calcDistribucion() {
   const distTotal = distData.reduce((a, b) => a + b, 0)
   chartDist = new Chart(document.getElementById('ch-dist'), {
     type: 'doughnut',
+    plugins: [ChartDataLabels],
     data: {
       labels: ['Materiales', 'Mano de Obra', 'Equipos', 'Combustible'],
       datasets: [{ data: distData, backgroundColor: ['#1e6b40','#f39c12','#27ae60','#2980b9'], borderWidth: 0 }]
@@ -558,6 +560,18 @@ async function calcDistribucion() {
     options: {
       responsive: true,
       plugins: {
+        datalabels: {
+          color: '#fff',
+          font: { weight: 'bold', size: 11 },
+          textAlign: 'center',
+          formatter: function(value, ctx) {
+            if (!value || value === 0) return ''
+            const pct = distTotal > 0 ? ((value / distTotal) * 100).toFixed(1) : '0.0'
+            if (parseFloat(pct) < 4) return ''   // no mostrar si el slice es muy chico
+            const miles = Math.round(value / 1000)
+            return `$${miles.toLocaleString('es-AR')}k\n${pct}%`
+          }
+        },
         legend: {
           position: 'bottom',
           labels: {

@@ -115,7 +115,7 @@
 /* Cards financieras */
 .fin-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 .fin-card {
@@ -362,13 +362,8 @@
                 <div class="fin-val" id="f-real-cd">—</div>
                 <div class="fin-sub" id="f-real-cd-sub">De partes cargados</div>
               </div>
-              <div class="fin-card">
-                <div class="fin-lbl">Valor Ganado<br>(Earned Value)</div>
-                <div class="fin-val" id="f-earned">—</div>
-                <div class="fin-sub">Avance × Presup CD</div>
-              </div>
               <div class="fin-card" id="f-resultado-card">
-                <div class="fin-lbl">Resultado<br>(Ganado − Real)</div>
+                <div class="fin-lbl">Valor Ganado<br>(Presup CD − Real CD)</div>
                 <div class="fin-val" id="f-resultado">—</div>
                 <div class="fin-sub" id="f-resultado-sub">—</div>
               </div>
@@ -420,6 +415,62 @@
                 </tr>
               </thead>
               <tbody id="tbody-items"></tbody>
+            </table>
+          </div>
+
+          <!-- Detalle Materiales -->
+          <div class="inf-sec" style="break-before:page">
+            <div class="inf-sec-title">Detalle — Materiales</div>
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Descripción</th>
+                <th class="tr" style="width:110px">Cantidad</th>
+                <th class="tr" style="width:140px">Precio Unitario</th>
+                <th class="tr" style="width:140px">Total</th>
+              </tr></thead>
+              <tbody id="tbody-det-mat"></tbody>
+            </table>
+          </div>
+
+          <!-- Detalle Mano de Obra -->
+          <div class="inf-sec" style="break-before:page">
+            <div class="inf-sec-title">Detalle — Mano de Obra</div>
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Categoría / Descripción</th>
+                <th class="tr" style="width:110px">Horas</th>
+                <th class="tr" style="width:140px">Precio / Hora</th>
+                <th class="tr" style="width:140px">Total</th>
+              </tr></thead>
+              <tbody id="tbody-det-mo"></tbody>
+            </table>
+          </div>
+
+          <!-- Detalle Equipos -->
+          <div class="inf-sec" style="break-before:page">
+            <div class="inf-sec-title">Detalle — Equipos</div>
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Equipo</th>
+                <th class="tr" style="width:110px">Cantidad / Hs</th>
+                <th class="tr" style="width:140px">Precio / Unidad</th>
+                <th class="tr" style="width:140px">Total</th>
+              </tr></thead>
+              <tbody id="tbody-det-eq"></tbody>
+            </table>
+          </div>
+
+          <!-- Detalle Combustible -->
+          <div class="inf-sec" style="break-before:page">
+            <div class="inf-sec-title">Detalle — Combustible</div>
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Equipo</th>
+                <th class="tr" style="width:110px">Litros</th>
+                <th class="tr" style="width:140px">Precio / Lt</th>
+                <th class="tr" style="width:140px">Total</th>
+              </tr></thead>
+              <tbody id="tbody-det-comb"></tbody>
             </table>
           </div>
 
@@ -531,8 +582,8 @@ async function generarInforme() {
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq] = await Promise.all([
         db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
-        db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
-        db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+        db.from('parte_personal').select('descripcion, horas_trabajadas, precio_hora').in('parte_id', parteIds),
+        db.from('parte_equipos').select('descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds)
       ])
       mat  = rMat.data  || []
       pers = rPers.data || []
@@ -601,10 +652,11 @@ async function generarInforme() {
 
     // ── Renderizar ────────────────────────────────────────────
     renderEncabezado(obra, k, totalPresupContrato, totalPresupCD, desde, hasta)
-    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalEarnedCD, resultado)
+    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal)
     renderAvance(obra, porcFisicoGlobal, partes || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
     renderItems(dataItems, k)
+    renderDetalles(mat, pers, eq)
 
     // Pie
     const ahora = new Date()
@@ -655,7 +707,7 @@ function renderEncabezado(obra, k, presupContrato, presupCD, desde, hasta) {
   document.getElementById('d-cd').textContent      = formatPeso(presupCD)
 }
 
-function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, earnedCD, resultado) {
+function renderFinanciero(obra, k, presupContrato, presupCD, realTotal) {
   document.getElementById('f-presup-contrato').textContent = formatPeso(obra.monto_contrato || presupContrato)
   document.getElementById('f-presup-cd').textContent       = formatPeso(presupCD)
   document.getElementById('f-presup-cd-sub').textContent   = presupCD > 0
@@ -666,16 +718,17 @@ function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, earnedCD
   const porcConsumo = presupCD > 0 ? Math.round(realTotal / presupCD * 1000) / 10 : 0
   document.getElementById('f-real-cd-sub').textContent = `${porcConsumo}% del presup CD`
 
-  document.getElementById('f-earned').textContent = formatPeso(earnedCD)
-
-  const resEl   = document.getElementById('f-resultado')
-  const cardEl  = document.getElementById('f-resultado-card')
-  const subEl   = document.getElementById('f-resultado-sub')
-  resEl.textContent  = (resultado >= 0 ? '+' : '') + formatPeso(resultado)
-  resEl.style.color  = resultado >= 0 ? '#27ae60' : '#c0392b'
-  subEl.textContent  = resultado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto'
-  if (earnedCD > 0 || realTotal > 0) {
-    cardEl.classList.add(resultado >= 0 ? 'positivo' : 'negativo')
+  // Valor Ganado = Presup CD − Real CD
+  const valorGanado = presupCD - realTotal
+  const resEl  = document.getElementById('f-resultado')
+  const cardEl = document.getElementById('f-resultado-card')
+  const subEl  = document.getElementById('f-resultado-sub')
+  resEl.textContent = (valorGanado >= 0 ? '+' : '') + formatPeso(valorGanado)
+  resEl.style.color = valorGanado >= 0 ? '#27ae60' : '#c0392b'
+  subEl.textContent = valorGanado >= 0 ? 'Dentro del presupuesto' : 'Por encima del presupuesto'
+  cardEl.classList.remove('positivo', 'negativo')
+  if (presupCD > 0 || realTotal > 0) {
+    cardEl.classList.add(valorGanado >= 0 ? 'positivo' : 'negativo')
   }
 }
 
@@ -794,6 +847,58 @@ function renderItems(dataItems, k) {
     </tr>`)
 
   document.getElementById('tbody-items').innerHTML = rows.join('')
+}
+
+function renderDetalles(mat, pers, eq) {
+  const vacio = id => {
+    document.getElementById(id).innerHTML =
+      `<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--gray)">Sin registros en el período</td></tr>`
+  }
+
+  function agrupar(arr, keyFn, cantFn, precFn) {
+    const map = {}
+    arr.forEach(r => {
+      const k = keyFn(r)
+      if (!map[k]) map[k] = { desc: k, cant: 0, total: 0 }
+      map[k].cant  += cantFn(r)
+      map[k].total += cantFn(r) * precFn(r)
+    })
+    return Object.values(map)
+      .map(r => ({ ...r, prec: r.cant > 0 ? r.total / r.cant : 0 }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  function filasTbl(rows, id) {
+    if (!rows.length) { vacio(id); return }
+    const total = rows.reduce((s, r) => s + r.total, 0)
+    const html = rows.map(r => `
+      <tr>
+        <td>${r.desc}</td>
+        <td class="tr">${formatNum(Math.round(r.cant * 100) / 100)}</td>
+        <td class="tr">${formatPeso(Math.round(r.prec))}</td>
+        <td class="tr"><strong>${formatPeso(r.total)}</strong></td>
+      </tr>`).join('')
+    document.getElementById(id).innerHTML = html + `
+      <tr class="total-row">
+        <td colspan="3"><strong>TOTAL</strong></td>
+        <td class="tr"><strong>${formatPeso(total)}</strong></td>
+      </tr>`
+  }
+
+  // Materiales (sin prefijos)
+  const soloMat = (mat || []).filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+  filasTbl(agrupar(soloMat, m => m.descripcion, m => m.cantidad, m => m.precio_unitario), 'tbody-det-mat')
+
+  // Mano de Obra
+  filasTbl(agrupar(pers || [], p => p.descripcion || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora), 'tbody-det-mo')
+
+  // Equipos
+  filasTbl(agrupar(eq || [], e => e.descripcion || 'Equipo', e => e.horas_utilizadas, e => e.precio_hora), 'tbody-det-eq')
+
+  // Combustible (limpiar prefijo ⛽)
+  const combArr = (mat || []).filter(m => m.descripcion.startsWith('⛽'))
+    .map(m => ({ ...m, descripcion: m.descripcion.replace(/^⛽\s*/, '') }))
+  filasTbl(agrupar(combArr, m => m.descripcion, m => m.cantidad, m => m.precio_unitario), 'tbody-det-comb')
 }
 
 init()
