@@ -226,7 +226,7 @@ async function renderDetalle() {
       </div>
       <div class="cards4" style="margin-bottom:20px">
         <div class="card bl-primary"><div class="card-label">Presup. Costo Directo</div><div class="card-value" id="kpi-presup">—</div><div class="card-sub" id="kpi-items-count">— ítems · K=${k}</div></div>
-        <div class="card bl-ok"><div class="card-label">Costo Real Directo</div><div class="card-value" id="kpi-real">—</div><div class="card-sub" id="kpi-porc-fin">—% del presupuesto</div></div>
+        <div class="card bl-ok" id="card-real-cd" style="cursor:pointer;transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(30,107,64,.18)'" onmouseleave="this.style.boxShadow=''" onclick="irACostosReales()"><div class="card-label">Costo Real Directo <span style="font-size:10px;opacity:.7">↗ ver detalle</span></div><div class="card-value" id="kpi-real">—</div><div class="card-sub" id="kpi-porc-fin">—% del presupuesto</div></div>
         <div class="card bl-ok"><div class="card-label">Valor Ganado a Costo Directo</div><div class="card-value" id="kpi-margen">—</div><div class="card-sub" id="kpi-margen-sub">—</div></div>
         <div class="card bl-primary"><div class="card-label">Avance Físico</div><div class="card-value" id="kpi-fisico">—</div><div class="card-sub" id="kpi-fisico-sub">Promedio entre ítems</div></div>
       </div>
@@ -546,6 +546,10 @@ async function renderDetalleItem(itemId) {
         }).join('')}
       </tbody>
     </table>`
+}
+
+function irACostosReales() {
+  window.location.href = `costos-reales.html?obra_id=${obraId}`
 }
 
 async function calcCostosIndirectos(totalRealCD) {

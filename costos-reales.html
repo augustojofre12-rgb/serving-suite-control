@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Costos Reales</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* Layout sticky */
+.cr-main {
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden; padding-bottom: 0;
+}
+.cr-header {
+  flex-shrink: 0;
+  background: #c8dfd2;
+  margin: -28px -32px 0;
+  padding: 22px 32px 18px;
+  border-bottom: 2px solid #a8c9b8;
+  box-shadow: 0 4px 16px rgba(30,107,64,.12);
+}
+.cr-scroll { flex: 1; overflow-y: auto; padding: 24px 0 40px; }
+
+/* Toggle agrupado/por fecha */
+.toggle-wrap {
+  display: inline-flex;
+  border: 1.5px solid #dde3dd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.toggle-wrap button {
+  padding: 7px 16px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray);
+  cursor: pointer;
+  transition: all .15s;
+}
+.toggle-wrap button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Cards resumen */
+.cr-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.cr-card {
+  background: #fff;
+  border: 1.5px solid #e0e8e0;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.cr-card-lbl {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--gray);
+  font-weight: 700; margin-bottom: 6px;
+}
+.cr-card-val {
+  font-size: 15px; font-weight: 800; color: var(--text);
+}
+.cr-card.total {
+  background: var(--primary); border-color: var(--primary);
+}
+.cr-card.total .cr-card-lbl { color: rgba(255,255,255,.75); }
+.cr-card.total .cr-card-val { color: #fff; }
+
+/* Sección de categoría */
+.cr-sec {
+  background: #fff;
+  border: 1.5px solid #e0e8e0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.cr-sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #f7faf8;
+  border-bottom: 1.5px solid #e0e8e0;
+}
+.cr-sec-head h3 {
+  font-size: 14px; font-weight: 700;
+  color: var(--text); margin: 0;
+}
+.cr-sec-total {
+  font-size: 14px; font-weight: 800; color: var(--primary);
+}
+
+/* Tabla interna */
+.cr-tbl {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.cr-tbl thead th {
+  background: #f0f5f2;
+  padding: 9px 16px;
+  text-align: left;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--gray);
+  font-weight: 700; border-bottom: 1.5px solid #dde8e0;
+}
+.cr-tbl thead th.tr { text-align: right; }
+.cr-tbl thead th.tc { text-align: center; }
+.cr-tbl tbody td {
+  padding: 9px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  color: var(--text);
+}
+.cr-tbl tbody td.tr { text-align: right; }
+.cr-tbl tbody td.tc { text-align: center; }
+.cr-tbl tbody tr:last-child td { border-bottom: none; }
+.cr-tbl .subtotal-row td {
+  background: #f0f5f2; font-weight: 700;
+  border-top: 2px solid #dde8e0; border-bottom: none;
+}
+.fecha-badge {
+  display: inline-block;
+  background: #f0f5f2; color: var(--primary);
+  padding: 2px 8px; border-radius: 12px;
+  font-size: 11px; font-weight: 700;
+}
+.empty-sec {
+  padding: 24px; text-align: center;
+  color: var(--gray); font-size: 13px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main cr-main">
+
+    <!-- HEADER FIJO -->
+    <div class="cr-header">
+      <div style="margin-bottom:12px">
+        <a id="back-link" href="dashboard.html" class="back" style="font-size:13px">← Volver a la Obra</a>
+      </div>
+      <div class="ph" style="margin-bottom:14px">
+        <div class="ph-left">
+          <h1>Costos Reales Directos</h1>
+          <p id="obra-subtitulo" style="font-weight:600;color:var(--primary)">Cargando...</p>
+        </div>
+      </div>
+      <!-- Controles -->
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <!-- Período -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button id="btn-total" class="btn btn-outline"
+            style="font-size:12px;padding:6px 14px"
+            onclick="setModoTotal()">📅 Total acumulado</button>
+          <span style="font-size:12px;color:var(--gray)">o elegí período:</span>
+          <input type="date" id="f-desde"
+            style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+          <span style="font-size:12px;color:var(--gray)">al</span>
+          <input type="date" id="f-hasta"
+            style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+          <button class="btn btn-success" onclick="aplicarPeriodo()"
+            style="padding:7px 16px;font-size:13px">▶ Aplicar</button>
+        </div>
+        <!-- Toggle -->
+        <div class="toggle-wrap">
+          <button id="tog-agrup" class="active" onclick="setVista('agrupado')">Agrupado</button>
+          <button id="tog-fecha" onclick="setVista('porfecha')">Por fecha</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENIDO CON SCROLL -->
+    <div class="cr-scroll">
+      <div id="cr-loading" style="text-align:center;padding:60px;color:var(--gray)">
+        <div class="loading"><div class="spinner"></div> Cargando datos...</div>
+      </div>
+      <div id="cr-contenido" style="display:none">
+        <!-- Cards resumen -->
+        <div class="cr-cards">
+          <div class="cr-card">
+            <div class="cr-card-lbl">Materiales</div>
+            <div class="cr-card-val" id="tot-mat">—</div>
+          </div>
+          <div class="cr-card">
+            <div class="cr-card-lbl">Mano de Obra</div>
+            <div class="cr-card-val" id="tot-mo">—</div>
+          </div>
+          <div class="cr-card">
+            <div class="cr-card-lbl">Equipos</div>
+            <div class="cr-card-val" id="tot-eq">—</div>
+          </div>
+          <div class="cr-card">
+            <div class="cr-card-lbl">Combustible</div>
+            <div class="cr-card-val" id="tot-comb">—</div>
+          </div>
+          <div class="cr-card total">
+            <div class="cr-card-lbl">Total CD</div>
+            <div class="cr-card-val" id="tot-total">—</div>
+          </div>
+        </div>
+
+        <!-- Materiales -->
+        <div class="cr-sec">
+          <div class="cr-sec-head">
+            <h3>🧱 Materiales</h3>
+            <span class="cr-sec-total" id="head-mat">—</span>
+          </div>
+          <div id="body-mat"></div>
+        </div>
+
+        <!-- Mano de Obra -->
+        <div class="cr-sec">
+          <div class="cr-sec-head">
+            <h3>👷 Mano de Obra</h3>
+            <span class="cr-sec-total" id="head-mo">—</span>
+          </div>
+          <div id="body-mo"></div>
+        </div>
+
+        <!-- Equipos -->
+        <div class="cr-sec">
+          <div class="cr-sec-head">
+            <h3>🚜 Equipos</h3>
+            <span class="cr-sec-total" id="head-eq">—</span>
+          </div>
+          <div id="body-eq"></div>
+        </div>
+
+        <!-- Combustible -->
+        <div class="cr-sec">
+          <div class="cr-sec-head">
+            <h3>⛽ Combustible</h3>
+            <span class="cr-sec-total" id="head-comb">—</span>
+          </div>
+          <div id="body-comb"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+let obraId  = null
+let vista   = 'agrupado'   // 'agrupado' | 'porfecha'
+let modoTotal = true       // sin filtro de fecha
+
+// Datos crudos guardados para re-renderizar sin re-consultar
+let datosMat  = []
+let datosPers = []
+let datosEq   = []
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, '')
+
+  const params = new URLSearchParams(location.search)
+  obraId = params.get('obra_id')
+  if (!obraId) { toast('Obra no especificada', 'error'); return }
+
+  // Datos de la obra
+  const { data: obra } = await db.from('obras').select('nombre, fecha_inicio').eq('id', obraId).single()
+  if (obra) {
+    document.title = `Costos Reales — ${obra.nombre}`
+    document.getElementById('obra-subtitulo').textContent = obra.nombre
+    document.getElementById('back-link').href = `obra.html?id=${obraId}`
+  }
+
+  // Defaults: total acumulado
+  const hoy = new Date()
+  document.getElementById('f-hasta').value = hoy.toISOString().split('T')[0]
+  if (obra?.fecha_inicio) {
+    document.getElementById('f-desde').value = obra.fecha_inicio
+  } else {
+    const hace1anio = new Date(hoy); hace1anio.setFullYear(hoy.getFullYear() - 1)
+    document.getElementById('f-desde').value = hace1anio.toISOString().split('T')[0]
+  }
+
+  // Arrancar en modo total acumulado
+  modoTotal = true
+  actualizarBtnTotal()
+  await cargarDatos()
+}
+
+function setModoTotal() {
+  modoTotal = true
+  actualizarBtnTotal()
+  cargarDatos()
+}
+
+function aplicarPeriodo() {
+  modoTotal = false
+  actualizarBtnTotal()
+  cargarDatos()
+}
+
+function actualizarBtnTotal() {
+  const btn = document.getElementById('btn-total')
+  btn.style.background = modoTotal ? 'var(--primary)' : ''
+  btn.style.color      = modoTotal ? '#fff' : ''
+}
+
+function setVista(v) {
+  vista = v
+  document.getElementById('tog-agrup').classList.toggle('active', v === 'agrupado')
+  document.getElementById('tog-fecha').classList.toggle('active', v === 'porfecha')
+  renderTodo()
+}
+
+async function cargarDatos() {
+  document.getElementById('cr-loading').style.display = 'block'
+  document.getElementById('cr-contenido').style.display = 'none'
+
+  const desde = document.getElementById('f-desde').value
+  const hasta = document.getElementById('f-hasta').value
+
+  // Query partes con filtro de fecha (o sin si modoTotal)
+  let q = db.from('partes_diarios').select('id, fecha').eq('obra_id', obraId)
+  if (!modoTotal && desde) q = q.gte('fecha', desde)
+  if (!modoTotal && hasta) q = q.lte('fecha', hasta)
+  const { data: partes } = await q
+
+  if (!partes || partes.length === 0) {
+    document.getElementById('cr-loading').innerHTML =
+      '<p style="padding:40px;text-align:center;color:var(--gray)">Sin partes en el período seleccionado.</p>'
+    return
+  }
+
+  const parteIds = partes.map(p => p.id)
+  // Mapa id→fecha para el modo por fecha
+  const fechaMap = {}
+  partes.forEach(p => { fechaMap[p.id] = p.fecha })
+
+  const [rMat, rPers, rEq] = await Promise.all([
+    db.from('parte_materiales').select('parte_id, descripcion, cantidad, unidad, precio_unitario').in('parte_id', parteIds),
+    db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds),
+    db.from('parte_equipos').select('parte_id, descripcion, tipo, horas_utilizadas, precio_hora').in('parte_id', parteIds)
+  ])
+
+  // Enriquecer con fecha
+  const enrich = arr => (arr || []).map(r => ({ ...r, fecha: fechaMap[r.parte_id] || '' }))
+
+  const matAll  = enrich(rMat.data)
+  datosMat  = matAll.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+  const combAll = matAll.filter(m => m.descripcion.startsWith('⛽'))
+    .map(m => ({ ...m, descripcion: m.descripcion.replace(/^⛽\s*/, '') }))
+  datosPers = enrich(rPers.data)
+  datosEq   = enrich(rEq.data)
+
+  // Guardar combustible en variable accesible
+  window._datosComb = combAll
+
+  document.getElementById('cr-loading').style.display = 'none'
+  document.getElementById('cr-contenido').style.display = 'block'
+  renderTodo()
+}
+
+function renderTodo() {
+  const comb = window._datosComb || []
+
+  const tMat  = datosMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const tMO   = datosPers.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+  const tEq   = datosEq.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
+  const tComb = comb.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const total = tMat + tMO + tEq + tComb
+
+  document.getElementById('tot-mat').textContent   = formatPeso(tMat)
+  document.getElementById('tot-mo').textContent    = formatPeso(tMO)
+  document.getElementById('tot-eq').textContent    = formatPeso(tEq)
+  document.getElementById('tot-comb').textContent  = formatPeso(tComb)
+  document.getElementById('tot-total').textContent = formatPeso(total)
+  document.getElementById('head-mat').textContent  = formatPeso(tMat)
+  document.getElementById('head-mo').textContent   = formatPeso(tMO)
+  document.getElementById('head-eq').textContent   = formatPeso(tEq)
+  document.getElementById('head-comb').textContent = formatPeso(tComb)
+
+  if (vista === 'agrupado') {
+    renderAgrupado('body-mat',  datosMat,  m => m.descripcion,                    m => m.cantidad,        m => m.precio_unitario, 'mat')
+    renderAgrupado('body-mo',   datosPers, p => (p.nombre||'') + (p.categoria ? ' ('+p.categoria+')' : ''), p => p.horas_trabajadas, p => p.precio_hora,     'mo')
+    renderAgrupado('body-eq',   datosEq,   e => e.descripcion,                    e => e.horas_utilizadas, e => e.precio_hora,    'eq')
+    renderAgrupado('body-comb', comb,      m => m.descripcion,                    m => m.cantidad,        m => m.precio_unitario, 'comb')
+  } else {
+    renderPorFecha('body-mat',  datosMat,  'mat')
+    renderPorFecha('body-mo',   datosPers, 'mo')
+    renderPorFecha('body-eq',   datosEq,   'eq')
+    renderPorFecha('body-comb', comb,      'comb')
+  }
+}
+
+/* ── Vista AGRUPADA ─────────────────────────────────────── */
+function renderAgrupado(elId, datos, keyFn, cantFn, precFn, tipo) {
+  const el = document.getElementById(elId)
+  if (!datos.length) { el.innerHTML = `<div class="empty-sec">Sin registros en el período</div>`; return }
+
+  const map = {}
+  datos.forEach(r => {
+    const k = keyFn(r)
+    if (!map[k]) map[k] = { desc: k, cant: 0, total: 0, unidad: r.unidad || r.tipo || '' }
+    map[k].cant  += cantFn(r)
+    map[k].total += cantFn(r) * precFn(r)
+  })
+  const rows = Object.values(map).sort((a, b) => b.total - a.total)
+  const grandTotal = rows.reduce((s, r) => s + r.total, 0)
+
+  const headers = colHeaders(tipo)
+  el.innerHTML = `
+    <table class="cr-tbl">
+      <thead><tr>${headers.map(h => `<th class="${h.cls||''}">${h.label}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const prom = r.cant > 0 ? r.total / r.cant : 0
+          return colRow(tipo, r.desc, r.cant, r.unidad, prom, r.total)
+        }).join('')}
+        <tr class="subtotal-row">
+          <td colspan="${headers.length - 1}"><strong>TOTAL</strong></td>
+          <td class="tr"><strong>${formatPeso(grandTotal)}</strong></td>
+        </tr>
+      </tbody>
+    </table>`
+}
+
+/* ── Vista POR FECHA ─────────────────────────────────────── */
+function renderPorFecha(elId, datos, tipo) {
+  const el = document.getElementById(elId)
+  if (!datos.length) { el.innerHTML = `<div class="empty-sec">Sin registros en el período</div>`; return }
+
+  // Ordenar por fecha
+  const sorted = [...datos].sort((a, b) => (a.fecha || '') < (b.fecha || '') ? -1 : 1)
+  const grandTotal = sorted.reduce((s, r) => {
+    const cant = tipo === 'mo' ? r.horas_trabajadas : tipo === 'eq' ? r.horas_utilizadas : r.cantidad
+    return s + cant * (tipo === 'mo' || tipo === 'eq' ? r.precio_hora : r.precio_unitario)
+  }, 0)
+
+  const headers = [{ label: 'Fecha', cls: '' }, ...colHeaders(tipo)]
+  el.innerHTML = `
+    <table class="cr-tbl">
+      <thead><tr>${headers.map(h => `<th class="${h.cls||''}">${h.label}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${sorted.map(r => {
+          const fechaFmt = r.fecha
+            ? new Date(r.fecha + 'T12:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+            : '—'
+          const cant  = tipo === 'mo' ? r.horas_trabajadas : tipo === 'eq' ? r.horas_utilizadas : r.cantidad
+          const prec  = tipo === 'mo' || tipo === 'eq' ? r.precio_hora : r.precio_unitario
+          const desc  = tipo === 'mo'
+            ? (r.nombre || '') + (r.categoria ? ' <span style="color:var(--gray);font-size:11px">('+r.categoria+')</span>' : '')
+            : (r.descripcion || '—')
+          const unid  = r.unidad || r.tipo || ''
+          const tot   = cant * prec
+          return `<tr>
+            <td><span class="fecha-badge">${fechaFmt}</span></td>
+            ${colRowCells(tipo, desc, cant, unid, prec, tot)}
+          </tr>`
+        }).join('')}
+        <tr class="subtotal-row">
+          <td colspan="${headers.length - 1}"><strong>TOTAL</strong></td>
+          <td class="tr"><strong>${formatPeso(grandTotal)}</strong></td>
+        </tr>
+      </tbody>
+    </table>`
+}
+
+/* ── Helpers de columnas por tipo ─────────────────────────── */
+function colHeaders(tipo) {
+  if (tipo === 'mat' || tipo === 'comb')
+    return [
+      { label: 'Descripción' },
+      { label: 'Cantidad', cls: 'tr' },
+      { label: 'Unidad', cls: 'tc' },
+      { label: 'Precio Unit.', cls: 'tr' },
+      { label: 'Total', cls: 'tr' }
+    ]
+  if (tipo === 'mo')
+    return [
+      { label: 'Nombre / Categoría' },
+      { label: 'Horas', cls: 'tr' },
+      { label: '$/Hora', cls: 'tr' },
+      { label: 'Total', cls: 'tr' }
+    ]
+  if (tipo === 'eq')
+    return [
+      { label: 'Equipo' },
+      { label: 'Hs / Unidades', cls: 'tr' },
+      { label: 'Precio/Unid.', cls: 'tr' },
+      { label: 'Total', cls: 'tr' }
+    ]
+  return []
+}
+
+function colRow(tipo, desc, cant, unid, prec, tot) {
+  return `<tr>${colRowCells(tipo, desc, cant, unid, prec, tot)}</tr>`
+}
+
+function colRowCells(tipo, desc, cant, unid, prec, tot) {
+  if (tipo === 'mat' || tipo === 'comb')
+    return `
+      <td>${desc}</td>
+      <td class="tr">${formatNum(Math.round(cant * 100) / 100)}</td>
+      <td class="tc"><span class="badge b-blue" style="font-size:11px">${unid || '—'}</span></td>
+      <td class="tr">${formatPeso(prec)}</td>
+      <td class="tr"><strong>${formatPeso(tot)}</strong></td>`
+  if (tipo === 'mo')
+    return `
+      <td>${desc}</td>
+      <td class="tr">${formatNum(Math.round(cant * 100) / 100)} hs</td>
+      <td class="tr">${formatPeso(prec)}</td>
+      <td class="tr"><strong>${formatPeso(tot)}</strong></td>`
+  if (tipo === 'eq')
+    return `
+      <td>${desc}</td>
+      <td class="tr">${formatNum(Math.round(cant * 100) / 100)}</td>
+      <td class="tr">${formatPeso(prec)}</td>
+      <td class="tr"><strong>${formatPeso(tot)}</strong></td>`
+  return ''
+}
+
+init()
+</script>
+</body>
+</html>
