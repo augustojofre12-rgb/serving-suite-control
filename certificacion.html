@@ -34,16 +34,17 @@
 .preview-actions{display:flex;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #ddd;flex-wrap:wrap;align-items:center}
 .preview-scroll{overflow-x:auto;background:#888;padding:20px;border-radius:8px}
 
-/* ---- EL CERTIFICADO (diseñado para A4 horizontal) ---- */
+/* ---- EL CERTIFICADO (diseñado para A4 horizontal 297×210mm) ---- */
 #cert-doc{
   background:#fff;
-  padding:32px 36px;
+  padding:18px 24px;
   width:1050px;
   margin:0 auto;
   font-family:'Segoe UI',Arial,sans-serif;
-  font-size:12px;
+  font-size:11.5px;
   color:#1a1a1a;
   box-shadow:0 4px 24px rgba(0,0,0,.3);
+  box-sizing:border-box;
 }
 
 /* Header */
@@ -52,57 +53,55 @@
   justify-content:space-between;
   align-items:flex-start;
   border-bottom:3px solid #1e6b40;
-  padding-bottom:14px;
-  margin-bottom:16px;
+  padding-bottom:10px;
+  margin-bottom:12px;
 }
-.cd-logo-title{font-size:20px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
-.cd-logo-sub{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.cd-logo-title{font-size:18px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
+.cd-logo-sub{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
 .cd-doc-title{text-align:center}
-.cd-doc-title h2{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px}
-.cd-doc-title p{font-size:11px;color:#666;margin:0}
+.cd-doc-title h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 2px}
+.cd-doc-title p{font-size:10px;color:#666;margin:0}
 .cd-num-block{text-align:right}
-.cd-num-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.7px}
-.cd-num{font-size:28px;font-weight:800;color:#1e6b40;line-height:1}
-.cd-num-sub{font-size:10px;color:#888;margin-top:3px}
+.cd-num-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.7px}
+.cd-num{font-size:26px;font-weight:800;color:#1e6b40;line-height:1}
+.cd-num-sub{font-size:9px;color:#888;margin-top:2px}
 
 /* Info grid */
-.cd-info{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11.5px}
-.cd-info td{padding:5px 10px;border:1px solid #ccc}
-.cd-info .lbl{font-size:9.5px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:1%;background:#f8f9fa}
+.cd-info{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+.cd-info td{padding:4px 8px;border:1px solid #ccc}
+.cd-info .lbl{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:1%;background:#f8f9fa}
 .cd-info .val{font-weight:600;color:#1a1a1a}
 
 /* Main table */
-.cd-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:0}
-.cd-table th{background:#1e6b40;color:#fff;padding:7px 6px;text-align:center;font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;border:1px solid #155532;white-space:nowrap}
+.cd-table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:0}
+.cd-table th{background:#1e6b40;color:#fff;padding:6px 5px;text-align:center;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.3px;border:1px solid #155532;white-space:nowrap}
 .cd-table th.th-left{text-align:left}
-.cd-table td{padding:6px 6px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle}
+.cd-table td{padding:5px 5px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle}
 .cd-table td.tr{text-align:right}
 .cd-table td.tc{text-align:center}
 .cd-table tbody tr:nth-child(even) td{background:#f9fbf9}
-.cd-table tbody tr:hover td{background:#eef8f2}
 .cd-table .td-desc{font-weight:600}
 .cd-table .td-num{text-align:center;font-weight:700;color:#1e6b40}
 .cd-table tfoot td{font-weight:700;background:#f0f7f3;border:1px solid #ccc}
-.cd-table tfoot .total-row td{background:#1e6b40;color:#fff;font-weight:800;font-size:12px;border:1px solid #155532}
-.th-sub{background:#155532!important;font-size:9px!important}
+.th-sub{background:#155532!important;font-size:8.5px!important}
 
 /* Footer financiero */
-.cd-fin{margin-top:18px;display:flex;justify-content:flex-end}
-.cd-fin-table{border-collapse:collapse;font-size:12px;min-width:340px}
-.cd-fin-table td{padding:7px 14px;border:1px solid #ddd}
+.cd-fin{margin-top:12px;display:flex;justify-content:flex-end}
+.cd-fin-table{border-collapse:collapse;font-size:11.5px;min-width:320px}
+.cd-fin-table td{padding:5px 12px;border:1px solid #ddd}
 .cd-fin-table .fin-lbl{font-weight:700;text-align:right;color:#555;background:#f8f9fa;white-space:nowrap}
-.cd-fin-table .fin-val{text-align:right;font-weight:600;min-width:130px}
-.cd-fin-table .fin-total td{background:#1e6b40;color:#fff;font-weight:800;font-size:14px;border-color:#155532}
+.cd-fin-table .fin-val{text-align:right;font-weight:600;min-width:120px}
+.cd-fin-table .fin-total td{background:#1e6b40;color:#fff;font-weight:800;font-size:13px;border-color:#155532}
 .cd-fin-table .fin-neto td{background:#e8f4ed;color:#1e6b40;font-weight:700}
 
 /* Firmas */
-.cd-firmas{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:32px;padding-top:0}
+.cd-firmas{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:16px}
 .cd-firma{text-align:center}
-.cd-firma-line{border-top:1.5px solid #333;margin-top:52px;padding-top:7px;font-size:12px;font-weight:700;color:#1a1a1a}
-.cd-firma-sub{font-size:10px;color:#888;margin-top:2px}
+.cd-firma-line{border-top:1.5px solid #333;margin-top:36px;padding-top:6px;font-size:11px;font-weight:700;color:#1a1a1a}
+.cd-firma-sub{font-size:9px;color:#888;margin-top:2px}
 
 /* Nota al pie */
-.cd-nota{margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px}
+.cd-nota{margin-top:10px;font-size:9px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px}
 
 /* ---- HISTORIAL ---- */
 .historial-wrap{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -813,16 +812,46 @@ async function generarPDF() {
 
   const filename = `Cert_${String(num).padStart(3,'0')}_${(obra.nombre || '').replace(/[^a-zA-Z0-9]/g,'_').substring(0,25)}_${desde}_${hasta}.pdf`
 
-  const element = document.getElementById('cert-doc')
+  // ── Clonar el doc fuera del scroll container para que html2canvas
+  //    lo capture correctamente sin offsets ni recortes ──────────────
+  const source = document.getElementById('cert-doc')
+  const wrapper = document.createElement('div')
+  wrapper.style.cssText = [
+    'position:fixed',
+    'top:0',
+    'left:0',
+    'width:1050px',
+    'z-index:-9999',
+    'background:#fff',
+    'pointer-events:none',
+    'overflow:visible'
+  ].join(';')
+  const clone = source.cloneNode(true)
+  clone.style.boxShadow = 'none'
+  clone.style.margin    = '0'
+  wrapper.appendChild(clone)
+  document.body.appendChild(wrapper)
+
   const opt = {
-    margin:     [8, 6, 8, 6],
+    margin:     [6, 8, 6, 8],
     filename:   filename,
-    image:      { type: 'jpeg', quality: 0.95 },
-    html2canvas:{ scale: 1.6, useCORS: true, logging: false, width: 1050 },
-    jsPDF:      { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    image:      { type: 'jpeg', quality: 0.97 },
+    html2canvas:{
+      scale:       2,
+      useCORS:     true,
+      logging:     false,
+      windowWidth: 1050,
+      scrollX:     0,
+      scrollY:     0
+    },
+    jsPDF:{ unit: 'mm', format: 'a4', orientation: 'landscape' }
   }
 
-  await html2pdf().set(opt).from(element).save()
+  try {
+    await html2pdf().set(opt).from(clone).save()
+  } finally {
+    document.body.removeChild(wrapper)
+  }
 }
 
 // ============================================================
