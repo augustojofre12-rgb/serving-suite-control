@@ -34,14 +34,14 @@
 .preview-actions{display:flex;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #ddd;flex-wrap:wrap;align-items:center}
 .preview-scroll{overflow-x:auto;background:#888;padding:20px;border-radius:8px}
 
-/* ---- EL CERTIFICADO (diseñado para A4 horizontal 297×210mm) ---- */
+/* ---- EL CERTIFICADO (diseñado para A4 vertical 210×297mm) ---- */
 #cert-doc{
   background:#fff;
-  padding:18px 24px;
-  width:1050px;
+  padding:16px 18px;
+  width:740px;
   margin:0 auto;
   font-family:'Segoe UI',Arial,sans-serif;
-  font-size:11.5px;
+  font-size:11px;
   color:#1a1a1a;
   box-shadow:0 4px 24px rgba(0,0,0,.3);
   box-sizing:border-box;
@@ -73,17 +73,17 @@
 .cd-info .val{font-weight:600;color:#1a1a1a}
 
 /* Main table */
-.cd-table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:0}
-.cd-table th{background:#1e6b40;color:#fff;padding:6px 5px;text-align:center;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.3px;border:1px solid #155532;white-space:nowrap}
+.cd-table{width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:0}
+.cd-table th{background:#1e6b40;color:#fff;padding:5px 3px;text-align:center;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.2px;border:1px solid #155532;white-space:nowrap}
 .cd-table th.th-left{text-align:left}
-.cd-table td{padding:5px 5px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle}
+.cd-table td{padding:4px 4px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle;font-size:8.5px}
 .cd-table td.tr{text-align:right}
 .cd-table td.tc{text-align:center}
 .cd-table tbody tr:nth-child(even) td{background:#f9fbf9}
-.cd-table .td-desc{font-weight:600}
+.cd-table .td-desc{font-weight:600;font-size:8px}
 .cd-table .td-num{text-align:center;font-weight:700;color:#1e6b40}
 .cd-table tfoot td{font-weight:700;background:#f0f7f3;border:1px solid #ccc}
-.th-sub{background:#155532!important;font-size:8.5px!important}
+.th-sub{background:#155532!important;font-size:7.5px!important}
 
 /* Footer financiero */
 .cd-fin{margin-top:12px;display:flex;justify-content:flex-end}
@@ -531,7 +531,9 @@ function renderCertDoc(modoReimprimir) {
   const totalAnt     = itemsCertActual.reduce((s,i) => s + i.montoAnt, 0)
   const totalActual  = itemsCertActual.reduce((s,i) => s + i.montoActual, 0)
   const totalAcum    = itemsCertActual.reduce((s,i) => s + i.montoAcum, 0)
-  const neto         = totalAcum - descuento
+  // El pie parte del MONTO ACTUAL (período certificado)
+  const baseFactura  = totalActual
+  const neto         = baseFactura - descuento
   const ivaMonto     = neto * (ivaPct / 100)
   const totalPagar   = neto + ivaMonto
 
@@ -636,8 +638,8 @@ function renderCertDoc(modoReimprimir) {
     <div class="cd-fin">
       <table class="cd-fin-table">
         <tr>
-          <td class="fin-lbl">MONTO ACUMULADO</td>
-          <td class="fin-val">${formatPeso(totalAcum)}</td>
+          <td class="fin-lbl">MONTO PERÍODO ACTUAL</td>
+          <td class="fin-val">${formatPeso(totalActual)}</td>
         </tr>
         <tr>
           <td class="fin-lbl">DESCUENTOS</td>
@@ -652,8 +654,8 @@ function renderCertDoc(modoReimprimir) {
           <td class="fin-val">${formatPeso(ivaMonto)}</td>
         </tr>
         <tr class="fin-total">
-          <td class="fin-lbl" style="color:#fff;font-size:14px">TOTAL A PAGAR</td>
-          <td class="fin-val" style="color:#fff;font-size:16px">${formatPeso(totalPagar)}</td>
+          <td class="fin-lbl" style="color:#fff;font-size:13px">TOTAL A PAGAR</td>
+          <td class="fin-val" style="color:#fff;font-size:15px">${formatPeso(totalPagar)}</td>
         </tr>
       </table>
     </div>
@@ -715,7 +717,8 @@ async function guardarYGenerarPDF() {
   const ivaPct     = ivaEl2.value === '' ? 21 : parseFloat(ivaEl2.value)
 
   const totalAcum   = itemsCertActual.reduce((s,i) => s + i.montoAcum, 0)
-  const neto        = totalAcum - descuento
+  const totalActual = itemsCertActual.reduce((s,i) => s + i.montoActual, 0)
+  const neto        = totalActual - descuento
   const ivaMonto    = neto * (ivaPct / 100)
   const totalPagar  = neto + ivaMonto
 
@@ -820,7 +823,7 @@ async function generarPDF() {
     'position:fixed',
     'top:0',
     'left:0',
-    'width:1050px',
+    'width:740px',
     'z-index:-9999',
     'background:#fff',
     'pointer-events:none',
@@ -833,18 +836,18 @@ async function generarPDF() {
   document.body.appendChild(wrapper)
 
   const opt = {
-    margin:     [6, 8, 6, 8],
+    margin:     [8, 10, 8, 10],
     filename:   filename,
     image:      { type: 'jpeg', quality: 0.97 },
     html2canvas:{
       scale:       2,
       useCORS:     true,
       logging:     false,
-      windowWidth: 1050,
+      windowWidth: 740,
       scrollX:     0,
       scrollY:     0
     },
-    jsPDF:{ unit: 'mm', format: 'a4', orientation: 'landscape' }
+    jsPDF:{ unit: 'mm', format: 'a4', orientation: 'portrait' }
   }
 
   try {
