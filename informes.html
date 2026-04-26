@@ -247,12 +247,26 @@
           <p>Generá un informe ejecutivo de cualquier obra para los dueños de la empresa</p>
         </div>
       </div>
-      <div class="sel-row">
-        <select id="sel-obra" onchange="generarInforme()">
+      <div class="sel-row" style="margin-bottom:10px">
+        <select id="sel-obra" onchange="onObraChange()" style="min-width:320px;flex:1;max-width:480px">
           <option value="">— Seleccioná una obra —</option>
         </select>
         <button class="btn btn-outline no-print" id="btn-imprimir" onclick="window.print()" style="display:none">
           🖨️ Imprimir / PDF
+        </button>
+      </div>
+      <div id="rango-fechas" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:13px;font-weight:600;color:var(--text)">Período:</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--gray)">Desde</span>
+          <input type="date" id="fecha-desde" style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--gray)">Hasta</span>
+          <input type="date" id="fecha-hasta" style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+        </div>
+        <button class="btn btn-success" onclick="generarInforme()" style="padding:8px 18px">
+          ▶ Generar informe
         </button>
       </div>
     </div>
@@ -282,6 +296,7 @@
             <div class="inf-head-right">
               <div class="company">Serving Suite Control</div>
               <div class="date" id="inf-fecha-gen"></div>
+              <div class="date" id="inf-head-periodo" style="margin-top:4px;font-weight:600;opacity:.95"></div>
             </div>
           </div>
 
@@ -441,25 +456,53 @@ async function init() {
 }
 
 async function cargarObras() {
-  const { data } = await db.from('obras').select('id, nombre, cliente_comitente, estado').order('nombre')
+  const { data } = await db.from('obras').select('id, nombre, descripcion, estado').order('nombre')
   obras = data || []
   const sel = document.getElementById('sel-obra')
   obras.forEach(o => {
     const opt = document.createElement('option')
     opt.value = o.id
     const icon = o.estado === 'suspendida' ? '⏸️ ' : o.estado === 'finalizada' ? '✓ ' : ''
-    opt.textContent = icon + o.nombre + (o.cliente_comitente ? ' — ' + o.cliente_comitente : '')
+    opt.textContent = icon + o.nombre
     sel.appendChild(opt)
   })
 }
 
+function onObraChange() {
+  const obraId = document.getElementById('sel-obra').value
+  const rangoEl = document.getElementById('rango-fechas')
+  if (!obraId) {
+    rangoEl.style.display = 'none'
+    document.getElementById('informe-contenido').style.display = 'none'
+    document.getElementById('inf-empty').style.display = 'block'
+    document.getElementById('inf-empty').innerHTML = `
+      <div class="big-icon">📄</div>
+      <h3>Seleccioná una obra</h3>
+      <p>Elegí la obra en el selector de arriba para generar el informe ejecutivo.</p>`
+    document.getElementById('btn-imprimir').style.display = 'none'
+    return
+  }
+  // Defaults: primer día del mes actual hasta hoy
+  const hoy = new Date()
+  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+  const fmt = d => d.toISOString().split('T')[0]
+  const desdeEl = document.getElementById('fecha-desde')
+  const hastaEl = document.getElementById('fecha-hasta')
+  if (!desdeEl.value) desdeEl.value = fmt(primerDia)
+  if (!hastaEl.value) hastaEl.value = fmt(hoy)
+  rangoEl.style.display = 'flex'
+}
+
 async function generarInforme() {
   const obraId = document.getElementById('sel-obra').value
+  const desde  = document.getElementById('fecha-desde').value
+  const hasta  = document.getElementById('fecha-hasta').value
   document.getElementById('informe-contenido').style.display = 'none'
   document.getElementById('inf-empty').style.display         = 'block'
   document.getElementById('btn-imprimir').style.display      = 'none'
 
   if (!obraId) return
+  if (!desde || !hasta) { toast('Seleccioná un rango de fechas', 'error'); return }
 
   // Mostrar loading
   document.getElementById('inf-empty').innerHTML = `
@@ -476,9 +519,10 @@ async function generarInforme() {
     const { data: items } = await db.from('items_obra')
       .select('*').eq('obra_id', obraId).order('orden')
 
-    // 3. Todos los partes de la obra
+    // 3. Partes de la obra en el rango de fechas
     const { data: partes } = await db.from('partes_diarios')
-      .select('id, item_id, cantidad_ejecutada, fecha').eq('obra_id', obraId)
+      .select('id, item_id, cantidad_ejecutada, fecha')
+      .eq('obra_id', obraId).gte('fecha', desde).lte('fecha', hasta)
 
     const parteIds = (partes || []).map(p => p.id)
 
@@ -556,7 +600,7 @@ async function generarInforme() {
       : 0
 
     // ── Renderizar ────────────────────────────────────────────
-    renderEncabezado(obra, k, totalPresupContrato, totalPresupCD)
+    renderEncabezado(obra, k, totalPresupContrato, totalPresupCD, desde, hasta)
     renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalEarnedCD, resultado)
     renderAvance(obra, porcFisicoGlobal, partes || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
@@ -585,10 +629,12 @@ async function generarInforme() {
   }
 }
 
-function renderEncabezado(obra, k, presupContrato, presupCD) {
+function renderEncabezado(obra, k, presupContrato, presupCD, desde, hasta) {
+  const fmtFecha = s => new Date(s + 'T00:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+  document.getElementById('inf-head-periodo').textContent = `Período: ${fmtFecha(desde)} al ${fmtFecha(hasta)}`
   document.getElementById('inf-nombre-obra').textContent = obra.nombre
   document.getElementById('inf-comitente').textContent   =
-    obra.cliente_comitente ? 'Comitente: ' + obra.cliente_comitente : ''
+    obra.descripcion ? obra.descripcion : ''
 
   const estadoLabel = { activa: 'En Ejecución', suspendida: 'Suspendida', finalizada: 'Finalizada' }
   const estadoClass = { activa: 'be-activa', suspendida: 'be-suspendida', finalizada: 'be-finalizada' }
