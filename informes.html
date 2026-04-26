@@ -581,9 +581,9 @@ async function generarInforme() {
     let mat = [], pers = [], eq = []
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq] = await Promise.all([
-        db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
-        db.from('parte_personal').select('nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds),
-        db.from('parte_equipos').select('descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds)
+        db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
+        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds),
+        db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds)
       ])
       mat  = rMat.data  || []
       pers = rPers.data || []
