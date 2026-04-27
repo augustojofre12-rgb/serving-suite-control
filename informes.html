@@ -431,7 +431,7 @@
                 <div class="fin-sub" id="f-presup-cd-sub">Base de análisis</div>
               </div>
               <div class="fin-card">
-                <div class="fin-lbl">Costo Real<br>Directo a la fecha</div>
+                <div class="fin-lbl">Costo Real<br>Directo (CD)</div>
                 <div class="fin-val" id="f-real-cd">—</div>
                 <div class="fin-sub" id="f-real-cd-sub">De partes cargados</div>
               </div>
@@ -439,6 +439,24 @@
                 <div class="fin-lbl">Valor Ganado<br>(Presup CD − Real CD)</div>
                 <div class="fin-val" id="f-resultado">—</div>
                 <div class="fin-sub" id="f-resultado-sub">—</div>
+              </div>
+            </div>
+            <!-- Fila CI + Total -->
+            <div id="ci-fin-row" style="display:none;margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div class="fin-card" style="background:#f5eeff;border-color:#c9a0ff">
+                <div class="fin-lbl" style="color:#6c3483">Costo Real<br>Indirecto (CI)</div>
+                <div class="fin-val" id="f-real-ci" style="color:#6c3483">—</div>
+                <div class="fin-sub" id="f-real-ci-sub">Recursos indirectos</div>
+              </div>
+              <div class="fin-card" style="background:#f5eeff;border-color:#c9a0ff">
+                <div class="fin-lbl" style="color:#6c3483">CI / CD<br>Relación</div>
+                <div class="fin-val" id="f-ci-cd-rel" style="color:#6c3483">—</div>
+                <div class="fin-sub">% sobre Costo Directo</div>
+              </div>
+              <div class="fin-card" style="background:#1a1a2e;border-color:#333">
+                <div class="fin-lbl" style="color:rgba(255,255,255,.6)">Costo Total<br>(CD + CI)</div>
+                <div class="fin-val" id="f-costo-total" style="color:#fff">—</div>
+                <div class="fin-sub" style="color:rgba(255,255,255,.5)" id="f-costo-total-sub">—</div>
               </div>
             </div>
           </div>
@@ -547,6 +565,23 @@
             </table>
           </div>
 
+          <!-- Costos Indirectos -->
+          <div class="inf-sec" id="sec-ci" style="break-before:page;display:none">
+            <div class="inf-sec-title">💼 Costos Indirectos del Período</div>
+            <!-- Tarjetas resumen CI -->
+            <div id="ci-cards-wrap" style="margin-bottom:16px"></div>
+            <!-- Tabla detalle CI -->
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Categoría / Descripción</th>
+                <th class="tr" style="width:110px">Cantidad / Hs</th>
+                <th class="tr" style="width:140px">Precio Unit.</th>
+                <th class="tr" style="width:140px">Total</th>
+              </tr></thead>
+              <tbody id="tbody-ci"></tbody>
+            </table>
+          </div>
+
           <!-- Pie del informe -->
           <div class="inf-sec" style="background:#f7faf8;padding:14px 36px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -650,17 +685,19 @@ async function generarInforme() {
 
     const parteIds = (partes || []).map(p => p.id)
 
-    // 4. Datos reales (paralelo)
-    let mat = [], pers = [], eq = []
+    // 4. Datos reales (paralelo) + costos indirectos de tabla
+    let mat = [], pers = [], eq = [], costsInd = []
     if (parteIds.length > 0) {
-      const [rMat, rPers, rEq] = await Promise.all([
+      const [rMat, rPers, rEq, rCI] = await Promise.all([
         db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
         db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora, es_indirecto').in('parte_id', parteIds),
-        db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds)
+        db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds),
+        db.from('parte_costos_indirectos').select('parte_id, descripcion, monto').in('parte_id', parteIds)
       ])
-      mat  = rMat.data  || []
-      pers = rPers.data || []
-      eq   = rEq.data   || []
+      mat      = rMat.data  || []
+      pers     = rPers.data || []
+      eq       = rEq.data   || []
+      costsInd = rCI.data   || []
     }
 
     // 5. Presupuesto items (paralelo para todos los ítems)
@@ -688,6 +725,17 @@ async function generarInforme() {
     const realPers  = persD.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
     const realEq    = eqD.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
     const realTotal = realMat + realComb + realHerr + realPers + realEq
+
+    // Costos INDIRECTOS
+    const matI  = mat.filter(m => m.es_indirecto)
+    const persI = pers.filter(p => p.es_indirecto)
+    const eqI   = eq.filter(e => e.es_indirecto)
+
+    const totalCImat  = matI.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+    const totalCIpers = persI.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+    const totalCIeq   = eqI.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
+    const totalCItab  = costsInd.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0)
+    const totalCI     = totalCImat + totalCIpers + totalCIeq + totalCItab
 
     // Presupuesto y earned value por ítem
     const dataItems = (items || []).map(item => {
@@ -728,11 +776,12 @@ async function generarInforme() {
 
     // ── Renderizar ────────────────────────────────────────────
     renderEncabezado(obra, k, totalPresupContrato, totalPresupCD, desde, hasta)
-    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal)
+    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalCI)
     renderAvance(obra, porcFisicoGlobal, partes || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
     renderItems(dataItems, k)
     renderDetalles(matD, persD, eqD)
+    renderCostosIndirectos(matI, persI, eqI, costsInd, totalCImat, totalCIpers, totalCIeq, totalCItab, totalCI)
 
     // Pie
     const ahora = new Date()
@@ -783,7 +832,7 @@ function renderEncabezado(obra, k, presupContrato, presupCD, desde, hasta) {
   document.getElementById('d-cd').textContent      = formatPeso(presupCD)
 }
 
-function renderFinanciero(obra, k, presupContrato, presupCD, realTotal) {
+function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, totalCI) {
   document.getElementById('f-presup-contrato').textContent = formatPeso(obra.monto_contrato || presupContrato)
   document.getElementById('f-presup-cd').textContent       = formatPeso(presupCD)
   document.getElementById('f-presup-cd-sub').textContent   = presupCD > 0
@@ -805,6 +854,22 @@ function renderFinanciero(obra, k, presupContrato, presupCD, realTotal) {
   cardEl.classList.remove('positivo', 'negativo')
   if (presupCD > 0 || realTotal > 0) {
     cardEl.classList.add(valorGanado >= 0 ? 'positivo' : 'negativo')
+  }
+
+  // Fila CI + Costo Total
+  const ciRow = document.getElementById('ci-fin-row')
+  if (totalCI > 0) {
+    ciRow.style.display = 'grid'
+    document.getElementById('f-real-ci').textContent     = formatPeso(totalCI)
+    const relCICD = realTotal > 0 ? (totalCI / realTotal * 100).toFixed(1) : '0.0'
+    document.getElementById('f-ci-cd-rel').textContent   = relCICD + '%'
+    document.getElementById('f-real-ci-sub').textContent = `${(totalCI / (realTotal + totalCI) * 100).toFixed(1)}% del costo total`
+    const costoTotal = realTotal + totalCI
+    document.getElementById('f-costo-total').textContent = formatPeso(costoTotal)
+    const porcTotal = presupCD > 0 ? (costoTotal / presupCD * 100).toFixed(1) : '—'
+    document.getElementById('f-costo-total-sub').textContent = porcTotal !== '—' ? `${porcTotal}% del presup CD` : 'Sin presupuesto'
+  } else {
+    ciRow.style.display = 'none'
   }
 }
 
@@ -925,23 +990,24 @@ function renderItems(dataItems, k) {
   document.getElementById('tbody-items').innerHTML = rows.join('')
 }
 
+// ── Función utilitaria de agrupación (reutilizada en detalles y CI) ──
+function agrupar(arr, keyFn, cantFn, precFn) {
+  const map = {}
+  arr.forEach(r => {
+    const k = keyFn(r)
+    if (!map[k]) map[k] = { desc: k, cant: 0, total: 0 }
+    map[k].cant  += cantFn(r)
+    map[k].total += cantFn(r) * precFn(r)
+  })
+  return Object.values(map)
+    .map(r => ({ ...r, prec: r.cant > 0 ? r.total / r.cant : 0 }))
+    .sort((a, b) => b.total - a.total)
+}
+
 function renderDetalles(mat, pers, eq) {
   const vacio = id => {
     document.getElementById(id).innerHTML =
       `<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--gray)">Sin registros en el período</td></tr>`
-  }
-
-  function agrupar(arr, keyFn, cantFn, precFn) {
-    const map = {}
-    arr.forEach(r => {
-      const k = keyFn(r)
-      if (!map[k]) map[k] = { desc: k, cant: 0, total: 0 }
-      map[k].cant  += cantFn(r)
-      map[k].total += cantFn(r) * precFn(r)
-    })
-    return Object.values(map)
-      .map(r => ({ ...r, prec: r.cant > 0 ? r.total / r.cant : 0 }))
-      .sort((a, b) => b.total - a.total)
   }
 
   function filasTbl(rows, id) {
@@ -975,6 +1041,100 @@ function renderDetalles(mat, pers, eq) {
   const combArr = (mat || []).filter(m => m.descripcion.startsWith('⛽'))
     .map(m => ({ ...m, descripcion: m.descripcion.replace(/^⛽\s*/, '') }))
   filasTbl(agrupar(combArr, m => m.descripcion, m => m.cantidad, m => m.precio_unitario), 'tbody-det-comb')
+}
+
+// ── Costos Indirectos ─────────────────────────────────────────────────────────
+function renderCostosIndirectos(matI, persI, eqI, costsInd, totalCImat, totalCIpers, totalCIeq, totalCItab, totalCI) {
+  const sec = document.getElementById('sec-ci')
+
+  if (totalCI === 0) {
+    sec.style.display = 'none'
+    return
+  }
+  sec.style.display = ''
+
+  // ── Tarjetas resumen ──
+  const categorias = [
+    { lbl: 'Materiales CI',   val: totalCImat,  show: totalCImat  > 0 },
+    { lbl: 'Mano de Obra CI', val: totalCIpers, show: totalCIpers > 0 },
+    { lbl: 'Equipos CI',      val: totalCIeq,   show: totalCIeq   > 0 },
+    { lbl: 'Otros CI',        val: totalCItab,  show: totalCItab  > 0 },
+  ].filter(c => c.show)
+
+  const cardsHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      ${categorias.map(c => `
+        <div style="background:#f5eeff;border:1.5px solid #c9a0ff;border-radius:10px;padding:12px 14px;text-align:center">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#8e44ad;margin-bottom:6px;letter-spacing:.04em">${c.lbl}</div>
+          <div style="font-size:14px;font-weight:800;color:#6c3483">${formatPeso(c.val)}</div>
+          <div style="font-size:10px;color:#8e44ad;margin-top:3px">${(c.val/totalCI*100).toFixed(1)}% del CI</div>
+        </div>`).join('')}
+      <div style="background:#8e44ad;border:1.5px solid #6c3483;border-radius:10px;padding:12px 14px;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:6px;letter-spacing:.04em">TOTAL CI</div>
+        <div style="font-size:16px;font-weight:800;color:#fff">${formatPeso(totalCI)}</div>
+      </div>
+    </div>`
+  document.getElementById('ci-cards-wrap').innerHTML = cardsHtml
+
+  // ── Tabla detalle ──
+  const rows = []
+  const subTitleStyle = 'background:#f0e8ff;font-weight:700;font-size:10.5px;color:#6c3483;padding:6px 14px;text-transform:uppercase;letter-spacing:.04em'
+  const subTotalStyle = 'background:#ede0ff'
+
+  function bloqueCi(titulo, agrupados, labelCant, labelPrec) {
+    if (!agrupados.length) return
+    const subtotal = agrupados.reduce((s,r) => s + r.total, 0)
+    rows.push(`<tr><td colspan="4" style="${subTitleStyle}">💼 ${titulo}</td></tr>`)
+    agrupados.forEach(r => rows.push(`
+      <tr>
+        <td style="padding-left:20px">${r.desc}</td>
+        <td class="tr">${formatNum(Math.round(r.cant * 100) / 100)} ${labelCant}</td>
+        <td class="tr">${formatPeso(Math.round(r.prec))}${labelPrec}</td>
+        <td class="tr"><strong>${formatPeso(r.total)}</strong></td>
+      </tr>`))
+    rows.push(`
+      <tr style="${subTotalStyle}">
+        <td colspan="3" style="font-weight:700;padding-left:20px">Subtotal ${titulo}</td>
+        <td class="tr"><strong>${formatPeso(subtotal)}</strong></td>
+      </tr>`)
+  }
+
+  bloqueCi('Materiales',
+    agrupar(matI, m => m.descripcion, m => m.cantidad, m => m.precio_unitario),
+    '', '/u')
+
+  bloqueCi('Mano de Obra',
+    agrupar(persI, p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora),
+    'hs', '/h')
+
+  bloqueCi('Equipos',
+    agrupar(eqI, e => e.descripcion || 'Equipo', e => e.horas_utilizadas, e => e.precio_hora),
+    'hs', '/h')
+
+  // Otros CI (de tabla parte_costos_indirectos)
+  if (costsInd.length > 0) {
+    rows.push(`<tr><td colspan="4" style="${subTitleStyle}">💼 Otros Costos Indirectos</td></tr>`)
+    costsInd.forEach(c => rows.push(`
+      <tr>
+        <td style="padding-left:20px">${c.descripcion || '—'}</td>
+        <td class="tc" colspan="2" style="color:var(--gray);font-size:12px">—</td>
+        <td class="tr"><strong>${formatPeso(parseFloat(c.monto) || 0)}</strong></td>
+      </tr>`))
+    rows.push(`
+      <tr style="${subTotalStyle}">
+        <td colspan="3" style="font-weight:700;padding-left:20px">Subtotal Otros CI</td>
+        <td class="tr"><strong>${formatPeso(totalCItab)}</strong></td>
+      </tr>`)
+  }
+
+  // Total final CI
+  rows.push(`
+    <tr class="total-row" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#8e44ad!important;border-top:2px solid #6c3483">
+      <td colspan="3" style="color:#fff!important"><strong>TOTAL COSTOS INDIRECTOS</strong></td>
+      <td class="tr" style="color:#fff!important"><strong>${formatPeso(totalCI)}</strong></td>
+    </tr>`)
+
+  document.getElementById('tbody-ci').innerHTML = rows.join('')
 }
 
 init()
