@@ -412,17 +412,47 @@ async function generarVista() {
       return
     }
 
-    // 2. Todos los partes de la obra (necesitamos fechas)
+    // 2. Calcular número y cargar items del certificado anterior (para ANT encadenado)
+    await calcularNumCert()
+
+    // Buscar el último certificado guardado para esta obra
+    let prevItemsMap = {}   // descripcion → { horasAcum, montoAcum }
+    const { data: prevCerts } = await db
+      .from('certificados_equipos')
+      .select('id, numero')
+      .eq('obra_id', obraId)
+      .order('numero', { ascending: false })
+      .limit(1)
+
+    if (prevCerts && prevCerts.length > 0) {
+      const { data: prevItems } = await db
+        .from('certificados_equipos_items')
+        .select('equipo_descripcion, horas_acum, monto_acum')
+        .eq('certificado_id', prevCerts[0].id)
+
+      if (prevItems) {
+        prevItems.forEach(it => {
+          prevItemsMap[it.equipo_descripcion] = {
+            horasAcum: parseFloat(it.horas_acum) || 0,
+            montoAcum: parseFloat(it.monto_acum) || 0
+          }
+        })
+      }
+    }
+
+    // 3. Partes del período ACTUAL (solo necesitamos el período actual)
     const { data: partes } = await db
       .from('partes_diarios')
       .select('id, fecha')
       .eq('obra_id', obraId)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
 
     const parteIds = (partes || []).map(p => p.id)
     const fechaMap = {}
     ;(partes || []).forEach(p => { fechaMap[p.id] = p.fecha })
 
-    // 3. Todos los parte_equipos de la obra
+    // 4. parte_equipos solo del período actual
     let allEqRows = []
     if (parteIds.length > 0) {
       const { data: eqRows } = await db
@@ -432,9 +462,7 @@ async function generarVista() {
       allEqRows = eqRows || []
     }
 
-    // 4. Construir items con ANT / ACTUAL / ACUM
-    await calcularNumCert()
-
+    // 5. Construir items con ANT (anclado al cert anterior) / ACTUAL / ACUM
     itemsCertActual = obraEqs.map((oeq, idx) => {
       const fe = oeq.flota_equipos
       const desc = fe
@@ -445,24 +473,19 @@ async function generarVista() {
       const precioUnit  = parseFloat(oeq.precio_hora) || 0
       const totalAprox  = cantContrat * precioUnit
 
-      // Rows de este equipo en los partes
+      // ANT: viene del ACUM del certificado anterior guardado
+      const prev      = prevItemsMap[desc] || { horasAcum: 0, montoAcum: 0 }
+      const horasAnt  = prev.horasAcum
+      const montoAnt  = prev.montoAcum
+
+      // ACTUAL: calculado de los partes del período seleccionado
       const rowsEq = allEqRows.filter(r => r.descripcion === desc)
-
-      const horasAnt = rowsEq
-        .filter(r => fechaMap[r.parte_id] && fechaMap[r.parte_id] < desde)
-        .reduce((s, r) => s + (parseFloat(r.horas_utilizadas) || 0), 0)
-
-      const horasActual = rowsEq
-        .filter(r => {
-          const f = fechaMap[r.parte_id]
-          return f && f >= desde && f <= hasta
-        })
-        .reduce((s, r) => s + (parseFloat(r.horas_utilizadas) || 0), 0)
-
-      const horasAcum  = horasAnt + horasActual
-      const montoAnt    = horasAnt * precioUnit
+      const horasActual = rowsEq.reduce((s, r) => s + (parseFloat(r.horas_utilizadas) || 0), 0)
       const montoActual = horasActual * precioUnit
-      const montoAcum   = horasAcum * precioUnit
+
+      // ACUM: encadenado
+      const horasAcum = horasAnt + horasActual
+      const montoAcum = montoAnt + montoActual
 
       return {
         num: idx + 1,
