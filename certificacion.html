@@ -864,9 +864,9 @@ async function generarPDF() {
   const opt = {
     margin:     [8, 10, 8, 10],   // top, right, bottom, left  (mm)
     filename:   filename,
-    image:      { type: 'jpeg', quality: 0.98 },
+    image:      { type: 'png' },
     html2canvas:{
-      scale:         2,
+      scale:         3,
       useCORS:       true,
       logging:       false,
       windowWidth:   740,
