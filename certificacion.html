@@ -37,7 +37,7 @@
 /* ---- EL CERTIFICADO (diseñado para A4 vertical 210×297mm) ---- */
 #cert-doc{
   background:#fff;
-  padding:16px 18px;
+  padding:12px 14px;
   width:740px;
   margin:0 auto;
   font-family:'Segoe UI',Arial,sans-serif;
@@ -53,37 +53,37 @@
   justify-content:space-between;
   align-items:flex-start;
   border-bottom:3px solid #1e6b40;
-  padding-bottom:10px;
-  margin-bottom:12px;
+  padding-bottom:8px;
+  margin-bottom:10px;
 }
-.cd-logo-title{font-size:18px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
-.cd-logo-sub{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.cd-logo-title{font-size:16px;font-weight:800;color:#1e6b40;letter-spacing:.5px}
+.cd-logo-sub{font-size:8.5px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
 .cd-doc-title{text-align:center}
-.cd-doc-title h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 2px}
-.cd-doc-title p{font-size:10px;color:#666;margin:0}
+.cd-doc-title h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 2px}
+.cd-doc-title p{font-size:9.5px;color:#666;margin:0}
 .cd-num-block{text-align:right}
-.cd-num-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.7px}
-.cd-num{font-size:26px;font-weight:800;color:#1e6b40;line-height:1}
-.cd-num-sub{font-size:9px;color:#888;margin-top:2px}
+.cd-num-label{font-size:8.5px;color:#888;text-transform:uppercase;letter-spacing:.7px}
+.cd-num{font-size:24px;font-weight:800;color:#1e6b40;line-height:1}
+.cd-num-sub{font-size:8.5px;color:#888;margin-top:2px}
 
 /* Info grid */
-.cd-info{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
-.cd-info td{padding:4px 8px;border:1px solid #ccc}
-.cd-info .lbl{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;width:1%;background:#f8f9fa}
-.cd-info .val{font-weight:600;color:#1a1a1a}
+.cd-info{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}
+.cd-info td{padding:3px 6px;border:1px solid #ccc}
+.cd-info .lbl{font-size:8.5px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;width:1%;background:#f8f9fa}
+.cd-info .val{font-weight:600;color:#1a1a1a;font-size:10px}
 
 /* Main table */
-.cd-table{width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:0}
-.cd-table th{background:#1e6b40;color:#fff;padding:5px 3px;text-align:center;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.2px;border:1px solid #155532;white-space:nowrap}
-.cd-table th.th-left{text-align:left}
-.cd-table td{padding:4px 4px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle;font-size:8.5px}
+.cd-table{width:100%;border-collapse:collapse;font-size:7.5px;margin-bottom:0;table-layout:fixed}
+.cd-table th{background:#1e6b40;color:#fff;padding:4px 2px;text-align:center;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.1px;border:1px solid #155532;white-space:nowrap;overflow:hidden}
+.cd-table th.th-left{text-align:left;padding-left:4px}
+.cd-table td{padding:3px 2px;border:1px solid #ddd;color:#1a1a1a;vertical-align:middle;font-size:7.5px;overflow:hidden;text-overflow:ellipsis}
 .cd-table td.tr{text-align:right}
 .cd-table td.tc{text-align:center}
 .cd-table tbody tr:nth-child(even) td{background:#f9fbf9}
-.cd-table .td-desc{font-weight:600;font-size:8px}
-.cd-table .td-num{text-align:center;font-weight:700;color:#1e6b40}
-.cd-table tfoot td{font-weight:700;background:#f0f7f3;border:1px solid #ccc}
-.th-sub{background:#155532!important;font-size:7.5px!important}
+.cd-table .td-desc{font-weight:600;font-size:7.5px;white-space:normal;word-break:break-word}
+.cd-table .td-num{text-align:center;font-weight:700;color:#1e6b40;font-size:7.5px}
+.cd-table tfoot td{font-weight:700;background:#f0f7f3;border:1px solid #ccc;font-size:7.5px}
+.th-sub{background:#155532!important;font-size:6.5px!important}
 
 /* Footer financiero */
 .cd-fin{margin-top:12px;display:flex;justify-content:flex-end}
@@ -598,25 +598,40 @@ function renderCertDoc(modoReimprimir) {
     </table>
 
     <!-- TABLA PRINCIPAL -->
+    <!-- colgroup: 22+128+28+44+64+68+46+46+46+60+60+60 = 672px base → table-layout:fixed rellenará los 712px -->
     <table class="cd-table">
+      <colgroup>
+        <col style="width:22px">
+        <col style="width:128px">
+        <col style="width:28px">
+        <col style="width:44px">
+        <col style="width:64px">
+        <col style="width:68px">
+        <col style="width:50px">
+        <col style="width:50px">
+        <col style="width:50px">
+        <col style="width:68px">
+        <col style="width:68px">
+        <col style="width:68px">
+      </colgroup>
       <thead>
         <tr>
-          <th rowspan="2" style="width:36px">ITEM</th>
+          <th rowspan="2">N°</th>
           <th rowspan="2" class="th-left">DESCRIPCIÓN</th>
-          <th rowspan="2" style="width:46px">UNID</th>
-          <th rowspan="2" style="width:62px">CANT</th>
-          <th rowspan="2" style="width:88px">P. UNITARIO</th>
-          <th rowspan="2" style="width:96px">TOTAL APROX</th>
-          <th colspan="3" style="width:204px">CANTIDAD</th>
-          <th colspan="3" style="width:282px">MONTO</th>
+          <th rowspan="2">UNID</th>
+          <th rowspan="2">CANT.</th>
+          <th rowspan="2">P. UNIT.</th>
+          <th rowspan="2">TOTAL<br>APROX.</th>
+          <th colspan="3">CANTIDAD</th>
+          <th colspan="3">MONTO ($)</th>
         </tr>
         <tr>
-          <th class="th-sub" style="width:68px">ANT.</th>
-          <th class="th-sub" style="width:68px">ACTUAL</th>
-          <th class="th-sub" style="width:68px">ACUM.</th>
-          <th class="th-sub" style="width:94px">ANT.</th>
-          <th class="th-sub" style="width:94px">ACTUAL</th>
-          <th class="th-sub" style="width:94px">ACUM.</th>
+          <th class="th-sub">ANT.</th>
+          <th class="th-sub">ACTUAL</th>
+          <th class="th-sub">ACUM.</th>
+          <th class="th-sub">ANT.</th>
+          <th class="th-sub">ACTUAL</th>
+          <th class="th-sub">ACUM.</th>
         </tr>
       </thead>
       <tbody>
@@ -818,34 +833,50 @@ async function generarPDF() {
   // ── Clonar el doc fuera del scroll container para que html2canvas
   //    lo capture correctamente sin offsets ni recortes ──────────────
   const source = document.getElementById('cert-doc')
+
+  // Medimos el alto real del documento ANTES de clonar
+  const altoCert = source.scrollHeight
+
   const wrapper = document.createElement('div')
   wrapper.style.cssText = [
     'position:fixed',
     'top:0',
     'left:0',
     'width:740px',
+    'height:' + altoCert + 'px',
     'z-index:-9999',
     'background:#fff',
     'pointer-events:none',
     'overflow:visible'
   ].join(';')
+
   const clone = source.cloneNode(true)
-  clone.style.boxShadow = 'none'
-  clone.style.margin    = '0'
+  clone.style.boxShadow  = 'none'
+  clone.style.margin     = '0'
+  clone.style.width      = '740px'
+  clone.style.minHeight  = altoCert + 'px'
   wrapper.appendChild(clone)
   document.body.appendChild(wrapper)
 
+  // Esperar un frame para que el browser pinte el clone
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
   const opt = {
-    margin:     [8, 10, 8, 10],
+    margin:     [8, 10, 8, 10],   // top, right, bottom, left  (mm)
     filename:   filename,
-    image:      { type: 'jpeg', quality: 0.97 },
+    image:      { type: 'jpeg', quality: 0.98 },
     html2canvas:{
-      scale:       2,
-      useCORS:     true,
-      logging:     false,
-      windowWidth: 740,
-      scrollX:     0,
-      scrollY:     0
+      scale:         2,
+      useCORS:       true,
+      logging:       false,
+      windowWidth:   740,
+      windowHeight:  altoCert,
+      width:         740,
+      height:        altoCert,
+      scrollX:       0,
+      scrollY:       0,
+      x:             0,
+      y:             0
     },
     jsPDF:{ unit: 'mm', format: 'a4', orientation: 'portrait' }
   }
