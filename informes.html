@@ -366,6 +366,9 @@
         <button class="btn btn-outline no-print" id="btn-imprimir" onclick="window.print()" style="display:none">
           🖨️ Imprimir / PDF
         </button>
+        <button class="btn btn-primary no-print" id="btn-guardar" onclick="guardarInforme()" style="display:none">
+          💾 Guardar Informe
+        </button>
       </div>
       <div id="rango-fechas" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
         <label style="font-size:13px;font-weight:600;color:var(--text)">Período:</label>
@@ -385,6 +388,14 @@
 
     <!-- ÁREA CON SCROLL -->
     <div class="inf-scroll">
+
+      <!-- HISTORIAL DE INFORMES (no se imprime) -->
+      <div id="historial-informes" class="no-print" style="display:none;background:#fff;border-radius:12px;border:1.5px solid #e0e8e0;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:20px;padding:16px 24px">
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          📁 Informes guardados
+        </div>
+        <div id="historial-informes-content"></div>
+      </div>
 
       <!-- ESTADO VACÍO INICIAL -->
       <div id="inf-empty" class="inf-empty">
@@ -645,6 +656,9 @@
 <script>
 let usuario = null
 let obras   = []
+let ultimoInforme   = null   // datos del último informe generado (para guardar)
+let informeGuardado = false
+let numInformeActual = null
 
 async function init() {
   usuario = await requireAuth()
@@ -666,7 +680,7 @@ async function cargarObras() {
   })
 }
 
-function onObraChange() {
+async function onObraChange() {
   const obraId = document.getElementById('sel-obra').value
   const rangoEl = document.getElementById('rango-fechas')
   if (!obraId) {
@@ -678,6 +692,8 @@ function onObraChange() {
       <h3>Seleccioná una obra</h3>
       <p>Elegí la obra en el selector de arriba para generar el informe ejecutivo.</p>`
     document.getElementById('btn-imprimir').style.display = 'none'
+    document.getElementById('btn-guardar').style.display = 'none'
+    document.getElementById('historial-informes').style.display = 'none'
     return
   }
   // Defaults: primer día del mes actual hasta hoy
@@ -689,6 +705,8 @@ function onObraChange() {
   if (!desdeEl.value) desdeEl.value = fmt(primerDia)
   if (!hastaEl.value) hastaEl.value = fmt(hoy)
   rangoEl.style.display = 'flex'
+
+  await cargarHistorialInformes(obraId)
 }
 
 async function generarInforme() {
@@ -834,6 +852,22 @@ async function generarInforme() {
     document.getElementById('informe-contenido').style.display = 'block'
     document.getElementById('inf-empty').style.display         = 'none'
     document.getElementById('btn-imprimir').style.display      = 'inline-flex'
+
+    // Guardar referencia para poder salvar el informe
+    ultimoInforme = {
+      obraId, desde, hasta,
+      presupContrato: totalPresupContrato,
+      presupCD:       totalPresupCD,
+      realCD:         realTotal,
+      realCI:         totalCI,
+      valorGanado:    resultado,
+      porcFisico:     porcFisicoGlobal
+    }
+    informeGuardado = false
+    const btnG = document.getElementById('btn-guardar')
+    btnG.style.display = 'inline-flex'
+    btnG.innerHTML     = '💾 Guardar Informe'
+    btnG.disabled      = false
 
   } catch (err) {
     console.error(err)
@@ -1174,6 +1208,177 @@ function renderCostosIndirectos(matI, persI, eqI, costsInd, totalCImat, totalCIp
     </tr>`)
 
   document.getElementById('tbody-ci').innerHTML = rows.join('')
+}
+
+// ============================================================
+//  GUARDAR / HISTORIAL DE INFORMES
+// ============================================================
+async function calcularNumInforme(obraId) {
+  const { data } = await db
+    .from('informes_mensuales')
+    .select('numero')
+    .eq('obra_id', obraId)
+    .order('numero', { ascending: false })
+    .limit(1)
+  numInformeActual = data && data.length > 0 ? data[0].numero + 1 : 1
+  return numInformeActual
+}
+
+async function guardarInforme() {
+  if (!ultimoInforme) return
+
+  // Si ya fue guardado, solo imprimir
+  if (informeGuardado) { window.print(); return }
+
+  const btn = document.getElementById('btn-guardar')
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span> Guardando...'
+  btn.disabled = true
+
+  const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
+  const fechaDesde = new Date(ultimoInforme.desde + 'T00:00:00')
+  const periodo = meses[fechaDesde.getMonth()] + ' ' + fechaDesde.getFullYear()
+
+  try {
+    const num = await calcularNumInforme(ultimoInforme.obraId)
+
+    const { error } = await db
+      .from('informes_mensuales')
+      .insert({
+        obra_id:        ultimoInforme.obraId,
+        numero:         num,
+        periodo:        periodo,
+        fecha_desde:    ultimoInforme.desde,
+        fecha_hasta:    ultimoInforme.hasta,
+        presup_contrato:ultimoInforme.presupContrato,
+        presup_cd:      ultimoInforme.presupCD,
+        real_cd:        ultimoInforme.realCD,
+        real_ci:        ultimoInforme.realCI,
+        valor_ganado:   ultimoInforme.valorGanado,
+        porc_fisico:    ultimoInforme.porcFisico,
+        creado_por:     usuario.id
+      })
+
+    if (error) throw error
+
+    informeGuardado = true
+    toast(`Informe N° ${String(num).padStart(3,'0')} — ${periodo} guardado`, 'ok')
+    btn.innerHTML = `✓ Guardado N° ${String(num).padStart(3,'0')}`
+    btn.style.background = '#27ae60'
+
+    await cargarHistorialInformes(ultimoInforme.obraId)
+
+  } catch(e) {
+    console.error(e)
+    toast('Error al guardar el informe: ' + e.message, 'err')
+    btn.innerHTML = '💾 Guardar Informe'
+    btn.disabled = false
+  }
+}
+
+async function cargarHistorialInformes(obraId) {
+  const { data: informes } = await db
+    .from('informes_mensuales')
+    .select('*')
+    .eq('obra_id', obraId)
+    .order('numero', { ascending: false })
+
+  const wrap    = document.getElementById('historial-informes')
+  const content = document.getElementById('historial-informes-content')
+
+  if (!informes || informes.length === 0) {
+    wrap.style.display = 'none'
+    return
+  }
+  wrap.style.display = 'block'
+
+  const fmtF = s => {
+    if (!s) return '—'
+    const [y, m, d] = s.substring(0,10).split('-')
+    return `${d}/${m}/${y}`
+  }
+
+  const rows = informes.map(inf => `
+    <tr style="border-bottom:1px solid #f0f0f0">
+      <td style="padding:8px 10px;font-weight:700;color:var(--primary);font-size:14px">
+        N° ${String(inf.numero).padStart(3,'0')}
+      </td>
+      <td style="padding:8px 10px;font-weight:600">${inf.periodo || '—'}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--gray)">
+        ${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}
+      </td>
+      <td style="padding:8px 10px;font-weight:600">${formatPeso(inf.real_cd)}</td>
+      <td style="padding:8px 10px;font-weight:600;color:#6c3483">
+        ${inf.real_ci > 0 ? formatPeso(inf.real_ci) : '<span style="color:#ccc">—</span>'}
+      </td>
+      <td style="padding:8px 10px">
+        <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#e8f4ed;color:var(--primary)">
+          ${inf.porc_fisico ? inf.porc_fisico.toFixed(1) + '%' : '—'}
+        </span>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;color:var(--gray)">${fmtF(inf.created_at)}</td>
+      <td style="padding:8px 10px">
+        <button class="btn btn-outline btn-sm" onclick="reimprimirInforme('${inf.id}')">🖨️ PDF</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarInforme('${inf.id}', ${inf.numero})">🗑️</button>
+      </td>
+    </tr>`).join('')
+
+  content.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid #e0e8e0">
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">N°</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Período</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Fechas</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Real CD</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Real CI</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Avance</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Generado</th>
+          <th style="padding:6px 10px"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
+}
+
+async function reimprimirInforme(informeId) {
+  const btn = event.currentTarget
+  btn.innerHTML = '⏳'; btn.disabled = true
+
+  try {
+    const { data: inf } = await db
+      .from('informes_mensuales')
+      .select('*')
+      .eq('id', informeId)
+      .single()
+
+    if (!inf) { toast('No se pudo cargar el informe', 'err'); return }
+
+    // Cargar parámetros en el form y regenerar
+    document.getElementById('sel-obra').value    = inf.obra_id
+    document.getElementById('fecha-desde').value = inf.fecha_desde
+    document.getElementById('fecha-hasta').value = inf.fecha_hasta
+    document.getElementById('rango-fechas').style.display = 'flex'
+
+    await generarInforme()
+    document.getElementById('informe-contenido').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  } catch(e) {
+    console.error(e)
+    toast('Error al cargar el informe', 'err')
+  }
+
+  btn.innerHTML = '🖨️ PDF'; btn.disabled = false
+}
+
+async function eliminarInforme(informeId, num) {
+  if (!confirm(`¿Eliminar el Informe N° ${String(num).padStart(3,'0')}? Esta acción no se puede deshacer.`)) return
+
+  const { error } = await db.from('informes_mensuales').delete().eq('id', informeId)
+  if (error) { toast('Error al eliminar', 'err'); return }
+
+  toast(`Informe N° ${String(num).padStart(3,'0')} eliminado`, 'ok')
+  const obraId = document.getElementById('sel-obra').value
+  await cargarHistorialInformes(obraId)
 }
 
 init()
