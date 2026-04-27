@@ -6,17 +6,90 @@
 <title>Serving Suite Control — Informe Mensual</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-/* ── Print ───────────────────────────────────────────── */
+/* ── Print / PDF ─────────────────────────────────────── */
 @media print {
-  .sidebar, .no-print { display: none !important; }
-  .app { display: block !important; }
-  .main { padding: 0 !important; overflow: visible !important;
-          height: auto !important; background: white !important; }
-  body { background: white !important; }
-  .informe-wrap { box-shadow: none !important; border: none !important;
-                  border-radius: 0 !important; }
-  .informe-section { break-inside: avoid; }
-  .inf-items-table tbody tr { break-inside: avoid; }
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+
+  /* Ocultar UI */
+  .sidebar, .inf-controls, .no-print { display: none !important; }
+
+  /* Reset layout */
+  html, body {
+    background: white !important;
+    margin: 0 !important; padding: 0 !important;
+    height: auto !important; overflow: visible !important;
+  }
+  .app  { display: block !important; height: auto !important; overflow: visible !important; }
+  .main {
+    padding: 0 !important; overflow: visible !important;
+    height: auto !important; background: white !important;
+    width: 100% !important; max-width: none !important;
+  }
+  .inf-scroll {
+    overflow: visible !important; height: auto !important;
+    padding: 0 !important; flex: none !important;
+  }
+
+  /* Informe */
+  .informe-wrap {
+    box-shadow: none !important; border: none !important;
+    border-radius: 0 !important; max-width: 100% !important;
+    width: 100% !important; overflow: visible !important;
+  }
+
+  /* Preservar colores de fondo en impresión */
+  .inf-head,
+  .fin-card, .fin-card.primary, .fin-card.positivo, .fin-card.negativo,
+  .prog-bar-inner, .prog-bar-outer,
+  .tbl-inf thead th, .tbl-inf .total-row td,
+  .pf-pill, .inf-badge, .badge-estado, .cat-dot {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Padding reducido para aprovechar el espacio */
+  .inf-head  { padding: 14px 20px !important; }
+  .inf-sec   { padding: 10px 20px !important; }
+  .inf-sec-title { margin-bottom: 8px !important; }
+
+  /* Saltos de página */
+  .inf-head  { break-inside: avoid; }
+  .inf-sec   { break-inside: avoid; }
+  .inf-sec-pagebreak { break-before: page !important; }
+
+  /* Tablas más compactas */
+  .tbl-inf                { font-size: 10px !important; }
+  .tbl-inf thead th       { font-size: 9px !important; padding: 6px 10px !important; }
+  .tbl-inf tbody td       { padding: 6px 10px !important; font-size: 10px !important; }
+  .tbl-inf tbody tr       { break-inside: avoid; }
+  .tbl-inf thead          { display: table-header-group; }
+
+  /* Cabeceras del informe */
+  .inf-head-left h2  { font-size: 16px !important; }
+  .inf-head-right .company { font-size: 13px !important; }
+
+  /* Cards financieras */
+  .fin-grid   { gap: 8px !important; }
+  .fin-card   { padding: 10px 8px 8px !important; }
+  .fin-val    { font-size: 12px !important; word-break: break-word !important; }
+  .fin-lbl    { font-size: 9px !important; }
+  .fin-sub    { font-size: 9px !important; }
+
+  /* Grid de datos */
+  .datos-grid { gap: 8px 20px !important; }
+  .dato-item label { font-size: 9px !important; }
+  .dato-item span  { font-size: 11px !important; }
+
+  /* Barra de progreso */
+  .prog-bar-outer { height: 16px !important; }
+  .prog-bar-inner { font-size: 10px !important; }
+  .prog-bar-meta  { font-size: 10px !important; }
+
+  /* Pie */
+  .inf-pie-wrap { break-inside: avoid; }
 }
 
 /* ── Layout principal ────────────────────────────────── */
@@ -581,9 +654,9 @@ async function generarInforme() {
     let mat = [], pers = [], eq = []
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq] = await Promise.all([
-        db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario').in('parte_id', parteIds),
-        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds),
-        db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds)
+        db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
+        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora, es_indirecto').in('parte_id', parteIds),
+        db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds)
       ])
       mat  = rMat.data  || []
       pers = rPers.data || []
@@ -601,16 +674,19 @@ async function generarInforme() {
 
     // ── Cálculos ──────────────────────────────────────────────
 
-    // Costos reales por categoría
-    const soloMat  = mat.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
-    const combust  = mat.filter(m => m.descripcion.startsWith('⛽'))
-    const herr     = mat.filter(m => m.descripcion.startsWith('🔧'))
+    // Costos reales por categoría — solo DIRECTOS (excluir marcados como indirectos)
+    const matD     = mat.filter(m => !m.es_indirecto)
+    const persD    = pers.filter(p => !p.es_indirecto)
+    const eqD      = eq.filter(e => !e.es_indirecto)
+    const soloMat  = matD.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+    const combust  = matD.filter(m => m.descripcion.startsWith('⛽'))
+    const herr     = matD.filter(m => m.descripcion.startsWith('🔧'))
 
     const realMat   = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
     const realComb  = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
     const realHerr  = herr.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-    const realPers  = pers.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
-    const realEq    = eq.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
+    const realPers  = persD.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+    const realEq    = eqD.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
     const realTotal = realMat + realComb + realHerr + realPers + realEq
 
     // Presupuesto y earned value por ítem
@@ -628,9 +704,9 @@ async function generarInforme() {
       const realItem = (() => {
         if (parteIds.length === 0) return 0
         const ids = partesItem.map(p => p.id)
-        const mI = mat.filter(m => ids.includes(m.parte_id))
-        const pI = pers.filter(p => ids.includes(p.parte_id))
-        const eI = eq.filter(e => ids.includes(e.parte_id))
+        const mI = mat.filter(m => ids.includes(m.parte_id) && !m.es_indirecto)
+        const pI = pers.filter(p => ids.includes(p.parte_id) && !p.es_indirecto)
+        const eI = eq.filter(e => ids.includes(e.parte_id) && !e.es_indirecto)
         return (mI.reduce((s,m) => s + m.cantidad * m.precio_unitario, 0))
              + (pI.reduce((s,p) => s + p.horas_trabajadas * p.precio_hora, 0))
              + (eI.reduce((s,e) => s + e.horas_utilizadas * e.precio_hora, 0))
@@ -656,7 +732,7 @@ async function generarInforme() {
     renderAvance(obra, porcFisicoGlobal, partes || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
     renderItems(dataItems, k)
-    renderDetalles(mat, pers, eq)
+    renderDetalles(matD, persD, eqD)
 
     // Pie
     const ahora = new Date()

@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Serving Suite Control — Parte Diario</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+.ci-btn {
+  background: none;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  width: 30px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: .35;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ci-btn:hover { opacity: .7; border-color: #8e44ad; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -52,6 +69,7 @@
           <th style="width:80px">Unidad</th>
           <th style="width:130px">Precio Unit. $</th>
           <th style="width:120px">Remito</th>
+          <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
         <tbody id="tbody-mat">
@@ -61,6 +79,7 @@
             <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
             <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
             <td><input type="text" placeholder="R-0000"></td>
+            <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
@@ -79,6 +98,7 @@
           <th style="width:95px">Egreso</th>
           <th style="width:80px">Hs. Trab.</th>
           <th style="width:130px">Precio / Hora $</th>
+          <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
         <tbody id="tbody-pers">
@@ -89,6 +109,7 @@
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
@@ -107,6 +128,7 @@
           <th style="width:95px">H. Fin</th>
           <th style="width:100px">Cantidad</th>
           <th style="width:140px">Precio / Unidad $</th>
+          <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
         <tbody id="tbody-eq">
@@ -117,6 +139,7 @@
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
@@ -302,12 +325,15 @@ async function cargarParteExistente(parteId) {
   const tbodyMat = document.getElementById('tbody-mat')
   tbodyMat.innerHTML = ''
   materiales.forEach(m => {
-    tbodyMat.insertAdjacentHTML('beforeend', `<tr>
+    tbodyMat.insertAdjacentHTML('beforeend', `<tr data-ci="${m.es_indirecto ? '1' : '0'}" style="${m.es_indirecto ? 'background:#f5eeff' : ''}">
       <td><input type="text" value="${m.descripcion}"></td>
       <td><input type="number" value="${m.cantidad}" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><select>${['m³','m²','kg','tn','u','lt'].map(u=>`<option${m.unidad===u?' selected':''}>${u}</option>`).join('')}</select></td>
       <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><input type="text" value="${m.remito||''}"></td>
+      <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)"
+        style="${m.es_indirecto ? 'background:#e8d5ff;border:1.5px solid #8e44ad;border-radius:6px;opacity:1' : ''}"
+        title="${m.es_indirecto ? 'Costo Indirecto ✓ — clic para cambiar a Directo' : 'Costo Directo — clic para marcar como Indirecto'}">💼</button></td>
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`)
   })
@@ -330,6 +356,7 @@ async function cargarParteExistente(parteId) {
       if (inputs[2]) inputs[2].value = p.hora_egreso || ''
       if (inputs[3]) inputs[3].value = p.horas_trabajadas || ''
       if (inputs[4]) inputs[4].value = p.precio_hora || ''
+      if (p.es_indirecto) { const btn = row.querySelector('.ci-btn'); if (btn) marcarCI(btn) }
     })
   }
 
@@ -355,6 +382,7 @@ async function cargarParteExistente(parteId) {
       const asig = obraEquipos.find(oe => oe.equipo_id === sel.value)
       const badge = row.querySelector('.badge.b-blue')
       if (badge && asig) badge.textContent = asig.flota_equipos?.unidad_medida || 'Hs'
+      if (e.es_indirecto) { const btn = row.querySelector('.ci-btn'); if (btn) marcarCI(btn) }
     })
   }
 
@@ -529,6 +557,7 @@ function fillPersData(sel) {
 function delRow(btn) { btn.closest('tr').remove() }
 
 function rowTemplate(type) {
+  const CI_BTN = `<td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>`
   const templates = {
     mat: `<tr>
       <td><input type="text" placeholder="Material / Insumo"></td>
@@ -536,6 +565,7 @@ function rowTemplate(type) {
       <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
       <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><input type="text" placeholder="R-0000"></td>
+      ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
     pers: `<tr>
@@ -545,6 +575,7 @@ function rowTemplate(type) {
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
     eq: `<tr>
@@ -554,6 +585,7 @@ function rowTemplate(type) {
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`
   }
@@ -652,6 +684,32 @@ function calcHorasEq(input) {
 
 function calcTotal(input) { /* solo visual */ }
 
+// ── Toggle Costo Indirecto ──────────────────────────────────
+function toggleCI(btn) {
+  const row = btn.closest('tr')
+  const esCI = row.dataset.ci === '1'
+  if (esCI) {
+    row.dataset.ci = '0'
+    row.style.background = ''
+    btn.style.cssText = ''
+    btn.title = 'Costo Directo — clic para marcar como Indirecto'
+  } else {
+    row.dataset.ci = '1'
+    row.style.background = '#f5eeff'
+    btn.style.cssText = 'background:#e8d5ff;border:1.5px solid #8e44ad;border-radius:6px;opacity:1'
+    btn.title = 'Costo Indirecto ✓ — clic para cambiar a Directo'
+  }
+}
+
+function marcarCI(btn) {
+  // Activar el toggle programáticamente (usado al cargar parte existente)
+  const row = btn.closest('tr')
+  row.dataset.ci = '1'
+  row.style.background = '#f5eeff'
+  btn.style.cssText = 'background:#e8d5ff;border:1.5px solid #8e44ad;border-radius:6px;opacity:1'
+  btn.title = 'Costo Indirecto ✓ — clic para cambiar a Directo'
+}
+
 async function guardarParte() {
   const obraId = document.getElementById('sel-obra').value
   const itemId = document.getElementById('sel-item').value
@@ -710,7 +768,7 @@ async function guardarParte() {
     const desc = inputs[0].value.trim()
     const cant = parseFloat(inputs[1].value) || 0
     if (!desc || cant <= 0) return
-    materiales.push({ parte_id: pid, descripcion: desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: inputs[4].value.trim() })
+    materiales.push({ parte_id: pid, descripcion: desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: inputs[4].value.trim(), es_indirecto: row.dataset.ci === '1' })
   })
   if (materiales.length > 0) await db.from('parte_materiales').insert(materiales)
 
@@ -724,7 +782,7 @@ async function guardarParte() {
     const inputs = row.querySelectorAll('input')
     // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
     const hs = parseFloat(inputs[3]?.value) || 0
-    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0 })
+    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: row.dataset.ci === '1' })
   })
   if (personal.length > 0) await db.from('parte_personal').insert(personal)
 
@@ -738,7 +796,7 @@ async function guardarParte() {
     const inputs = row.querySelectorAll('input')
     // inputs: tipo(0), inicio(1), fin(2), horas(3), precio(4)
     const hs = parseFloat(inputs[3]?.value) || 0
-    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[0]?.value || '', hora_inicio: inputs[1]?.value || null, hora_fin: inputs[2]?.value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0 })
+    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[0]?.value || '', hora_inicio: inputs[1]?.value || null, hora_fin: inputs[2]?.value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: row.dataset.ci === '1' })
   })
   if (equipos.length > 0) await db.from('parte_equipos').insert(equipos)
 

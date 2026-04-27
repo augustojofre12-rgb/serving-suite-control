@@ -472,13 +472,14 @@ async function calcItem(item, partes) {
 
   if (parteIds.length > 0) {
     const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
-      db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', parteIds),
-      db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', parteIds),
-      db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', parteIds)
+      db.from('parte_materiales').select('cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
+      db.from('parte_personal').select('horas_trabajadas, precio_hora, es_indirecto').in('parte_id', parteIds),
+      db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds)
     ])
-    real = (mat?.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
-         + (pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
-         + (eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
+    // Solo costo DIRECTO (excluir indirectos)
+    real = (mat?.filter(m => !m.es_indirecto).reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
+         + (pers?.filter(p => !p.es_indirecto).reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
+         + (eq?.filter(e => !e.es_indirecto).reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
   }
 
   const ejecutado = partesItem.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
@@ -590,10 +591,23 @@ async function calcCostosIndirectos(totalRealCD) {
   const { data: partes } = await db.from('partes_diarios').select('id').eq('obra_id', obraId)
   if (!partes || partes.length === 0) return
   const ids = partes.map(p => p.id)
-  const { data: ci } = await db.from('parte_costos_indirectos').select('monto').in('parte_id', ids)
-  if (!ci || ci.length === 0) return
 
-  const totalCI    = ci.reduce((s, r) => s + (r.monto || 0), 0)
+  // CI de la tabla dedicada + recursos marcados como indirectos en partes
+  const [{ data: ci }, { data: matInd }, { data: persInd }, { data: eqInd }] = await Promise.all([
+    db.from('parte_costos_indirectos').select('monto').in('parte_id', ids),
+    db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', ids).eq('es_indirecto', true),
+    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', ids).eq('es_indirecto', true),
+    db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids).eq('es_indirecto', true)
+  ])
+
+  const totalCITabla = (ci    || []).reduce((s, r) => s + (r.monto || 0), 0)
+  const totalCIMat   = (matInd || []).reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
+  const totalCIPers  = (persInd|| []).reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+  const totalCIEq    = (eqInd  || []).reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
+  const totalCI      = totalCITabla + totalCIMat + totalCIPers + totalCIEq
+
+  if (totalCI === 0) return
+
   const totalTotal = totalRealCD + totalCI
   const porcCI     = totalRealCD > 0 ? (totalCI / totalRealCD * 100).toFixed(1) : '0.0'
 
@@ -609,18 +623,22 @@ async function calcDistribucion() {
   const ids = partes.map(p => p.id)
 
   const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
-    db.from('parte_materiales').select('descripcion, cantidad, precio_unitario').in('parte_id', ids),
-    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', ids),
-    db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids)
+    db.from('parte_materiales').select('descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', ids),
+    db.from('parte_personal').select('horas_trabajadas, precio_hora, es_indirecto').in('parte_id', ids),
+    db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', ids)
   ])
 
-  const soloMat  = mat?.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧')) || []
-  const combust  = mat?.filter(m => m.descripcion.startsWith('⛽')) || []
+  // Solo COSTO DIRECTO para la distribución (excluir marcados como indirectos)
+  const matD     = mat?.filter(m => !m.es_indirecto) || []
+  const persD    = pers?.filter(p => !p.es_indirecto) || []
+  const eqD      = eq?.filter(e => !e.es_indirecto) || []
+  const soloMat  = matD.filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+  const combust  = matD.filter(m => m.descripcion.startsWith('⛽'))
 
   const costMat  = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
   const costComb = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-  const costPers = pers?.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0
-  const costEq   = eq?.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0
+  const costPers = persD.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+  const costEq   = eqD.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
 
   if (chartDist) chartDist.destroy()
   const distData  = [Math.round(costMat), Math.round(costPers), Math.round(costEq), Math.round(costComb)]
