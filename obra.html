@@ -352,7 +352,7 @@ async function renderDetalle() {
   let htmlRows = ''
   dataItems.forEach(d => {
     const partesItem = (partes || []).filter(p => p.item_id === d.item.id)
-    const color = d.presup > 0 && d.desvio < 0 ? '#fff8f8' : 'transparent'
+    const color = d.earnedValue > 0 && d.desvio < 0 ? '#fff8f8' : 'transparent'
     const pf = d.porcFisico
     const pfClass = pf >= 80 ? 'pf-ok' : pf >= 40 ? 'pf-primary' : 'pf-warn'
     const pfColor = pf >= 80 ? 'text-ok' : 'text-warn'
@@ -368,9 +368,12 @@ async function renderDetalle() {
           </div>
         </td>
         ${verFin ? (() => {
-          const presupCD = d.presup / k
-          const desvioCD = presupCD - d.real
-          const porcDesv = presupCD > 0 ? Math.round(desvioCD / presupCD * 100000) / 1000 : 0
+          const presupCD  = d.presup / k
+          const earnedCD  = d.earnedValue / k   // valor ganado a precio CD
+          const desvioCD  = earnedCD - d.real   // desvío siempre sobre lo ganado
+          const porcDesv  = earnedCD > 0
+            ? Math.round(desvioCD / earnedCD * 100000) / 1000
+            : (d.real > 0 ? -100 : 0)
           return `
           <td class="tr">${formatPeso(presupCD)}</td>
           <td class="tr">${formatPeso(d.real)}</td>
@@ -487,10 +490,15 @@ async function calcItem(item, partes) {
     ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100000) / 1000)
     : 0
 
-  const desvio = presup - real
-  const porcDesvio = presup > 0 ? Math.round(desvio / presup * 100000) / 1000 : 0
-  // Valor ganado: presupuesto correspondiente al avance físico ejecutado (precisión completa)
+  // Valor ganado: presupuesto correspondiente al avance físico ejecutado
   const earnedValue = presup * (porcFisico / 100)
+
+  // Desvío siempre referenciado al valor ganado (no al presupuesto total)
+  // Si no avancé nada y no gasté nada → desvío = 0
+  const desvio     = earnedValue - real
+  const porcDesvio = earnedValue > 0
+    ? Math.round(desvio / earnedValue * 100000) / 1000
+    : (real > 0 ? -100 : 0)   // gastó sin avanzar = -100%
 
   return { item, presup, real, ejecutado, desvio, porcDesvio, porcFisico, earnedValue }
 }
