@@ -40,7 +40,7 @@
           </select>
         </div>
         <div class="fg"><label>Ítem de Obra *</label>
-          <select id="sel-item"><option value="">— Seleccioná el ítem —</option></select>
+          <select id="sel-item" onchange="onItemChange()"><option value="">— Seleccioná el ítem —</option></select>
         </div>
         <div class="fg"><label>Fecha *</label><input type="date" id="fecha"></div>
       </div>
@@ -48,7 +48,7 @@
     </div>
 
     <!-- RENDIMIENTO -->
-    <div class="fsec">
+    <div class="fsec" id="fsec-rendimiento">
       <div class="fsec-title">📈 Rendimiento del Día</div>
       <div class="row3">
         <div class="fg"><label>Cantidad Ejecutada *</label><input type="number" id="cant-ejecutada" placeholder="0" min="0" step="0.01"></div>
@@ -303,7 +303,12 @@ async function cargarParteExistente(parteId) {
   const sel = document.getElementById('sel-obra')
   sel.value = parte.obra_id
   await cargarItems()
-  document.getElementById('sel-item').value = parte.item_id || ''
+  if (parte.item_id) {
+    document.getElementById('sel-item').value = parte.item_id
+  } else {
+    document.getElementById('sel-item').value = '__indirect__'
+    onItemChange()
+  }
   document.getElementById('fecha').value = parte.fecha
   document.getElementById('ubicacion').value = parte.ubicacion || ''
   document.getElementById('observaciones').value = parte.observaciones || ''
@@ -470,11 +475,8 @@ async function cargarItems() {
   items?.forEach(i => {
     selItem.insertAdjacentHTML('beforeend', `<option value="${i.id}" data-unidad="${i.unidad}">${i.codigo ? i.codigo+' - ' : ''}${i.descripcion}</option>`)
   })
-
-  selItem.onchange = () => {
-    const opt = selItem.options[selItem.selectedIndex]
-    if (opt.dataset.unidad) document.getElementById('unidad-ejec').value = opt.dataset.unidad
-  }
+  // Opción fija de indirectos, siempre al final
+  selItem.insertAdjacentHTML('beforeend', `<option value="__indirect__">💼 Generales / Indirectos</option>`)
 
   // Cargar recursos asignados a esta obra
   await cargarRecursosParte(obraId)
@@ -592,14 +594,50 @@ function rowTemplate(type) {
   return templates[type]
 }
 
-function addMat()  { document.getElementById('tbody-mat').insertAdjacentHTML('beforeend', rowTemplate('mat')) }
+function onItemChange() {
+  const selItem = document.getElementById('sel-item')
+  const esInd = selItem.value === '__indirect__'
+  const secRend = document.getElementById('fsec-rendimiento')
+  if (secRend) secRend.style.display = esInd ? 'none' : ''
+
+  if (esInd) {
+    // Auto-marcar como CI todas las filas existentes de recursos
+    document.querySelectorAll('#tbody-mat tr, #tbody-pers tr, #tbody-eq tr').forEach(row => {
+      const btn = row.querySelector('.ci-btn')
+      if (btn && row.dataset.ci !== '1') marcarCI(btn)
+    })
+  } else {
+    // Restaurar unidad del ítem seleccionado
+    const opt = selItem.options[selItem.selectedIndex]
+    if (opt && opt.dataset.unidad) document.getElementById('unidad-ejec').value = opt.dataset.unidad
+  }
+}
+
+function addMat() {
+  document.getElementById('tbody-mat').insertAdjacentHTML('beforeend', rowTemplate('mat'))
+  if (document.getElementById('sel-item').value === '__indirect__') {
+    const rows = document.querySelectorAll('#tbody-mat tr')
+    const btn = rows[rows.length - 1]?.querySelector('.ci-btn')
+    if (btn) marcarCI(btn)
+  }
+}
 function addPers() {
   document.getElementById('tbody-pers').insertAdjacentHTML('beforeend', rowTemplate('pers'))
   actualizarSelectsPers()
+  if (document.getElementById('sel-item').value === '__indirect__') {
+    const rows = document.querySelectorAll('#tbody-pers tr')
+    const btn = rows[rows.length - 1]?.querySelector('.ci-btn')
+    if (btn) marcarCI(btn)
+  }
 }
 function addEq() {
   document.getElementById('tbody-eq').insertAdjacentHTML('beforeend', rowTemplate('eq'))
   actualizarSelectsEq()
+  if (document.getElementById('sel-item').value === '__indirect__') {
+    const rows = document.querySelectorAll('#tbody-eq tr')
+    const btn = rows[rows.length - 1]?.querySelector('.ci-btn')
+    if (btn) marcarCI(btn)
+  }
 }
 function actualizarSelectsComb() {
   document.querySelectorAll('#tbody-comb tr').forEach(row => {
@@ -715,12 +753,13 @@ async function guardarParte() {
   const itemId = document.getElementById('sel-item').value
   const fecha  = document.getElementById('fecha').value
 
+  const esIndirecto = itemId === '__indirect__'
   if (!obraId) { toast('Seleccioná una obra', 'error'); return }
   if (!itemId) { toast('Seleccioná un ítem de obra', 'error'); return }
   if (!fecha)  { toast('Ingresá la fecha', 'error'); return }
 
   const cantEjec = parseFloat(document.getElementById('cant-ejecutada').value) || 0
-  if (cantEjec <= 0) { toast('Ingresá la cantidad ejecutada del día', 'error'); return }
+  if (!esIndirecto && cantEjec <= 0) { toast('Ingresá la cantidad ejecutada del día', 'error'); return }
 
   const btn = document.querySelector('.btn-success')
   btn.textContent = 'Guardando...'
@@ -731,10 +770,10 @@ async function guardarParte() {
   if (parteEditId) {
     // MODO EDICIÓN: actualizar cabecera y borrar detalles para re-insertar
     const { error: errUpd } = await db.from('partes_diarios').update({
-      obra_id: obraId, item_id: itemId, fecha,
+      obra_id: obraId, item_id: esIndirecto ? null : itemId, fecha,
       ubicacion: document.getElementById('ubicacion').value.trim(),
       observaciones: document.getElementById('observaciones').value.trim(),
-      cantidad_ejecutada: cantEjec,
+      cantidad_ejecutada: esIndirecto ? 0 : cantEjec,
       unidad_ejecutada: document.getElementById('unidad-ejec').value
     }).eq('id', parteEditId)
     if (errUpd) { toast('Error al actualizar el parte', 'error'); btn.textContent = '✓ Guardar Cambios'; btn.disabled = false; return }
@@ -749,10 +788,10 @@ async function guardarParte() {
   } else {
     // MODO NUEVO
     const { data: parte, error: errParte } = await db.from('partes_diarios').insert({
-      obra_id: obraId, item_id: itemId, fecha,
+      obra_id: obraId, item_id: esIndirecto ? null : itemId, fecha,
       ubicacion: document.getElementById('ubicacion').value.trim(),
       observaciones: document.getElementById('observaciones').value.trim(),
-      cantidad_ejecutada: cantEjec,
+      cantidad_ejecutada: esIndirecto ? 0 : cantEjec,
       unidad_ejecutada: document.getElementById('unidad-ejec').value,
       creado_por_nombre: usuario.nombre || usuario.email
     }).select().single()
@@ -768,7 +807,7 @@ async function guardarParte() {
     const desc = inputs[0].value.trim()
     const cant = parseFloat(inputs[1].value) || 0
     if (!desc || cant <= 0) return
-    materiales.push({ parte_id: pid, descripcion: desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: inputs[4].value.trim(), es_indirecto: row.dataset.ci === '1' })
+    materiales.push({ parte_id: pid, descripcion: desc, cantidad: cant, unidad: inputs[2].value, precio_unitario: parseFloat(inputs[3].value) || 0, remito: inputs[4].value.trim(), es_indirecto: esIndirecto || row.dataset.ci === '1' })
   })
   if (materiales.length > 0) await db.from('parte_materiales').insert(materiales)
 
@@ -782,7 +821,7 @@ async function guardarParte() {
     const inputs = row.querySelectorAll('input')
     // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
     const hs = parseFloat(inputs[3]?.value) || 0
-    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: row.dataset.ci === '1' })
+    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: esIndirecto || row.dataset.ci === '1' })
   })
   if (personal.length > 0) await db.from('parte_personal').insert(personal)
 
@@ -796,7 +835,7 @@ async function guardarParte() {
     const inputs = row.querySelectorAll('input')
     // inputs: tipo(0), inicio(1), fin(2), horas(3), precio(4)
     const hs = parseFloat(inputs[3]?.value) || 0
-    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[0]?.value || '', hora_inicio: inputs[1]?.value || null, hora_fin: inputs[2]?.value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: row.dataset.ci === '1' })
+    equipos.push({ parte_id: pid, descripcion: desc, tipo: inputs[0]?.value || '', hora_inicio: inputs[1]?.value || null, hora_fin: inputs[2]?.value || null, horas_utilizadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: esIndirecto || row.dataset.ci === '1' })
   })
   if (equipos.length > 0) await db.from('parte_equipos').insert(equipos)
 
