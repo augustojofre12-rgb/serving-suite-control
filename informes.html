@@ -753,8 +753,16 @@ let tabActual = 'ejecutivo'
 async function init() {
   usuario = await requireAuth()
   if (!usuario) return
-  renderSidebar(usuario, 'informes')
+  const params = new URLSearchParams(window.location.search)
+  const tabParam = params.get('tab')
+  if (tabParam === 'mo') {
+    tabActual = 'mo'
+    renderSidebar(usuario, 'informes-mo')
+  } else {
+    renderSidebar(usuario, 'informes')
+  }
   await cargarObras()
+  if (tabParam === 'mo') switchTab('mo')
 }
 
 async function cargarObras() {
