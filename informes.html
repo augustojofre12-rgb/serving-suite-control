@@ -344,6 +344,22 @@
 .inf-empty .big-icon { font-size: 56px; margin-bottom: 12px; }
 .inf-empty h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 .inf-empty p { font-size: 14px; }
+
+/* ── Pestañas de tipo de informe ─────────────────── */
+.inf-tabs {
+  display: flex; gap: 4px; margin-bottom: 14px;
+}
+.inf-tab {
+  padding: 7px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  border: 1.5px solid transparent;
+  cursor: pointer; transition: all .15s;
+  background: rgba(255,255,255,.45); color: var(--text);
+}
+.inf-tab:hover { background: rgba(255,255,255,.75); }
+.inf-tab.active {
+  background: white; border-color: var(--primary); color: var(--primary);
+}
 </style>
 </head>
 <body>
@@ -353,11 +369,16 @@
 
     <!-- CONTROLES (no se imprimen) -->
     <div class="inf-controls no-print">
-      <div class="ph" style="margin-bottom:14px">
+      <div class="ph" style="margin-bottom:10px">
         <div class="ph-left">
-          <h1>Informes Mensuales</h1>
-          <p>Generá un informe ejecutivo de cualquier obra para los dueños de la empresa</p>
+          <h1>Informes</h1>
+          <p>Generá informes de cualquier obra para gestión y seguimiento</p>
         </div>
+      </div>
+      <!-- Pestañas -->
+      <div class="inf-tabs">
+        <button class="inf-tab active" id="tab-ejecutivo" onclick="switchTab('ejecutivo')">📊 Ejecutivo</button>
+        <button class="inf-tab" id="tab-mo" onclick="switchTab('mo')">👷 Mano de Obra</button>
       </div>
       <div class="sel-row" style="margin-bottom:10px">
         <select id="sel-obra" onchange="onObraChange()" style="min-width:320px;flex:1;max-width:480px">
@@ -381,6 +402,21 @@
           <input type="date" id="fecha-hasta" style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
         </div>
         <button class="btn btn-success" onclick="generarInforme()" style="padding:8px 18px">
+          ▶ Generar informe
+        </button>
+      </div>
+      <!-- Controles Mano de Obra -->
+      <div id="controles-mo" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:13px;font-weight:600;color:var(--text)">Período:</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--gray)">Desde</span>
+          <input type="date" id="mo-fecha-desde" style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--gray)">Hasta</span>
+          <input type="date" id="mo-fecha-hasta" style="padding:7px 10px;border:1.5px solid #dde3dd;border-radius:8px;font-size:13px;outline:none;background:#fff">
+        </div>
+        <button class="btn btn-success" onclick="generarInformeMO()" style="padding:8px 18px">
           ▶ Generar informe
         </button>
       </div>
@@ -645,6 +681,59 @@
         </div><!-- /informe-wrap -->
       </div><!-- /informe-contenido -->
 
+      <!-- ── INFORME MANO DE OBRA ───────────────────────────── -->
+      <div id="informe-mo-contenido" style="display:none">
+        <div class="informe-wrap">
+
+          <!-- Encabezado -->
+          <div class="inf-head" style="background:linear-gradient(135deg,#1a5276 0%,#2980b9 100%)">
+            <div class="inf-head-left">
+              <p style="font-size:11px;opacity:.7;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">Informe de Mano de Obra</p>
+              <h2 id="mo-nombre-obra">—</h2>
+              <p id="mo-periodo" style="font-size:13px;opacity:.85;margin:4px 0 0"></p>
+            </div>
+            <div class="inf-head-right">
+              <div class="company">Serving Suite Control</div>
+              <div class="date" id="mo-fecha-gen"></div>
+            </div>
+          </div>
+
+          <!-- Cards resumen -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Resumen del Período</div>
+            <div class="fin-grid" id="mo-cards"></div>
+          </div>
+
+          <!-- Tabla por persona -->
+          <div class="inf-sec">
+            <div class="inf-sec-title">Personal Afectado</div>
+            <table class="tbl-inf">
+              <thead><tr>
+                <th>Nombre</th>
+                <th>Función / Categoría</th>
+                <th class="tc" style="width:90px">Jornadas</th>
+                <th class="tr" style="width:130px">Horas Totales</th>
+                <th class="tr" style="width:140px">Precio Prom./Hora</th>
+                <th class="tr" style="width:140px">Total $</th>
+                <th class="tc" style="width:80px">% del Total</th>
+              </tr></thead>
+              <tbody id="tbody-mo-pers"></tbody>
+            </table>
+          </div>
+
+          <!-- Pie -->
+          <div class="inf-sec" style="background:#f7faf8;padding:14px 36px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <span style="font-size:11px;color:var(--gray)">
+                Generado por <strong>Serving Suite Control</strong> · <span id="mo-pie-fecha"></span>
+              </span>
+              <span style="font-size:11px;color:var(--gray)" id="mo-pie-partes"></span>
+            </div>
+          </div>
+
+        </div><!-- /informe-wrap -->
+      </div><!-- /informe-mo-contenido -->
+
     </div><!-- /inf-scroll -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -659,6 +748,7 @@ let obras   = []
 let ultimoInforme   = null   // datos del último informe generado (para guardar)
 let informeGuardado = false
 let numInformeActual = null
+let tabActual = 'ejecutivo'
 
 async function init() {
   usuario = await requireAuth()
@@ -680,33 +770,70 @@ async function cargarObras() {
   })
 }
 
+function switchTab(tab) {
+  tabActual = tab
+  document.getElementById('tab-ejecutivo').classList.toggle('active', tab === 'ejecutivo')
+  document.getElementById('tab-mo').classList.toggle('active', tab === 'mo')
+  // Ocultar contenidos
+  document.getElementById('informe-contenido').style.display = 'none'
+  document.getElementById('informe-mo-contenido').style.display = 'none'
+  document.getElementById('btn-imprimir').style.display = 'none'
+  document.getElementById('btn-guardar').style.display = 'none'
+  // Mensaje vacío según pestaña
+  const msgs = {
+    ejecutivo: ['📄', 'Informe Ejecutivo', 'Elegí la obra y el período para generar el informe de gestión.'],
+    mo:        ['👷', 'Informe de Mano de Obra', 'Elegí la obra y el período para ver el resumen de personal y horas.']
+  }
+  const [ico, tit, txt] = msgs[tab]
+  document.getElementById('inf-empty').style.display = 'block'
+  document.getElementById('inf-empty').innerHTML =
+    `<div class="big-icon">${ico}</div><h3>${tit}</h3><p>${txt}</p>`
+  // Mostrar controles del tab activo (si hay obra seleccionada)
+  const obraId = document.getElementById('sel-obra').value
+  document.getElementById('rango-fechas').style.display   = (obraId && tab === 'ejecutivo') ? 'flex' : 'none'
+  document.getElementById('controles-mo').style.display   = (obraId && tab === 'mo')        ? 'flex' : 'none'
+  document.getElementById('historial-informes').style.display = (obraId && tab === 'ejecutivo') ? 'block' : 'none'
+}
+
 async function onObraChange() {
   const obraId = document.getElementById('sel-obra').value
-  const rangoEl = document.getElementById('rango-fechas')
   if (!obraId) {
-    rangoEl.style.display = 'none'
+    document.getElementById('rango-fechas').style.display = 'none'
+    document.getElementById('controles-mo').style.display = 'none'
     document.getElementById('informe-contenido').style.display = 'none'
+    document.getElementById('informe-mo-contenido').style.display = 'none'
     document.getElementById('inf-empty').style.display = 'block'
     document.getElementById('inf-empty').innerHTML = `
       <div class="big-icon">📄</div>
       <h3>Seleccioná una obra</h3>
-      <p>Elegí la obra en el selector de arriba para generar el informe ejecutivo.</p>`
+      <p>Elegí la obra en el selector de arriba para continuar.</p>`
     document.getElementById('btn-imprimir').style.display = 'none'
     document.getElementById('btn-guardar').style.display = 'none'
     document.getElementById('historial-informes').style.display = 'none'
     return
   }
+
   // Defaults: primer día del mes actual hasta hoy
   const hoy = new Date()
   const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
   const fmt = d => d.toISOString().split('T')[0]
-  const desdeEl = document.getElementById('fecha-desde')
-  const hastaEl = document.getElementById('fecha-hasta')
-  if (!desdeEl.value) desdeEl.value = fmt(primerDia)
-  if (!hastaEl.value) hastaEl.value = fmt(hoy)
-  rangoEl.style.display = 'flex'
 
-  await cargarHistorialInformes(obraId)
+  if (tabActual === 'ejecutivo') {
+    const desdeEl = document.getElementById('fecha-desde')
+    const hastaEl = document.getElementById('fecha-hasta')
+    if (!desdeEl.value) desdeEl.value = fmt(primerDia)
+    if (!hastaEl.value) hastaEl.value = fmt(hoy)
+    document.getElementById('rango-fechas').style.display = 'flex'
+    document.getElementById('controles-mo').style.display = 'none'
+    await cargarHistorialInformes(obraId)
+  } else {
+    const desdeEl = document.getElementById('mo-fecha-desde')
+    const hastaEl = document.getElementById('mo-fecha-hasta')
+    if (!desdeEl.value) desdeEl.value = fmt(primerDia)
+    if (!hastaEl.value) hastaEl.value = fmt(hoy)
+    document.getElementById('controles-mo').style.display = 'flex'
+    document.getElementById('rango-fechas').style.display = 'none'
+  }
 }
 
 async function generarInforme() {
@@ -1379,6 +1506,148 @@ async function eliminarInforme(informeId, num) {
   toast(`Informe N° ${String(num).padStart(3,'0')} eliminado`, 'ok')
   const obraId = document.getElementById('sel-obra').value
   await cargarHistorialInformes(obraId)
+}
+
+// ── INFORME MANO DE OBRA ─────────────────────────────────────────────────────
+async function generarInformeMO() {
+  const obraId = document.getElementById('sel-obra').value
+  const desde  = document.getElementById('mo-fecha-desde').value
+  const hasta  = document.getElementById('mo-fecha-hasta').value
+
+  document.getElementById('informe-mo-contenido').style.display = 'none'
+  document.getElementById('informe-contenido').style.display    = 'none'
+  document.getElementById('inf-empty').style.display            = 'block'
+  document.getElementById('btn-imprimir').style.display         = 'none'
+
+  if (!obraId) return
+  if (!desde || !hasta) { toast('Seleccioná un rango de fechas', 'error'); return }
+
+  document.getElementById('inf-empty').innerHTML =
+    `<div class="loading"><div class="spinner"></div> Generando informe...</div>`
+
+  try {
+    const { data: obra } = await db.from('obras').select('nombre').eq('id', obraId).single()
+
+    // Partes en el rango
+    const { data: partes } = await db.from('partes_diarios')
+      .select('id, item_id, fecha')
+      .eq('obra_id', obraId).gte('fecha', desde).lte('fecha', hasta)
+
+    const parteIds = (partes || []).map(p => p.id)
+
+    // Personal
+    let pers = []
+    if (parteIds.length > 0) {
+      const { data: rPers } = await db.from('parte_personal')
+        .select('parte_id, nombre, categoria, horas_trabajadas, precio_hora')
+        .in('parte_id', parteIds)
+      pers = rPers || []
+    }
+
+    // Agrupar por persona
+    const byPerson = {}
+    pers.forEach(p => {
+      const key = (p.nombre || 'Sin nombre').trim()
+      if (!byPerson[key]) byPerson[key] = { nombre: key, funcion: p.categoria || '—', jornadas: 0, horas: 0, total: 0 }
+      byPerson[key].jornadas++
+      const hs = parseFloat(p.horas_trabajadas) || 0
+      const ph = parseFloat(p.precio_hora) || 0
+      byPerson[key].horas  += hs
+      byPerson[key].total  += hs * ph
+      // Mantener la función más reciente (no vacía)
+      if (p.categoria) byPerson[key].funcion = p.categoria
+    })
+
+    const personas     = Object.values(byPerson).sort((a, b) => b.horas - a.horas)
+    const totalPersonas = personas.length
+    const totalJornadas = personas.reduce((s, p) => s + p.jornadas, 0)
+    const totalHoras    = personas.reduce((s, p) => s + p.horas,    0)
+    const totalCosto    = personas.reduce((s, p) => s + p.total,    0)
+    const promGlobal    = totalHoras > 0 ? totalCosto / totalHoras : 0
+
+    // ── Encabezado ──
+    const fmtFecha = s => new Date(s + 'T00:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+    document.getElementById('mo-nombre-obra').textContent = obra?.nombre || '—'
+    document.getElementById('mo-periodo').textContent =
+      `Período: ${fmtFecha(desde)} al ${fmtFecha(hasta)}`
+
+    // ── Cards ──
+    document.getElementById('mo-cards').innerHTML = `
+      <div class="fin-card primary">
+        <div class="fin-lbl">Personas<br>Afectadas</div>
+        <div class="fin-val">${totalPersonas}</div>
+        <div class="fin-sub" style="color:rgba(255,255,255,.65)">Personal único</div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-lbl">Jornadas<br>Totales</div>
+        <div class="fin-val">${totalJornadas}</div>
+        <div class="fin-sub">Registros de asistencia</div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-lbl">Horas<br>Totales</div>
+        <div class="fin-val">${formatNum(Math.round(totalHoras * 10) / 10)}</div>
+        <div class="fin-sub">Horas trabajadas</div>
+      </div>
+      <div class="fin-card ${totalCosto > 0 ? 'positivo' : ''}">
+        <div class="fin-lbl">Costo Total<br>Mano de Obra</div>
+        <div class="fin-val">${formatPeso(totalCosto)}</div>
+        <div class="fin-sub">${promGlobal > 0 ? formatPeso(Math.round(promGlobal)) + ' / hora prom.' : 'Sin costos registrados'}</div>
+      </div>`
+
+    // ── Tabla ──
+    if (personas.length === 0) {
+      document.getElementById('tbody-mo-pers').innerHTML =
+        `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--gray)">Sin personal cargado en el período seleccionado</td></tr>`
+    } else {
+      const rows = personas.map(p => {
+        const promH = p.horas > 0 ? p.total / p.horas : 0
+        const pct   = totalCosto > 0 ? (p.total / totalCosto * 100).toFixed(1) : '0.0'
+        const hsRnd = Math.round(p.horas * 10) / 10
+        return `
+          <tr>
+            <td><strong>${p.nombre}</strong></td>
+            <td style="color:var(--gray);font-size:12px">${p.funcion}</td>
+            <td class="tc">${p.jornadas}</td>
+            <td class="tr">${formatNum(hsRnd)} hs</td>
+            <td class="tr">${promH > 0 ? formatPeso(Math.round(promH)) : '—'}</td>
+            <td class="tr"><strong>${p.total > 0 ? formatPeso(p.total) : '—'}</strong></td>
+            <td class="tc" style="font-size:12px;font-weight:600;color:var(--gray)">${pct}%</td>
+          </tr>`
+      })
+      const hsTotal = Math.round(totalHoras * 10) / 10
+      rows.push(`
+        <tr class="total-row">
+          <td colspan="2"><strong>TOTAL</strong></td>
+          <td class="tc"><strong>${totalJornadas}</strong></td>
+          <td class="tr"><strong>${formatNum(hsTotal)} hs</strong></td>
+          <td class="tr"><strong>${promGlobal > 0 ? formatPeso(Math.round(promGlobal)) : '—'}</strong></td>
+          <td class="tr"><strong>${formatPeso(totalCosto)}</strong></td>
+          <td class="tc"><strong>100%</strong></td>
+        </tr>`)
+      document.getElementById('tbody-mo-pers').innerHTML = rows.join('')
+    }
+
+    // ── Pie ──
+    const ahora = new Date()
+    const fechaGen = ahora.toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+                   + ' · ' + ahora.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+    document.getElementById('mo-fecha-gen').textContent  = 'Generado el ' + fechaGen
+    document.getElementById('mo-pie-fecha').textContent  = fechaGen
+    document.getElementById('mo-pie-partes').textContent =
+      `${(partes || []).length} partes · ${pers.length} registros de personal`
+
+    document.getElementById('informe-mo-contenido').style.display = 'block'
+    document.getElementById('inf-empty').style.display            = 'none'
+    document.getElementById('btn-imprimir').style.display         = 'inline-flex'
+
+  } catch (err) {
+    console.error(err)
+    toast('Error al generar el informe de MO', 'error')
+    document.getElementById('inf-empty').innerHTML = `
+      <div class="big-icon">⚠️</div>
+      <h3>Error al generar</h3>
+      <p>Revisá la consola para más detalles.</p>`
+  }
 }
 
 init()
