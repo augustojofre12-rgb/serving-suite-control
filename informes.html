@@ -390,6 +390,9 @@
         <button class="btn btn-primary no-print" id="btn-guardar" onclick="guardarInforme()" style="display:none">
           💾 Guardar Informe
         </button>
+        <button class="btn btn-primary no-print" id="btn-guardar-mo" onclick="guardarInformeMO()" style="display:none">
+          💾 Guardar Informe MO
+        </button>
       </div>
       <div id="rango-fechas" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
         <label style="font-size:13px;font-weight:600;color:var(--text)">Período:</label>
@@ -425,12 +428,20 @@
     <!-- ÁREA CON SCROLL -->
     <div class="inf-scroll">
 
-      <!-- HISTORIAL DE INFORMES (no se imprime) -->
+      <!-- HISTORIAL EJECUTIVO (no se imprime) -->
       <div id="historial-informes" class="no-print" style="display:none;background:#fff;border-radius:12px;border:1.5px solid #e0e8e0;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:20px;padding:16px 24px">
         <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
-          📁 Informes guardados
+          📁 Informes Ejecutivos guardados
         </div>
         <div id="historial-informes-content"></div>
+      </div>
+
+      <!-- HISTORIAL MANO DE OBRA (no se imprime) -->
+      <div id="historial-mo" class="no-print" style="display:none;background:#fff;border-radius:12px;border:1.5px solid #bcd5ef;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:20px;padding:16px 24px">
+        <div style="font-size:13px;font-weight:700;color:#1a5276;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          📁 Informes de Mano de Obra guardados
+        </div>
+        <div id="historial-mo-content"></div>
       </div>
 
       <!-- ESTADO VACÍO INICIAL -->
@@ -749,6 +760,8 @@ let ultimoInforme   = null   // datos del último informe generado (para guardar
 let informeGuardado = false
 let numInformeActual = null
 let tabActual = 'ejecutivo'
+let ultimoInformeMO  = null
+let informeMOGuardado = false
 
 async function init() {
   usuario = await requireAuth()
@@ -785,8 +798,9 @@ function switchTab(tab) {
   // Ocultar contenidos
   document.getElementById('informe-contenido').style.display = 'none'
   document.getElementById('informe-mo-contenido').style.display = 'none'
-  document.getElementById('btn-imprimir').style.display = 'none'
-  document.getElementById('btn-guardar').style.display = 'none'
+  document.getElementById('btn-imprimir').style.display    = 'none'
+  document.getElementById('btn-guardar').style.display     = 'none'
+  document.getElementById('btn-guardar-mo').style.display  = 'none'
   // Mensaje vacío según pestaña
   const msgs = {
     ejecutivo: ['📄', 'Informe Ejecutivo', 'Elegí la obra y el período para generar el informe de gestión.'],
@@ -798,9 +812,14 @@ function switchTab(tab) {
     `<div class="big-icon">${ico}</div><h3>${tit}</h3><p>${txt}</p>`
   // Mostrar controles del tab activo (si hay obra seleccionada)
   const obraId = document.getElementById('sel-obra').value
-  document.getElementById('rango-fechas').style.display   = (obraId && tab === 'ejecutivo') ? 'flex' : 'none'
-  document.getElementById('controles-mo').style.display   = (obraId && tab === 'mo')        ? 'flex' : 'none'
-  document.getElementById('historial-informes').style.display = (obraId && tab === 'ejecutivo') ? 'block' : 'none'
+  document.getElementById('rango-fechas').style.display        = (obraId && tab === 'ejecutivo') ? 'flex' : 'none'
+  document.getElementById('controles-mo').style.display        = (obraId && tab === 'mo')        ? 'flex' : 'none'
+  document.getElementById('historial-informes').style.display  = 'none'
+  document.getElementById('historial-mo').style.display        = 'none'
+  if (obraId) {
+    if (tab === 'ejecutivo') cargarHistorialInformes(obraId)
+    else                     cargarHistorialMO(obraId)
+  }
 }
 
 async function onObraChange() {
@@ -841,6 +860,7 @@ async function onObraChange() {
     if (!hastaEl.value) hastaEl.value = fmt(hoy)
     document.getElementById('controles-mo').style.display = 'flex'
     document.getElementById('rango-fechas').style.display = 'none'
+    await cargarHistorialMO(obraId)
   }
 }
 
@@ -1647,6 +1667,16 @@ async function generarInformeMO() {
     document.getElementById('informe-mo-contenido').style.display = 'block'
     document.getElementById('inf-empty').style.display            = 'none'
     document.getElementById('btn-imprimir').style.display         = 'inline-flex'
+    document.getElementById('btn-guardar').style.display          = 'none'
+
+    // Guardar referencia para poder salvar
+    ultimoInformeMO = { obraId, desde, hasta, totalPersonas, totalJornadas, totalHoras, totalCosto }
+    informeMOGuardado = false
+    const btnG = document.getElementById('btn-guardar-mo')
+    btnG.style.display  = 'inline-flex'
+    btnG.innerHTML      = '💾 Guardar Informe MO'
+    btnG.disabled       = false
+    btnG.style.background = ''
 
   } catch (err) {
     console.error(err)
@@ -1656,6 +1686,146 @@ async function generarInformeMO() {
       <h3>Error al generar</h3>
       <p>Revisá la consola para más detalles.</p>`
   }
+}
+
+// ── GUARDAR / HISTORIAL — MANO DE OBRA ───────────────────────────────────────
+async function calcularNumInformeMO(obraId) {
+  const { data } = await db.from('informes_mo')
+    .select('numero').eq('obra_id', obraId)
+    .order('numero', { ascending: false }).limit(1)
+  return data && data.length > 0 ? data[0].numero + 1 : 1
+}
+
+async function guardarInformeMO() {
+  if (!ultimoInformeMO) return
+  if (informeMOGuardado) { window.print(); return }
+
+  const btn = document.getElementById('btn-guardar-mo')
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span> Guardando...'
+  btn.disabled = true
+
+  const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
+  const fechaDesde = new Date(ultimoInformeMO.desde + 'T00:00:00')
+  const periodo = meses[fechaDesde.getMonth()] + ' ' + fechaDesde.getFullYear()
+
+  try {
+    const num = await calcularNumInformeMO(ultimoInformeMO.obraId)
+
+    const { error } = await db.from('informes_mo').insert({
+      obra_id:        ultimoInformeMO.obraId,
+      numero:         num,
+      periodo:        periodo,
+      fecha_desde:    ultimoInformeMO.desde,
+      fecha_hasta:    ultimoInformeMO.hasta,
+      total_personas: ultimoInformeMO.totalPersonas,
+      total_jornadas: ultimoInformeMO.totalJornadas,
+      total_horas:    Math.round(ultimoInformeMO.totalHoras * 100) / 100,
+      total_costo:    Math.round(ultimoInformeMO.totalCosto * 100) / 100,
+      creado_por:     usuario.id
+    })
+    if (error) throw error
+
+    informeMOGuardado = true
+    toast(`Informe MO N° ${String(num).padStart(3,'0')} — ${periodo} guardado`, 'ok')
+    btn.innerHTML      = `✓ Guardado N° ${String(num).padStart(3,'0')}`
+    btn.style.background = '#27ae60'
+
+    await cargarHistorialMO(ultimoInformeMO.obraId)
+
+  } catch(e) {
+    console.error(e)
+    toast('Error al guardar: ' + e.message, 'err')
+    btn.innerHTML = '💾 Guardar Informe MO'
+    btn.disabled  = false
+  }
+}
+
+async function cargarHistorialMO(obraId) {
+  const { data: informes } = await db.from('informes_mo')
+    .select('*').eq('obra_id', obraId)
+    .order('numero', { ascending: false })
+
+  const wrap    = document.getElementById('historial-mo')
+  const content = document.getElementById('historial-mo-content')
+
+  if (!informes || informes.length === 0) {
+    wrap.style.display = 'none'
+    return
+  }
+  wrap.style.display = 'block'
+
+  const fmtF = s => {
+    if (!s) return '—'
+    const [y, m, d] = s.substring(0, 10).split('-')
+    return `${d}/${m}/${y}`
+  }
+
+  const rows = informes.map(inf => `
+    <tr style="border-bottom:1px solid #f0f0f0">
+      <td style="padding:8px 10px;font-weight:700;color:#1a5276;font-size:14px">
+        N° ${String(inf.numero).padStart(3, '0')}
+      </td>
+      <td style="padding:8px 10px;font-weight:600">${inf.periodo || '—'}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--gray)">
+        ${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}
+      </td>
+      <td style="padding:8px 10px;font-weight:600;color:#1a5276">${inf.total_personas || 0} personas</td>
+      <td style="padding:8px 10px;font-weight:600">${formatNum(inf.total_horas || 0)} hs</td>
+      <td style="padding:8px 10px;font-weight:600">${formatPeso(inf.total_costo || 0)}</td>
+      <td style="padding:8px 10px">
+        <button class="btn btn-outline btn-sm" onclick="reimprimirInformeMO('${inf.id}')">🖨️ PDF</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarInformeMO('${inf.id}', ${inf.numero})">🗑️</button>
+      </td>
+    </tr>`).join('')
+
+  content.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid #bcd5ef">
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">N°</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">Período</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">Fechas</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">Personal</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">Horas</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:#1a5276;text-transform:uppercase;letter-spacing:.05em">Costo MO</th>
+          <th style="padding:6px 10px"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
+}
+
+async function reimprimirInformeMO(informeId) {
+  const btn = event.currentTarget
+  btn.innerHTML = '⏳'; btn.disabled = true
+
+  try {
+    const { data: inf } = await db.from('informes_mo').select('*').eq('id', informeId).single()
+    if (!inf) { toast('No se encontró el informe', 'err'); return }
+
+    // Restaurar estado y regenerar
+    document.getElementById('sel-obra').value     = inf.obra_id
+    document.getElementById('mo-fecha-desde').value = inf.fecha_desde
+    document.getElementById('mo-fecha-hasta').value  = inf.fecha_hasta
+    switchTab('mo')
+    await generarInformeMO()
+    setTimeout(() => window.print(), 400)
+  } catch(e) {
+    console.error(e)
+    toast('Error al reimprimir', 'err')
+  }
+  btn.innerHTML = '🖨️ PDF'; btn.disabled = false
+}
+
+async function eliminarInformeMO(informeId, num) {
+  if (!confirm(`¿Eliminar el Informe MO N° ${String(num).padStart(3,'0')}? Esta acción no se puede deshacer.`)) return
+
+  const { error } = await db.from('informes_mo').delete().eq('id', informeId)
+  if (error) { toast('Error al eliminar', 'err'); return }
+
+  toast(`Informe MO N° ${String(num).padStart(3,'0')} eliminado`, 'ok')
+  const obraId = document.getElementById('sel-obra').value
+  await cargarHistorialMO(obraId)
 }
 
 init()
