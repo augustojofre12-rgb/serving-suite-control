@@ -291,7 +291,10 @@ async function init() {
   if (params.get('obra_id')) {
     sel.value = params.get('obra_id')
     await cargarItems()
-    if (params.get('item_id')) document.getElementById('sel-item').value = params.get('item_id')
+    if (params.get('item_id')) {
+      document.getElementById('sel-item').value = params.get('item_id')
+      await onItemChange()
+    }
   }
 }
 
@@ -305,9 +308,10 @@ async function cargarParteExistente(parteId) {
   await cargarItems()
   if (parte.item_id) {
     document.getElementById('sel-item').value = parte.item_id
+    await onItemChange()
   } else {
     document.getElementById('sel-item').value = '__indirect__'
-    onItemChange()
+    await onItemChange()
   }
   document.getElementById('fecha').value = parte.fecha
   document.getElementById('ubicacion').value = parte.ubicacion || ''
@@ -470,10 +474,10 @@ async function cargarItems() {
 
   if (!obraId) return
 
-  const { data: items } = await db.from('items_obra').select('id, codigo, descripcion, unidad')
+  const { data: items } = await db.from('items_obra').select('id, codigo, descripcion, unidad, cantidad_presupuestada')
     .eq('obra_id', obraId).order('orden')
   items?.forEach(i => {
-    selItem.insertAdjacentHTML('beforeend', `<option value="${i.id}" data-unidad="${i.unidad}">${i.codigo ? i.codigo+' - ' : ''}${i.descripcion}</option>`)
+    selItem.insertAdjacentHTML('beforeend', `<option value="${i.id}" data-unidad="${i.unidad}" data-total="${i.cantidad_presupuestada || 0}">${i.codigo ? i.codigo+' - ' : ''}${i.descripcion}</option>`)
   })
   // Opción fija de indirectos, siempre al final
   selItem.insertAdjacentHTML('beforeend', `<option value="__indirect__">💼 Generales / Indirectos</option>`)
@@ -594,7 +598,7 @@ function rowTemplate(type) {
   return templates[type]
 }
 
-function onItemChange() {
+async function onItemChange() {
   const selItem = document.getElementById('sel-item')
   const esInd = selItem.value === '__indirect__'
   const secRend = document.getElementById('fsec-rendimiento')
@@ -606,10 +610,40 @@ function onItemChange() {
       const btn = row.querySelector('.ci-btn')
       if (btn && row.dataset.ci !== '1') marcarCI(btn)
     })
+    document.getElementById('rendimiento-acum').innerHTML = '—'
   } else {
-    // Restaurar unidad del ítem seleccionado
     const opt = selItem.options[selItem.selectedIndex]
     if (opt && opt.dataset.unidad) document.getElementById('unidad-ejec').value = opt.dataset.unidad
+
+    // Mostrar total del ítem y acumulado ejecutado
+    const itemId  = selItem.value
+    const total   = parseFloat(opt?.dataset.total) || 0
+    const unidad  = opt?.dataset.unidad || ''
+    const acumEl  = document.getElementById('rendimiento-acum')
+
+    if (itemId && total > 0) {
+      acumEl.innerHTML = `<span style="color:#aaa;font-size:11px">cargando...</span>`
+      // Sumar cantidad ejecutada de todos los partes de este ítem
+      const { data: partes } = await db.from('partes_diarios')
+        .select('id, cantidad_ejecutada').eq('item_id', itemId)
+      let acum = (partes || []).reduce((s, p) => s + (parseFloat(p.cantidad_ejecutada) || 0), 0)
+      // Si estamos editando un parte, restar su propio valor para no duplicar
+      if (parteEditId) {
+        const propio = (partes || []).find(p => p.id === parteEditId)
+        if (propio) acum -= parseFloat(propio.cantidad_ejecutada) || 0
+      }
+      const pct = total > 0 ? Math.round(acum / total * 1000) / 10 : 0
+      const color = pct >= 100 ? '#27ae60' : pct >= 50 ? '#e67e22' : '#2980b9'
+      acumEl.innerHTML = `
+        <div style="line-height:1.7">
+          <div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:.03em">Total ítem</div>
+          <div style="font-weight:700;color:var(--text)">${formatNum(total)} ${unidad}</div>
+          <div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-top:4px">Acumulado</div>
+          <div style="font-weight:700;color:${color}">${formatNum(Math.round(acum * 100)/100)} ${unidad} <span style="font-size:11px;font-weight:600">(${pct}%)</span></div>
+        </div>`
+    } else {
+      acumEl.innerHTML = '—'
+    }
   }
 }
 
