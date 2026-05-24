@@ -103,7 +103,7 @@
         </tr></thead>
         <tbody id="tbody-pers">
           <tr>
-            <td><select onchange="fillPersData(this)"><option value="">— Seleccioná una obra primero —</option></select></td>
+            <td><select onchange="fillPersData(this); actualizarSelectsPers()"><option value="">— Seleccioná una obra primero —</option></select></td>
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
@@ -521,6 +521,13 @@ function actualizarSelectsEq() {
 }
 
 function actualizarSelectsPers() {
+  // Recolectar todos los IDs ya seleccionados en otras filas
+  const yaSeleccionados = new Set()
+  document.querySelectorAll('#tbody-pers tr').forEach(row => {
+    const sel = row.querySelector('select')
+    if (sel && sel.value) yaSeleccionados.add(sel.value)
+  })
+
   document.querySelectorAll('#tbody-pers tr').forEach(row => {
     const sel = row.querySelector('select')
     if (!sel) return
@@ -530,7 +537,10 @@ function actualizarSelectsPers() {
     } else {
       sel.innerHTML = '<option value="">— Seleccioná persona —</option>'
       obraPersonal.forEach(p => {
-        sel.insertAdjacentHTML('beforeend', `<option value="${p.persona_id}">${p.recursos_humanos?.nombre_completo || ''}</option>`)
+        // Mostrar si: no está seleccionado en otra fila, O es el valor actual de esta fila
+        if (!yaSeleccionados.has(p.persona_id) || p.persona_id === currentVal) {
+          sel.insertAdjacentHTML('beforeend', `<option value="${p.persona_id}">${p.recursos_humanos?.nombre_completo || ''}</option>`)
+        }
       })
       if (currentVal) sel.value = currentVal
     }
@@ -560,7 +570,11 @@ function fillPersData(sel) {
 }
 
 // Helpers para filas
-function delRow(btn) { btn.closest('tr').remove() }
+function delRow(btn) {
+  const tbody = btn.closest('tr').parentElement
+  btn.closest('tr').remove()
+  if (tbody?.id === 'tbody-pers') actualizarSelectsPers()
+}
 
 function rowTemplate(type) {
   const CI_BTN = `<td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>`
@@ -575,7 +589,7 @@ function rowTemplate(type) {
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
     pers: `<tr>
-      <td><select onchange="fillPersData(this)"><option value="">— Seleccioná persona —</option></select></td>
+      <td><select onchange="fillPersData(this); actualizarSelectsPers()"><option value="">— Seleccioná persona —</option></select></td>
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
