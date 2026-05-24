@@ -221,11 +221,55 @@ async function cargarDatos() {
   const fechaMap = {}
   partes.forEach(p => { fechaMap[p.id] = p.fecha })
 
-  const { data: ci } = await db.from('parte_costos_indirectos')
-    .select('parte_id, categoria, descripcion, unidad, monto')
-    .in('parte_id', parteIds)
+  // Traer TODAS las fuentes de costos indirectos en paralelo
+  const [{ data: ci }, { data: matInd }, { data: persInd }, { data: eqInd }] = await Promise.all([
+    db.from('parte_costos_indirectos').select('parte_id, categoria, descripcion, unidad, monto').in('parte_id', parteIds),
+    db.from('parte_materiales').select('parte_id, descripcion, cantidad, unidad, precio_unitario').in('parte_id', parteIds).eq('es_indirecto', true),
+    db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds).eq('es_indirecto', true),
+    db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds).eq('es_indirecto', true),
+  ])
 
-  datosCI = (ci || []).map(r => ({ ...r, fecha: fechaMap[r.parte_id] || '' }))
+  // Normalizar cada fuente al mismo formato: { fecha, categoria, descripcion, unidad, monto }
+  const ciRows = (ci || []).map(r => ({
+    fecha: fechaMap[r.parte_id] || '',
+    categoria: r.categoria || 'Otros',
+    descripcion: r.descripcion || '—',
+    unidad: r.unidad || '',
+    monto: parseFloat(r.monto) || 0
+  }))
+
+  const matRows = (matInd || []).map(r => {
+    let cat  = 'Materiales'
+    let desc = r.descripcion || '—'
+    if (desc.startsWith('⛽')) { cat = 'Combustible';  desc = desc.replace(/^⛽\s*/, '') }
+    else if (desc.startsWith('🔧')) { cat = 'Herramientas'; desc = desc.replace(/^🔧\s*/, '') }
+    return {
+      fecha: fechaMap[r.parte_id] || '',
+      categoria: cat, descripcion: desc,
+      unidad: r.unidad || '',
+      monto: (parseFloat(r.cantidad) || 0) * (parseFloat(r.precio_unitario) || 0)
+    }
+  })
+
+  const persRows = (persInd || []).map(r => ({
+    fecha: fechaMap[r.parte_id] || '',
+    categoria: 'Mano de Obra',
+    descripcion: r.nombre || r.categoria || 'Personal',
+    unidad: 'hs',
+    monto: (parseFloat(r.horas_trabajadas) || 0) * (parseFloat(r.precio_hora) || 0)
+  }))
+
+  const eqRows = (eqInd || []).map(r => ({
+    fecha: fechaMap[r.parte_id] || '',
+    categoria: 'Equipos',
+    descripcion: r.descripcion || 'Equipo',
+    unidad: 'hs',
+    monto: (parseFloat(r.horas_utilizadas) || 0) * (parseFloat(r.precio_hora) || 0)
+  }))
+
+  datosCI = [...ciRows, ...matRows, ...persRows, ...eqRows]
+    .filter(r => r.monto > 0)
+    .sort((a, b) => (a.fecha || '') < (b.fecha || '') ? -1 : 1)
 
   document.getElementById('cr-loading').style.display  = 'none'
   document.getElementById('cr-contenido').style.display = 'block'
