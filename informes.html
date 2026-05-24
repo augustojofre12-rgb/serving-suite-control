@@ -902,7 +902,7 @@ async function generarInforme() {
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq, rCI] = await Promise.all([
         db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
-        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', parteIds),
+        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, gp, es_indirecto').in('parte_id', parteIds),
         db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds),
         db.from('parte_costos_indirectos').select('parte_id, descripcion, monto').in('parte_id', parteIds)
       ])
@@ -1569,7 +1569,7 @@ async function generarInformeMO() {
     let pers = []
     if (parteIds.length > 0) {
       const { data: rPers } = await db.from('parte_personal')
-        .select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora')
+        .select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, gp')
         .in('parte_id', parteIds)
       pers = rPers || []
     }

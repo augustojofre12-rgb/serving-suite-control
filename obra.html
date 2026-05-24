@@ -496,7 +496,7 @@ async function calcItem(item, partes) {
   if (parteIds.length > 0) {
     const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
       db.from('parte_materiales').select('cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
-      db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', parteIds),
+      db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, gp, es_indirecto').in('parte_id', parteIds),
       db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds)
     ])
     // Solo costo DIRECTO (excluir indirectos)
@@ -546,7 +546,7 @@ async function renderDetalleItem(itemId) {
   const [presupItems, mat, pers, eq] = await Promise.all([
     db.from('presupuesto_items').select('*').eq('item_id', itemId),
     db.from('parte_materiales').select('*').in('parte_id', ids),
-    db.from('parte_personal').select('id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, es_indirecto, parte_id').in('parte_id', ids),
+    db.from('parte_personal').select('id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, gp, es_indirecto, parte_id').in('parte_id', ids),
     db.from('parte_equipos').select('*').in('parte_id', ids)
   ])
 
@@ -624,7 +624,7 @@ async function calcCostosIndirectos(totalRealCD) {
   const [{ data: ci }, { data: matInd }, { data: persInd }, { data: eqInd }] = await Promise.all([
     db.from('parte_costos_indirectos').select('monto').in('parte_id', ids),
     db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', ids).eq('es_indirecto', true),
-    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora').in('parte_id', ids).eq('es_indirecto', true),
+    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, gp').in('parte_id', ids).eq('es_indirecto', true),
     db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids).eq('es_indirecto', true)
   ])
 
@@ -652,7 +652,7 @@ async function calcDistribucion() {
 
   const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
     db.from('parte_materiales').select('descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', ids),
-    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', ids),
+    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, gp, es_indirecto').in('parte_id', ids),
     db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', ids)
   ])
 

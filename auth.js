@@ -132,10 +132,12 @@ function calcHoras(inicio, fin) {
 
 // Calcular costo real de MO con horas básicas y extras
 // Básicas (hasta 8 hs): precio_hora × 1
-// Extras (más de 8 hs): precio_hora × 0.75
+// Extras — gp=false (blanco): precio_hora × 0.75
+// Extras — gp=true  (negro):  precio_hora × 1.50
 function calcCostoMO(p) {
   const basicas = parseFloat(p.horas_trabajadas) || 0
   const extras  = parseFloat(p.horas_extras)     || 0
   const precio  = parseFloat(p.precio_hora)       || 0
-  return (basicas * precio) + (extras * precio * 0.75)
+  const factor  = p.gp ? 1.5 : 0.75
+  return (basicas * precio) + (extras * precio * factor)
 }
