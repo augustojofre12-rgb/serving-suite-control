@@ -92,14 +92,15 @@
       <div class="fsec-title">👷 Personal Afectado</div>
       <table class="dtbl">
         <thead><tr>
-          <th>Nombre y Apellido</th>
-          <th style="width:140px">Función</th>
-          <th style="width:95px">Ingreso</th>
-          <th style="width:95px">Egreso</th>
-          <th style="width:78px">Hs. Básicas</th>
-          <th style="width:78px">Hs. Extras</th>
-          <th style="width:120px">Precio / Hora $</th>
-          <th style="width:42px" title="Gente en Negro — horas extras al 150%">GP</th>
+          <th style="width:200px">Nombre y Apellido</th>
+          <th style="width:130px">Función</th>
+          <th style="width:90px">Ingreso</th>
+          <th style="width:90px">Egreso</th>
+          <th style="width:75px">Hs. Bás.</th>
+          <th style="width:75px">Hs. Ext.</th>
+          <th style="width:105px">$ / Hora</th>
+          <th style="width:120px;text-align:right">Total $</th>
+          <th style="width:42px;text-align:center" title="Gente en Negro — horas extras al 150%">GP</th>
           <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
@@ -111,12 +112,20 @@
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
             <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)"></td>
-            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
-            <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalPers(this.closest('tr'))"></td>
+            <td style="text-align:right;padding-right:10px"><span class="pers-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
+            <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22" onchange="actualizarTotalPers(this.closest('tr'))"></td>
             <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr style="background:#f0f5f2;border-top:2px solid #dde8e0">
+            <td colspan="7" style="padding:8px 14px;font-weight:700;font-size:12px;color:var(--primary);text-align:right;text-transform:uppercase;letter-spacing:.03em">Total Mano de Obra:</td>
+            <td style="padding:8px 10px;text-align:right"><strong id="pers-total-suma" style="font-size:14px;color:var(--primary)">—</strong></td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
       </table>
       <button class="add-row-btn" onclick="addPers()">+ Agregar operario</button>
     </div>
@@ -373,6 +382,7 @@ async function cargarParteExistente(parteId) {
       if (inputs[5]) inputs[5].value = p.precio_hora || ''
       if (inputs[6]) inputs[6].checked = p.gp || false
       if (p.es_indirecto) { const btn = row.querySelector('.ci-btn'); if (btn) marcarCI(btn) }
+      actualizarTotalPers(row)
     })
   }
 
@@ -580,7 +590,7 @@ function fillPersData(sel) {
 function delRow(btn) {
   const tbody = btn.closest('tr').parentElement
   btn.closest('tr').remove()
-  if (tbody?.id === 'tbody-pers') actualizarSelectsPers()
+  if (tbody?.id === 'tbody-pers') { actualizarSelectsPers(); actualizarSumaPers() }
 }
 
 function rowTemplate(type) {
@@ -602,8 +612,9 @@ function rowTemplate(type) {
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
       <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)"></td>
-      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
-      <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalPers(this.closest('tr'))"></td>
+      <td style="text-align:right;padding-right:10px"><span class="pers-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
+      <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22" onchange="actualizarTotalPers(this.closest('tr'))"></td>
       ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
@@ -765,12 +776,39 @@ function calcHorasPers(input) {
   if (totalHs > 0) {
     const basicas = Math.min(totalHs, 8)
     const extras  = Math.max(0, totalHs - 8)
-    nums[0].value = basicas   // Hs. Básicas
-    nums[1].value = extras > 0 ? extras : ''  // Hs. Extras
+    nums[0].value = basicas
+    nums[1].value = extras > 0 ? extras : ''
   } else {
     nums[0].value = ''
     nums[1].value = ''
   }
+  actualizarTotalPers(row)
+}
+
+function actualizarTotalPers(row) {
+  const inputs = row.querySelectorAll('input')
+  // inputs: funcion(0), ingreso(1), egreso(2), hs_basicas(3), hs_extras(4), precio(5), gp(6)
+  const basicas = parseFloat(inputs[3]?.value) || 0
+  const extras  = parseFloat(inputs[4]?.value) || 0
+  const precio  = parseFloat(inputs[5]?.value) || 0
+  const gp      = inputs[6]?.checked || false
+  const factor  = gp ? 1.5 : 0.75
+  const total   = (basicas * precio) + (extras * precio * factor)
+  const span    = row.querySelector('.pers-total')
+  if (span) {
+    span.dataset.valor = total
+    span.textContent   = total > 0 ? formatPeso(Math.round(total)) : '—'
+  }
+  actualizarSumaPers()
+}
+
+function actualizarSumaPers() {
+  let suma = 0
+  document.querySelectorAll('#tbody-pers .pers-total').forEach(span => {
+    suma += parseFloat(span.dataset.valor) || 0
+  })
+  const el = document.getElementById('pers-total-suma')
+  if (el) el.textContent = suma > 0 ? formatPeso(Math.round(suma)) : '—'
 }
 
 function calcHorasEq(input) {
