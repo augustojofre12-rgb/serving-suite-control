@@ -135,12 +135,13 @@
       <div class="fsec-title">🚜 Equipos Utilizados</div>
       <table class="dtbl">
         <thead><tr>
-          <th>Equipo / Máquina</th>
-          <th style="width:110px">Tipo</th>
-          <th style="width:95px">H. Inicio</th>
-          <th style="width:95px">H. Fin</th>
-          <th style="width:100px">Cantidad</th>
-          <th style="width:140px">Precio / Unidad $</th>
+          <th style="width:200px">Equipo / Máquina</th>
+          <th style="width:100px">Tipo</th>
+          <th style="width:90px">H. Inicio</th>
+          <th style="width:90px">H. Fin</th>
+          <th style="width:95px">Cantidad</th>
+          <th style="width:120px">$ / Unidad</th>
+          <th style="width:120px;text-align:right">Total $</th>
           <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
@@ -150,12 +151,20 @@
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
             <td><input type="time" onchange="calcHorasEq(this)"></td>
-            <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
-            <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+            <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0" oninput="actualizarTotalEq(this.closest('tr'))"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
+            <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalEq(this.closest('tr'))"></td>
+            <td style="text-align:right;padding-right:10px"><span class="eq-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
             <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr style="background:#f0f5f2;border-top:2px solid #dde8e0">
+            <td colspan="6" style="padding:8px 14px;font-weight:700;font-size:12px;color:var(--primary);text-align:right;text-transform:uppercase;letter-spacing:.03em">Total Equipos:</td>
+            <td style="padding:8px 10px;text-align:right"><strong id="eq-total-suma" style="font-size:14px;color:var(--primary)">—</strong></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
       <button class="add-row-btn" onclick="addEq()">+ Agregar equipo</button>
     </div>
@@ -409,6 +418,7 @@ async function cargarParteExistente(parteId) {
       const badge = row.querySelector('.badge.b-blue')
       if (badge && asig) badge.textContent = asig.flota_equipos?.unidad_medida || 'Hs'
       if (e.es_indirecto) { const btn = row.querySelector('.ci-btn'); if (btn) marcarCI(btn) }
+      actualizarTotalEq(row)
     })
   }
 
@@ -591,6 +601,7 @@ function delRow(btn) {
   const tbody = btn.closest('tr').parentElement
   btn.closest('tr').remove()
   if (tbody?.id === 'tbody-pers') { actualizarSelectsPers(); actualizarSumaPers() }
+  else if (tbody?.id === 'tbody-eq') actualizarSumaEq()
 }
 
 function rowTemplate(type) {
@@ -623,8 +634,9 @@ function rowTemplate(type) {
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Tipo"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
       <td><input type="time" onchange="calcHorasEq(this)"></td>
-      <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
-      <td><input type="number" placeholder="0" min="0" step="0.01"></td>
+      <td style="display:flex;align-items:center;gap:4px"><input type="number" placeholder="0" style="width:60px" step="0.01" min="0" oninput="actualizarTotalEq(this.closest('tr'))"><span class="badge b-blue" style="font-size:11px;white-space:nowrap">Hs</span></td>
+      <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalEq(this.closest('tr'))"></td>
+      <td style="text-align:right;padding-right:10px"><span class="eq-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
       ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`
@@ -811,6 +823,29 @@ function actualizarSumaPers() {
   if (el) el.textContent = suma > 0 ? formatPeso(Math.round(suma)) : '—'
 }
 
+function actualizarTotalEq(row) {
+  const inputs = row.querySelectorAll('input')
+  // inputs: tipo(0), inicio(1), fin(2), cantidad(3), precio(4)
+  const cant  = parseFloat(inputs[3]?.value) || 0
+  const precio = parseFloat(inputs[4]?.value) || 0
+  const total  = cant * precio
+  const span   = row.querySelector('.eq-total')
+  if (span) {
+    span.dataset.valor = total
+    span.textContent   = total > 0 ? formatPeso(Math.round(total)) : '—'
+  }
+  actualizarSumaEq()
+}
+
+function actualizarSumaEq() {
+  let suma = 0
+  document.querySelectorAll('#tbody-eq .eq-total').forEach(span => {
+    suma += parseFloat(span.dataset.valor) || 0
+  })
+  const el = document.getElementById('eq-total-suma')
+  if (el) el.textContent = suma > 0 ? formatPeso(Math.round(suma)) : '—'
+}
+
 function calcHorasEq(input) {
   const row = input.closest('tr')
   const times = row.querySelectorAll('input[type="time"]')
@@ -822,6 +857,7 @@ function calcHorasEq(input) {
   if (unidad === 'Hs' || !cantInput.value) {
     cantInput.value = hs > 0 ? hs : ''
   }
+  actualizarTotalEq(row)
 }
 
 function calcTotal(input) { /* solo visual */ }
