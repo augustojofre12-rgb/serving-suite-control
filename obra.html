@@ -496,12 +496,12 @@ async function calcItem(item, partes) {
   if (parteIds.length > 0) {
     const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
       db.from('parte_materiales').select('cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
-      db.from('parte_personal').select('horas_trabajadas, precio_hora, es_indirecto').in('parte_id', parteIds),
+      db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', parteIds),
       db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds)
     ])
     // Solo costo DIRECTO (excluir indirectos)
     real = (mat?.filter(m => !m.es_indirecto).reduce((s, m) => s + m.cantidad * m.precio_unitario, 0) || 0)
-         + (pers?.filter(p => !p.es_indirecto).reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0) || 0)
+         + (pers?.filter(p => !p.es_indirecto).reduce((s, p) => s + calcCostoMO(p), 0) || 0)
          + (eq?.filter(e => !e.es_indirecto).reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0) || 0)
   }
 
@@ -546,23 +546,23 @@ async function renderDetalleItem(itemId) {
   const [presupItems, mat, pers, eq] = await Promise.all([
     db.from('presupuesto_items').select('*').eq('item_id', itemId),
     db.from('parte_materiales').select('*').in('parte_id', ids),
-    db.from('parte_personal').select('*').in('parte_id', ids),
+    db.from('parte_personal').select('id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, es_indirecto, parte_id').in('parte_id', ids),
     db.from('parte_equipos').select('*').in('parte_id', ids)
   ])
 
   // Agrupar por descripción
-  const agrupar = (arr, descKey, cantKey, precKey) => {
+  const agrupar = (arr, descKey, cantKey, precKey, totalFn) => {
     const map = {}
     arr?.forEach(r => {
       const k = r[descKey]
       if (!map[k]) map[k] = { desc: k, tipo: r.tipo || r.categoria || '', real: 0 }
-      map[k].real += (r[cantKey] || 0) * (r[precKey] || 0)
+      map[k].real += totalFn ? totalFn(r) : (r[cantKey] || 0) * (r[precKey] || 0)
     })
     return Object.values(map)
   }
 
   const matAgrup  = agrupar(mat.data, 'descripcion', 'cantidad', 'precio_unitario')
-  const persAgrup = agrupar(pers.data, 'nombre', 'horas_trabajadas', 'precio_hora')
+  const persAgrup = agrupar(pers.data, 'nombre', 'horas_trabajadas', 'precio_hora', p => calcCostoMO(p))
   const eqAgrup   = agrupar(eq.data, 'descripcion', 'horas_utilizadas', 'precio_hora')
 
   const verFin = usuario.rol !== 'jefe_obra'
@@ -624,13 +624,13 @@ async function calcCostosIndirectos(totalRealCD) {
   const [{ data: ci }, { data: matInd }, { data: persInd }, { data: eqInd }] = await Promise.all([
     db.from('parte_costos_indirectos').select('monto').in('parte_id', ids),
     db.from('parte_materiales').select('cantidad, precio_unitario').in('parte_id', ids).eq('es_indirecto', true),
-    db.from('parte_personal').select('horas_trabajadas, precio_hora').in('parte_id', ids).eq('es_indirecto', true),
+    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora').in('parte_id', ids).eq('es_indirecto', true),
     db.from('parte_equipos').select('horas_utilizadas, precio_hora').in('parte_id', ids).eq('es_indirecto', true)
   ])
 
   const totalCITabla = (ci    || []).reduce((s, r) => s + (r.monto || 0), 0)
   const totalCIMat   = (matInd || []).reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-  const totalCIPers  = (persInd|| []).reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+  const totalCIPers  = (persInd|| []).reduce((s, p) => s + calcCostoMO(p), 0)
   const totalCIEq    = (eqInd  || []).reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
   const totalCI      = totalCITabla + totalCIMat + totalCIPers + totalCIEq
 
@@ -652,7 +652,7 @@ async function calcDistribucion() {
 
   const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
     db.from('parte_materiales').select('descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', ids),
-    db.from('parte_personal').select('horas_trabajadas, precio_hora, es_indirecto').in('parte_id', ids),
+    db.from('parte_personal').select('horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', ids),
     db.from('parte_equipos').select('horas_utilizadas, precio_hora, es_indirecto').in('parte_id', ids)
   ])
 
@@ -665,7 +665,7 @@ async function calcDistribucion() {
 
   const costMat  = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
   const costComb = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-  const costPers = persD.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+  const costPers = persD.reduce((s, p) => s + calcCostoMO(p), 0)
   const costEq   = eqD.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
 
   if (chartDist) chartDist.destroy()

@@ -129,3 +129,13 @@ function calcHoras(inicio, fin) {
   const [h2, m2] = fin.split(':').map(Number)
   return Math.max(0, (h2 * 60 + m2 - h1 * 60 - m1) / 60)
 }
+
+// Calcular costo real de MO con horas básicas y extras
+// Básicas (hasta 8 hs): precio_hora × 1
+// Extras (más de 8 hs): precio_hora × 0.75
+function calcCostoMO(p) {
+  const basicas = parseFloat(p.horas_trabajadas) || 0
+  const extras  = parseFloat(p.horas_extras)     || 0
+  const precio  = parseFloat(p.precio_hora)       || 0
+  return (basicas * precio) + (extras * precio * 0.75)
+}

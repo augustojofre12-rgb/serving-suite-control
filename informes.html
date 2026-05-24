@@ -902,7 +902,7 @@ async function generarInforme() {
     if (parteIds.length > 0) {
       const [rMat, rPers, rEq, rCI] = await Promise.all([
         db.from('parte_materiales').select('parte_id, descripcion, cantidad, precio_unitario, es_indirecto').in('parte_id', parteIds),
-        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora, es_indirecto').in('parte_id', parteIds),
+        db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora, es_indirecto').in('parte_id', parteIds),
         db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora, es_indirecto').in('parte_id', parteIds),
         db.from('parte_costos_indirectos').select('parte_id, descripcion, monto').in('parte_id', parteIds)
       ])
@@ -934,7 +934,7 @@ async function generarInforme() {
     const realMat   = soloMat.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
     const realComb  = combust.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
     const realHerr  = herr.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-    const realPers  = persD.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+    const realPers  = persD.reduce((s, p) => s + calcCostoMO(p), 0)
     const realEq    = eqD.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
     const realTotal = realMat + realComb + realHerr + realPers + realEq
 
@@ -944,7 +944,7 @@ async function generarInforme() {
     const eqI   = eq.filter(e => e.es_indirecto)
 
     const totalCImat  = matI.reduce((s, m) => s + m.cantidad * m.precio_unitario, 0)
-    const totalCIpers = persI.reduce((s, p) => s + p.horas_trabajadas * p.precio_hora, 0)
+    const totalCIpers = persI.reduce((s, p) => s + calcCostoMO(p), 0)
     const totalCIeq   = eqI.reduce((s, e) => s + e.horas_utilizadas * e.precio_hora, 0)
     const totalCItab  = costsInd.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0)
     const totalCI     = totalCImat + totalCIpers + totalCIeq + totalCItab
@@ -968,7 +968,7 @@ async function generarInforme() {
         const pI = pers.filter(p => ids.includes(p.parte_id) && !p.es_indirecto)
         const eI = eq.filter(e => ids.includes(e.parte_id) && !e.es_indirecto)
         return (mI.reduce((s,m) => s + m.cantidad * m.precio_unitario, 0))
-             + (pI.reduce((s,p) => s + p.horas_trabajadas * p.precio_hora, 0))
+             + (pI.reduce((s,p) => s + calcCostoMO(p), 0))
              + (eI.reduce((s,e) => s + e.horas_utilizadas * e.precio_hora, 0))
       })()
 
@@ -1219,13 +1219,15 @@ function renderItems(dataItems, k) {
 }
 
 // ── Función utilitaria de agrupación (reutilizada en detalles y CI) ──
-function agrupar(arr, keyFn, cantFn, precFn) {
+// totalFn opcional: si se pasa, usa esa función para calcular el total de cada fila
+// (útil para MO donde el costo incluye horas extras al 75%)
+function agrupar(arr, keyFn, cantFn, precFn, totalFn) {
   const map = {}
   arr.forEach(r => {
     const k = keyFn(r)
     if (!map[k]) map[k] = { desc: k, cant: 0, total: 0 }
     map[k].cant  += cantFn(r)
-    map[k].total += cantFn(r) * precFn(r)
+    map[k].total += totalFn ? totalFn(r) : cantFn(r) * precFn(r)
   })
   return Object.values(map)
     .map(r => ({ ...r, prec: r.cant > 0 ? r.total / r.cant : 0 }))
@@ -1259,8 +1261,8 @@ function renderDetalles(mat, pers, eq) {
   const soloMat = (mat || []).filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
   filasTbl(agrupar(soloMat, m => m.descripcion, m => m.cantidad, m => m.precio_unitario), 'tbody-det-mat')
 
-  // Mano de Obra
-  filasTbl(agrupar(pers || [], p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora), 'tbody-det-mo')
+  // Mano de Obra (totalFn usa calcCostoMO para incluir horas extras al 75%)
+  filasTbl(agrupar(pers || [], p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora, p => calcCostoMO(p)), 'tbody-det-mo')
 
   // Equipos
   filasTbl(agrupar(eq || [], e => e.descripcion || 'Equipo', e => e.horas_utilizadas, e => e.precio_hora), 'tbody-det-eq')
@@ -1332,7 +1334,7 @@ function renderCostosIndirectos(matI, persI, eqI, costsInd, totalCImat, totalCIp
     '', '/u')
 
   bloqueCi('Mano de Obra',
-    agrupar(persI, p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora),
+    agrupar(persI, p => p.nombre || p.categoria || 'Personal', p => p.horas_trabajadas, p => p.precio_hora, p => calcCostoMO(p)),
     'hs', '/h')
 
   bloqueCi('Equipos',
@@ -1567,7 +1569,7 @@ async function generarInformeMO() {
     let pers = []
     if (parteIds.length > 0) {
       const { data: rPers } = await db.from('parte_personal')
-        .select('parte_id, nombre, categoria, horas_trabajadas, precio_hora')
+        .select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora')
         .in('parte_id', parteIds)
       pers = rPers || []
     }
@@ -1579,9 +1581,8 @@ async function generarInformeMO() {
       if (!byPerson[key]) byPerson[key] = { nombre: key, funcion: p.categoria || '—', jornadas: 0, horas: 0, total: 0 }
       byPerson[key].jornadas++
       const hs = parseFloat(p.horas_trabajadas) || 0
-      const ph = parseFloat(p.precio_hora) || 0
-      byPerson[key].horas  += hs
-      byPerson[key].total  += hs * ph
+      byPerson[key].horas  += hs + (parseFloat(p.horas_extras) || 0)
+      byPerson[key].total  += calcCostoMO(p)
       // Mantener la función más reciente (no vacía)
       if (p.categoria) byPerson[key].funcion = p.categoria
     })

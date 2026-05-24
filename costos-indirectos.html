@@ -225,7 +225,7 @@ async function cargarDatos() {
   const [{ data: ci }, { data: matInd }, { data: persInd }, { data: eqInd }] = await Promise.all([
     db.from('parte_costos_indirectos').select('parte_id, categoria, descripcion, unidad, monto').in('parte_id', parteIds),
     db.from('parte_materiales').select('parte_id, descripcion, cantidad, unidad, precio_unitario').in('parte_id', parteIds).eq('es_indirecto', true),
-    db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, precio_hora').in('parte_id', parteIds).eq('es_indirecto', true),
+    db.from('parte_personal').select('parte_id, nombre, categoria, horas_trabajadas, horas_extras, precio_hora').in('parte_id', parteIds).eq('es_indirecto', true),
     db.from('parte_equipos').select('parte_id, descripcion, horas_utilizadas, precio_hora').in('parte_id', parteIds).eq('es_indirecto', true),
   ])
 
@@ -256,7 +256,7 @@ async function cargarDatos() {
     categoria: 'Mano de Obra',
     descripcion: r.nombre || r.categoria || 'Personal',
     unidad: 'hs',
-    monto: (parseFloat(r.horas_trabajadas) || 0) * (parseFloat(r.precio_hora) || 0)
+    monto: calcCostoMO(r)
   }))
 
   const eqRows = (eqInd || []).map(r => ({
