@@ -96,8 +96,9 @@
           <th style="width:140px">Función</th>
           <th style="width:95px">Ingreso</th>
           <th style="width:95px">Egreso</th>
-          <th style="width:80px">Hs. Trab.</th>
-          <th style="width:130px">Precio / Hora $</th>
+          <th style="width:78px">Hs. Básicas</th>
+          <th style="width:78px">Hs. Extras</th>
+          <th style="width:120px">Precio / Hora $</th>
           <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
@@ -107,7 +108,8 @@
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
-            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
+            <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs, al 75%)"></td>
             <td><input type="number" placeholder="0" min="0" step="0.01"></td>
             <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
@@ -360,11 +362,13 @@ async function cargarParteExistente(parteId) {
       const opt = Array.from(sel.options).find(o => o.text === p.nombre)
       if (opt) sel.value = opt.value
       const inputs = row.querySelectorAll('input')
+      // inputs: funcion(0), ingreso(1), egreso(2), hs_basicas(3), hs_extras(4), precio(5)
       if (inputs[0]) inputs[0].value = p.categoria || ''
       if (inputs[1]) inputs[1].value = p.hora_ingreso || ''
       if (inputs[2]) inputs[2].value = p.hora_egreso || ''
       if (inputs[3]) inputs[3].value = p.horas_trabajadas || ''
-      if (inputs[4]) inputs[4].value = p.precio_hora || ''
+      if (inputs[4]) inputs[4].value = p.horas_extras || ''
+      if (inputs[5]) inputs[5].value = p.precio_hora || ''
       if (p.es_indirecto) { const btn = row.querySelector('.ci-btn'); if (btn) marcarCI(btn) }
     })
   }
@@ -564,9 +568,9 @@ function fillPersData(sel) {
   const asig = obraPersonal.find(p => p.persona_id === sel.value)
   if (!asig) return
   const inputs = sel.closest('tr').querySelectorAll('input')
-  // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
+  // inputs: funcion(0), ingreso(1), egreso(2), hs_basicas(3), hs_extras(4), precio(5)
   if (inputs[0]) inputs[0].value = asig.recursos_humanos?.funcion || ''
-  if (inputs[4]) inputs[4].value = asig.precio_hora || ''
+  if (inputs[5]) inputs[5].value = asig.precio_hora || ''
 }
 
 // Helpers para filas
@@ -593,7 +597,8 @@ function rowTemplate(type) {
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5"></td>
+      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
+      <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs, al 75%)"></td>
       <td><input type="number" placeholder="0" min="0" step="0.01"></td>
       ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
@@ -751,8 +756,17 @@ function addCI() {
 function calcHorasPers(input) {
   const row = input.closest('tr')
   const times = row.querySelectorAll('input[type="time"]')
-  const hs = calcHoras(times[0].value, times[1].value)
-  row.querySelectorAll('input[type="number"]')[0].value = hs > 0 ? hs : ''
+  const totalHs = calcHoras(times[0].value, times[1].value)
+  const nums = row.querySelectorAll('input[type="number"]')
+  if (totalHs > 0) {
+    const basicas = Math.min(totalHs, 8)
+    const extras  = Math.max(0, totalHs - 8)
+    nums[0].value = basicas   // Hs. Básicas
+    nums[1].value = extras > 0 ? extras : ''  // Hs. Extras
+  } else {
+    nums[0].value = ''
+    nums[1].value = ''
+  }
 }
 
 function calcHorasEq(input) {
@@ -859,7 +873,7 @@ async function guardarParte() {
   })
   if (materiales.length > 0) await db.from('parte_materiales').insert(materiales)
 
-  // Personal — select + inputs (funcion, ingreso, egreso, horas, precio)
+  // Personal — select + inputs (funcion, ingreso, egreso, hs_basicas, hs_extras, precio)
   const persRows = document.querySelectorAll('#tbody-pers tr')
   const personal = []
   persRows.forEach(row => {
@@ -867,9 +881,20 @@ async function guardarParte() {
     if (!sel || !sel.value) return
     const nombre = sel.options[sel.selectedIndex]?.text || ''
     const inputs = row.querySelectorAll('input')
-    // inputs: funcion(0), ingreso(1), egreso(2), horas(3), precio(4)
-    const hs = parseFloat(inputs[3]?.value) || 0
-    personal.push({ parte_id: pid, nombre, categoria: inputs[0]?.value || '', hora_ingreso: inputs[1]?.value || null, hora_egreso: inputs[2]?.value || null, horas_trabajadas: hs, precio_hora: parseFloat(inputs[4]?.value) || 0, es_indirecto: esIndirecto || row.dataset.ci === '1' })
+    // inputs: funcion(0), ingreso(1), egreso(2), hs_basicas(3), hs_extras(4), precio(5)
+    const hsBasicas = parseFloat(inputs[3]?.value) || 0
+    const hsExtras  = parseFloat(inputs[4]?.value) || 0
+    personal.push({
+      parte_id: pid,
+      nombre,
+      categoria: inputs[0]?.value || '',
+      hora_ingreso: inputs[1]?.value || null,
+      hora_egreso: inputs[2]?.value || null,
+      horas_trabajadas: hsBasicas,
+      horas_extras: hsExtras,
+      precio_hora: parseFloat(inputs[5]?.value) || 0,
+      es_indirecto: esIndirecto || row.dataset.ci === '1'
+    })
   })
   if (personal.length > 0) await db.from('parte_personal').insert(personal)
 
