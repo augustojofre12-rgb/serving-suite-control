@@ -1447,15 +1447,12 @@ async function cargarHistorialInformes(obraId) {
     .from('informes_mensuales')
     .select('*')
     .eq('obra_id', obraId)
-    .order('numero', { ascending: false })
+    .order('fecha_desde', { ascending: false })
 
   const wrap    = document.getElementById('historial-informes')
   const content = document.getElementById('historial-informes-content')
 
-  if (!informes || informes.length === 0) {
-    wrap.style.display = 'none'
-    return
-  }
+  // Siempre mostrar el historial (con mensaje si no hay informes)
   wrap.style.display = 'block'
 
   const fmtF = s => {
@@ -1464,14 +1461,22 @@ async function cargarHistorialInformes(obraId) {
     return `${d}/${m}/${y}`
   }
 
+  if (!informes || informes.length === 0) {
+    content.innerHTML = `
+      <div style="padding:18px 10px;text-align:center;color:var(--gray);font-size:13px">
+        📭 Sin informes guardados para esta obra. Generá y guardá el primer informe con el botón <strong>💾 Guardar Informe</strong>.
+      </div>`
+    return
+  }
+
   const rows = informes.map(inf => `
     <tr style="border-bottom:1px solid #f0f0f0">
-      <td style="padding:8px 10px;font-weight:700;color:var(--primary);font-size:14px">
-        N° ${String(inf.numero).padStart(3,'0')}
+      <td style="padding:8px 10px">
+        <div style="font-weight:800;color:var(--primary);font-size:15px">${inf.periodo || '—'}</div>
+        <div style="font-size:11px;color:var(--gray);margin-top:2px">${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}</div>
       </td>
-      <td style="padding:8px 10px;font-weight:600">${inf.periodo || '—'}</td>
-      <td style="padding:8px 10px;font-size:12px;color:var(--gray)">
-        ${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}
+      <td style="padding:8px 10px;font-size:12px;color:var(--gray);white-space:nowrap">
+        N° ${String(inf.numero).padStart(3,'0')}
       </td>
       <td style="padding:8px 10px;font-weight:600">${formatPeso(inf.real_cd)}</td>
       <td style="padding:8px 10px;font-weight:600;color:#6c3483">
@@ -1482,8 +1487,8 @@ async function cargarHistorialInformes(obraId) {
           ${inf.porc_fisico ? inf.porc_fisico.toFixed(1) + '%' : '—'}
         </span>
       </td>
-      <td style="padding:8px 10px;font-size:11px;color:var(--gray)">${fmtF(inf.created_at)}</td>
-      <td style="padding:8px 10px">
+      <td style="padding:8px 10px;font-size:11px;color:var(--gray);white-space:nowrap">${fmtF(inf.created_at)}</td>
+      <td style="padding:8px 10px;white-space:nowrap">
         <button class="btn btn-outline btn-sm" onclick="reimprimirInforme('${inf.id}')">🖨️ PDF</button>
         <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarInforme('${inf.id}', ${inf.numero})">🗑️</button>
       </td>
@@ -1493,9 +1498,8 @@ async function cargarHistorialInformes(obraId) {
     <table style="width:100%;border-collapse:collapse">
       <thead>
         <tr style="border-bottom:2px solid #e0e8e0">
-          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">N°</th>
           <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Período</th>
-          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Fechas</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">N°</th>
           <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Real CD</th>
           <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Real CI</th>
           <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Avance</th>
