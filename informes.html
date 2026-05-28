@@ -890,10 +890,17 @@ async function generarInforme() {
     const { data: items } = await db.from('items_obra')
       .select('*').eq('obra_id', obraId).order('orden')
 
-    // 3. Partes de la obra en el rango de fechas
+    // 3a. Partes del período (solo para calcular costos reales del mes)
     const { data: partes } = await db.from('partes_diarios')
       .select('id, item_id, cantidad_ejecutada, fecha')
       .eq('obra_id', obraId).gte('fecha', desde).lte('fecha', hasta)
+
+    // 3b. Partes acumulados hasta la fecha fin (para avance físico real)
+    // El avance debe reflejar todo lo ejecutado hasta el cierre del período,
+    // no solo lo del mes, porque el progreso es acumulativo
+    const { data: partesAcum } = await db.from('partes_diarios')
+      .select('id, item_id, cantidad_ejecutada, fecha')
+      .eq('obra_id', obraId).lte('fecha', hasta)
 
     const parteIds = (partes || []).map(p => p.id)
 
@@ -955,15 +962,18 @@ async function generarInforme() {
       const presup  = piItem.reduce((s, p) => s + p.cantidad * p.precio_unitario, 0)  // contrato
       const presupCD = presup / k
 
-      const partesItem = (partes || []).filter(p => p.item_id === item.id)
-      const ejecutado  = partesItem.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
+      // Avance físico: acumulado hasta el cierre del período (no solo el mes)
+      const partesItemAcum = (partesAcum || []).filter(p => p.item_id === item.id)
+      const ejecutado  = partesItemAcum.reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
       const porcFisico = item.cantidad_presupuestada > 0
         ? Math.min(100, Math.round(ejecutado / item.cantidad_presupuestada * 100000) / 1000)
         : 0
 
+      // Costo real: solo partes del período
+      const partesItemPeriodo = (partes || []).filter(p => p.item_id === item.id)
       const realItem = (() => {
         if (parteIds.length === 0) return 0
-        const ids = partesItem.map(p => p.id)
+        const ids = partesItemPeriodo.map(p => p.id)
         const mI = mat.filter(m => ids.includes(m.parte_id) && !m.es_indirecto)
         const pI = pers.filter(p => ids.includes(p.parte_id) && !p.es_indirecto)
         const eI = eq.filter(e => ids.includes(e.parte_id) && !e.es_indirecto)
@@ -989,7 +999,7 @@ async function generarInforme() {
     // ── Renderizar ────────────────────────────────────────────
     renderEncabezado(obra, k, totalPresupContrato, totalPresupCD, desde, hasta)
     renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalCI)
-    renderAvance(obra, porcFisicoGlobal, partes || [])
+    renderAvance(obra, porcFisicoGlobal, partesAcum || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
     renderItems(dataItems, k)
     renderDetalles(matD, persD, eqD)
