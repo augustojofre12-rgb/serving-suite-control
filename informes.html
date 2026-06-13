@@ -983,7 +983,7 @@ async function generarInforme() {
       })()
 
       const earnedValue  = presupCD * (porcFisico / 100)
-      const desvioCD     = presupCD - realItem
+      const desvioCD     = earnedValue - realItem
 
       return { item, presup, presupCD, realItem, ejecutado, porcFisico, earnedValue, desvioCD }
     })
