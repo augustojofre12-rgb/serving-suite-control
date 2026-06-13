@@ -599,7 +599,6 @@
                   <th class="tr">Presupuesto CD</th>
                   <th class="tr">Real CD</th>
                   <th class="tr">Desvío CD</th>
-                  <th class="tr">Valor Ganado</th>
                 </tr>
               </thead>
               <tbody id="tbody-items"></tbody>
@@ -1189,7 +1188,7 @@ function renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realT
 function renderItems(dataItems, k) {
   if (!dataItems || dataItems.length === 0) {
     document.getElementById('tbody-items').innerHTML =
-      `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray)">Sin ítems registrados</td></tr>`
+      `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray)">Sin ítems registrados</td></tr>`
     return
   }
 
@@ -1206,14 +1205,12 @@ function renderItems(dataItems, k) {
         <td class="tr">${formatPeso(d.presupCD)}</td>
         <td class="tr">${formatPeso(d.realItem)}</td>
         <td class="tr" style="${desvClass}">${d.desvioCD >= 0 ? '+' : ''}${formatPeso(d.desvioCD)}</td>
-        <td class="tr">${formatPeso(d.earnedValue)}</td>
       </tr>`
   })
 
   const totalPresupCD = dataItems.reduce((s, d) => s + d.presupCD,    0)
   const totalReal     = dataItems.reduce((s, d) => s + d.realItem,    0)
   const totalDesvio   = dataItems.reduce((s, d) => s + d.desvioCD,    0)
-  const totalEarned   = dataItems.reduce((s, d) => s + d.earnedValue, 0)
   const desvClass     = totalDesvio >= 0 ? 'color:#27ae60' : 'color:#c0392b'
 
   rows.push(`
@@ -1222,7 +1219,6 @@ function renderItems(dataItems, k) {
       <td class="tr"><strong>${formatPeso(totalPresupCD)}</strong></td>
       <td class="tr"><strong>${formatPeso(totalReal)}</strong></td>
       <td class="tr" style="${desvClass}"><strong>${totalDesvio >= 0 ? '+' : ''}${formatPeso(totalDesvio)}</strong></td>
-      <td class="tr"><strong>${formatPeso(totalEarned)}</strong></td>
     </tr>`)
 
   document.getElementById('tbody-items').innerHTML = rows.join('')
