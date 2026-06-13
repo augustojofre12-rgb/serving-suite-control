@@ -533,7 +533,7 @@
                 <div class="fin-sub" id="f-real-cd-sub">De partes cargados</div>
               </div>
               <div class="fin-card" id="f-resultado-card">
-                <div class="fin-lbl">Valor Ganado<br>(Presup CD − Real CD)</div>
+                <div class="fin-lbl">Desvío de Costo<br>(Valor Ganado − Real CD)</div>
                 <div class="fin-val" id="f-resultado">—</div>
                 <div class="fin-sub" id="f-resultado-sub">—</div>
               </div>
@@ -998,7 +998,7 @@ async function generarInforme() {
 
     // ── Renderizar ────────────────────────────────────────────
     renderEncabezado(obra, k, totalPresupContrato, totalPresupCD, desde, hasta)
-    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalCI)
+    renderFinanciero(obra, k, totalPresupContrato, totalPresupCD, realTotal, totalCI, totalEarnedCD)
     renderAvance(obra, porcFisicoGlobal, partesAcum || [])
     renderDistribucion(realMat, realPers, realEq, realComb, realHerr, realTotal, totalPresupCD)
     renderItems(dataItems, k)
@@ -1070,7 +1070,7 @@ function renderEncabezado(obra, k, presupContrato, presupCD, desde, hasta) {
   document.getElementById('d-cd').textContent      = formatPeso(presupCD)
 }
 
-function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, totalCI) {
+function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, totalCI, totalEarnedCD) {
   document.getElementById('f-presup-contrato').textContent = formatPeso(obra.monto_contrato || presupContrato)
   document.getElementById('f-presup-cd').textContent       = formatPeso(presupCD)
   document.getElementById('f-presup-cd-sub').textContent   = presupCD > 0
@@ -1081,8 +1081,8 @@ function renderFinanciero(obra, k, presupContrato, presupCD, realTotal, totalCI)
   const porcConsumo = presupCD > 0 ? Math.round(realTotal / presupCD * 1000) / 10 : 0
   document.getElementById('f-real-cd-sub').textContent = `${porcConsumo}% del presup CD`
 
-  // Valor Ganado = Presup CD − Real CD
-  const valorGanado = presupCD - realTotal
+  // Desvío de Costo = Valor Ganado (costo previsto según % avance) − Real CD
+  const valorGanado = totalEarnedCD - realTotal
   const resEl  = document.getElementById('f-resultado')
   const cardEl = document.getElementById('f-resultado-card')
   const subEl  = document.getElementById('f-resultado-sub')
@@ -1402,8 +1402,8 @@ async function guardarInforme() {
   btn.disabled = true
 
   const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
-  const fechaDesde = new Date(ultimoInforme.desde + 'T00:00:00')
-  const periodo = meses[fechaDesde.getMonth()] + ' ' + fechaDesde.getFullYear()
+  const fechaHasta = new Date(ultimoInforme.hasta + 'T00:00:00')
+  const periodo = meses[fechaHasta.getMonth()] + ' ' + fechaHasta.getFullYear()
 
   try {
     const num = await calcularNumInforme(ultimoInforme.obraId)
@@ -1455,6 +1455,12 @@ async function cargarHistorialInformes(obraId) {
   // Siempre mostrar el historial (con mensaje si no hay informes)
   wrap.style.display = 'block'
 
+  const mesesHist = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
+  const periodoDesdeHasta = s => {
+    if (!s) return '—'
+    const d = new Date(s + 'T00:00:00')
+    return mesesHist[d.getMonth()] + ' ' + d.getFullYear()
+  }
   const fmtF = s => {
     if (!s) return '—'
     const [y, m, d] = s.substring(0,10).split('-')
@@ -1472,7 +1478,7 @@ async function cargarHistorialInformes(obraId) {
   const rows = informes.map(inf => `
     <tr style="border-bottom:1px solid #f0f0f0">
       <td style="padding:8px 10px">
-        <div style="font-weight:800;color:var(--primary);font-size:15px">${inf.periodo || '—'}</div>
+        <div style="font-weight:800;color:var(--primary);font-size:15px">${periodoDesdeHasta(inf.fecha_hasta)}</div>
         <div style="font-size:11px;color:var(--gray);margin-top:2px">${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}</div>
       </td>
       <td style="padding:8px 10px;font-size:12px;color:var(--gray);white-space:nowrap">
@@ -1720,8 +1726,8 @@ async function guardarInformeMO() {
   btn.disabled = true
 
   const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
-  const fechaDesde = new Date(ultimoInformeMO.desde + 'T00:00:00')
-  const periodo = meses[fechaDesde.getMonth()] + ' ' + fechaDesde.getFullYear()
+  const fechaHasta = new Date(ultimoInformeMO.hasta + 'T00:00:00')
+  const periodo = meses[fechaHasta.getMonth()] + ' ' + fechaHasta.getFullYear()
 
   try {
     const num = await calcularNumInformeMO(ultimoInformeMO.obraId)
@@ -1769,6 +1775,12 @@ async function cargarHistorialMO(obraId) {
   }
   wrap.style.display = 'block'
 
+  const mesesHistMO = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE']
+  const periodoMO = s => {
+    if (!s) return '—'
+    const d = new Date(s + 'T00:00:00')
+    return mesesHistMO[d.getMonth()] + ' ' + d.getFullYear()
+  }
   const fmtF = s => {
     if (!s) return '—'
     const [y, m, d] = s.substring(0, 10).split('-')
@@ -1780,7 +1792,7 @@ async function cargarHistorialMO(obraId) {
       <td style="padding:8px 10px;font-weight:700;color:#1a5276;font-size:14px">
         N° ${String(inf.numero).padStart(3, '0')}
       </td>
-      <td style="padding:8px 10px;font-weight:600">${inf.periodo || '—'}</td>
+      <td style="padding:8px 10px;font-weight:600">${periodoMO(inf.fecha_hasta)}</td>
       <td style="padding:8px 10px;font-size:12px;color:var(--gray)">
         ${fmtF(inf.fecha_desde)} — ${fmtF(inf.fecha_hasta)}
       </td>
