@@ -110,8 +110,8 @@
             <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
             <td><input type="time" onchange="calcHorasPers(this)"></td>
-            <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
-            <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)"></td>
+            <td><input type="number" placeholder="0" min="0" step="0.5" title="Horas básicas (hasta 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
+            <td><input type="number" placeholder="0" min="0" style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
             <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalPers(this.closest('tr'))"></td>
             <td style="text-align:right;padding-right:10px"><span class="pers-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
             <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22" onchange="actualizarTotalPers(this.closest('tr'))"></td>
@@ -630,8 +630,8 @@ function rowTemplate(type) {
       <td><input type="text" readonly style="background:#f8f9fa" placeholder="Función"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.5" title="Horas básicas (hasta 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
+      <td><input type="number" placeholder="0" min="0" style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
       <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalPers(this.closest('tr'))"></td>
       <td style="text-align:right;padding-right:10px"><span class="pers-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
       <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22" onchange="actualizarTotalPers(this.closest('tr'))"></td>
@@ -643,8 +643,8 @@ function rowTemplate(type) {
       <td><input type="text" placeholder="Función"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
       <td><input type="time" onchange="calcHorasPers(this)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#f8f9fa" step="0.5" title="Horas básicas (hasta 8 hs)"></td>
-      <td><input type="number" placeholder="0" readonly style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)"></td>
+      <td><input type="number" placeholder="0" min="0" step="0.5" title="Horas básicas (hasta 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
+      <td><input type="number" placeholder="0" min="0" style="background:#fff3cd" step="0.5" title="Horas extras (más de 8 hs)" oninput="actualizarTotalPers(this.closest('tr'))"></td>
       <td><input type="number" placeholder="0" min="0" step="0.01" oninput="actualizarTotalPers(this.closest('tr'))"></td>
       <td style="text-align:right;padding-right:10px"><span class="pers-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
       <td style="text-align:center"><input type="checkbox" title="Gente en Negro — extras al 150%" style="width:16px;height:16px;cursor:pointer;accent-color:#e67e22" onchange="actualizarTotalPers(this.closest('tr'))"></td>
