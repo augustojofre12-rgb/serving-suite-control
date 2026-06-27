@@ -343,7 +343,7 @@ async function renderDetalle() {
     ${htmlCards}
     <div class="tbl-wrap" id="tabla-items-wrap">
       <div class="tbl-head">
-        <h3>Control por Ítem de Obra <span style="font-size:13px;font-weight:400;color:var(--gray);margin-left:6px">(A valores contractuales)</span></h3>
+        <h3>Control por Ítem de Obra <span style="font-size:13px;font-weight:400;color:var(--gray);margin-left:6px">(A valores de costo directo)</span></h3>
         <div style="display:flex;gap:8px">
           <span class="badge b-ok">● Dentro del presupuesto</span>
           <span class="badge b-danger">● Con desvío</span>
@@ -416,7 +416,7 @@ async function renderDetalle() {
 
   document.getElementById('tabla-items-wrap').innerHTML = `
     <div class="tbl-head">
-      <h3>Control por Ítem de Obra <span style="font-size:13px;font-weight:400;color:var(--gray);margin-left:6px">(A valores contractuales)</span></h3>
+      <h3>Control por Ítem de Obra <span style="font-size:13px;font-weight:400;color:var(--gray);margin-left:6px">(A valores de costo directo)</span></h3>
       <div style="display:flex;gap:8px">
         <span class="badge b-ok">● Dentro del presupuesto</span>
         <span class="badge b-danger">● Con desvío</span>
@@ -424,7 +424,7 @@ async function renderDetalle() {
     </div>
     <table><thead><tr>
       <th>Ítem</th><th>Unidad</th><th>Ejec. / Total</th><th>Avance</th>
-      ${verFin ? '<th class="tr">Presupuesto</th><th class="tr">Real</th><th class="tr">Desvío</th><th class="tc">Desvío%</th>' : ''}
+      ${verFin ? '<th class="tr">CD Presupuestado</th><th class="tr">Real</th><th class="tr">Desvío</th><th class="tc">Desvío%</th>' : ''}
       <th></th>
     </tr></thead>
     <tbody>${htmlRows}</tbody>
