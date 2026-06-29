@@ -7,13 +7,16 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 @media print {
-  @page { size: A4 portrait; margin: 10mm 12mm; }
+  @page { size: A4 portrait !important; margin: 10mm 12mm; }
   .sidebar, .no-print { display: none !important; }
   html, body { background: white !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; width: 100% !important; }
   .app { display: block !important; height: auto !important; overflow: visible !important; width: 100% !important; padding: 0 !important; margin: 0 !important; background: white !important; }
   .main { display: block !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; height: auto !important; background: white !important; width: 100% !important; max-width: none !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .rs-obra-card { break-inside: avoid; }
+  .rs-wrap { max-width: 100% !important; width: 100% !important; box-shadow: none !important; border: none !important; }
+  .rs-obra-card { grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr !important; padding: 12px 18px !important; }
+  .rs-header, .rs-footer { padding: 16px 18px !important; }
 }
 
 .rs-controls {
