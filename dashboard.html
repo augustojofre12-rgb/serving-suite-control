@@ -102,18 +102,30 @@ async function cargarDashboard() {
 }
 
 async function renderObraCard(obra, verFinanciero) {
-  // Avance físico: sum ejecutado / sum presupuestado
+  // Avance físico: promedio ponderado por presupuesto de cada ítem (mismo criterio que Valor Ganado)
   const { data: items } = await db.from('items_obra').select('id, cantidad_presupuestada').eq('obra_id', obra.id)
 
   let porcFisico = 0
   if (items && items.length > 0) {
-    const { data: partes } = await db.from('partes_diarios').select('item_id, cantidad_ejecutada').eq('obra_id', obra.id)
-    const totalPresup = items.reduce((s, i) => s + (i.cantidad_presupuestada || 0), 0)
-    const totalEjec   = items.reduce((s, i) => {
-      const partesItem = partes?.filter(p => p.item_id === i.id) || []
-      return s + partesItem.reduce((ss, p) => ss + (p.cantidad_ejecutada || 0), 0)
-    }, 0)
-    porcFisico = totalPresup > 0 ? Math.min(100, Math.round(totalEjec / totalPresup * 100000) / 1000) : 0
+    const itemIds = items.map(i => i.id)
+    const [{ data: partes }, { data: presupItems }] = await Promise.all([
+      db.from('partes_diarios').select('item_id, cantidad_ejecutada').eq('obra_id', obra.id),
+      db.from('presupuesto_items').select('item_id, cantidad, precio_unitario').in('item_id', itemIds)
+    ])
+
+    let totalPresup = 0, totalEarned = 0
+    items.forEach(i => {
+      const presupItem = (presupItems || []).filter(p => p.item_id === i.id)
+        .reduce((s, p) => s + p.cantidad * p.precio_unitario, 0)
+      const ejecutado  = (partes || []).filter(p => p.item_id === i.id)
+        .reduce((s, p) => s + (p.cantidad_ejecutada || 0), 0)
+      const porcItem   = i.cantidad_presupuestada > 0
+        ? Math.min(100, ejecutado / i.cantidad_presupuestada * 100)
+        : 0
+      totalPresup += presupItem
+      totalEarned += presupItem * (porcItem / 100)
+    })
+    porcFisico = totalPresup > 0 ? Math.round(totalEarned / totalPresup * 100000) / 1000 : 0
   }
 
   const colorFisico = porcFisico >= 80 ? 'pf-ok' : porcFisico >= 40 ? 'pf-primary' : 'pf-warn'

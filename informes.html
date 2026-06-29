@@ -991,8 +991,9 @@ async function generarInforme() {
     const totalPresupCD       = dataItems.reduce((s, d) => s + d.presupCD, 0)
     const totalEarnedCD       = dataItems.reduce((s, d) => s + d.earnedValue, 0)
     const resultado           = totalEarnedCD - realTotal
-    const porcFisicoGlobal    = dataItems.length > 0
-      ? Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length * 1000) / 1000
+    // Avance físico ponderado por peso económico de cada ítem (Presupuesto CD), no promedio simple
+    const porcFisicoGlobal    = totalPresupCD > 0
+      ? Math.round(totalEarnedCD / totalPresupCD * 100000) / 1000
       : 0
 
     // ── Renderizar ────────────────────────────────────────────

@@ -437,12 +437,13 @@ async function renderDetalle() {
     const totalPresupCD    = totalPresupFinal / k
     const totalReal        = dataItems.reduce((s, d) => s + d.real, 0)
     const porcFin          = totalPresupCD > 0 ? Math.round(totalReal / totalPresupCD * 100000) / 1000 : 0
-    const porcFisico       = Math.round(dataItems.reduce((s, d) => s + d.porcFisico, 0) / dataItems.length * 1000) / 1000
 
     // Valor ganado: presupuesto CD que "ganamos" según el avance físico real cargado
     // Si no hay partes cargados, earnedCD = 0 → Resultado = 0
     const totalEarnedCD    = dataItems.reduce((s, d) => s + d.earnedValue, 0) / k
     const resultado        = totalEarnedCD - totalReal
+    // Avance físico ponderado por peso económico de cada ítem (Presupuesto CD), no promedio simple
+    const porcFisico       = totalPresupCD > 0 ? Math.round(totalEarnedCD / totalPresupCD * 100000) / 1000 : 0
 
     document.getElementById('kpi-presup').textContent     = formatPeso(totalPresupCD)
     document.getElementById('kpi-items-count').textContent = `${items.length} ítems · K=${k}`
