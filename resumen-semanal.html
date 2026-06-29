@@ -66,11 +66,21 @@
         <h1>Estado Actual de Obra</h1>
         <p>Elegí las obras activas a incluir y generá un resumen rápido para compartir</p>
       </div>
-      <button class="btn btn-outline" id="btn-print" onclick="window.print()" style="display:none">🖨️ Imprimir / PDF</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" id="btn-print" onclick="window.print()" style="display:none">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-primary" id="btn-guardar" onclick="guardarResumen()" style="display:none">💾 Guardar Resumen</button>
+      </div>
     </div>
 
     <div class="rs-controls no-print" id="rs-controls">
       <div class="loading"><div class="spinner"></div> Cargando obras activas...</div>
+    </div>
+
+    <div id="historial-resumenes" class="no-print" style="background:#fff;border-radius:12px;border:1.5px solid #e0e8e0;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:20px;padding:16px 24px;display:none">
+      <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        📁 Historial de Resúmenes guardados
+      </div>
+      <div id="historial-resumenes-content"></div>
     </div>
 
     <div id="rs-empty" class="empty">
@@ -91,12 +101,15 @@
 <script>
 let usuario = null
 let obrasActivas = []
+let ultimoResumen = null   // { resultados, fechaLabel } — para guardar
+let resumenGuardado = false
 
 async function init() {
   usuario = await requireAuth()
   if (!usuario) return
   renderSidebar(usuario, 'resumen-semanal')
   await cargarObrasActivas()
+  await cargarHistorialResumenes()
 }
 
 async function cargarObrasActivas() {
@@ -133,14 +146,29 @@ async function generarResumen() {
   const obrasSel = obrasActivas.filter(o => checked.includes(o.id))
   const resultados = await Promise.all(obrasSel.map(o => calcResumenObra(o)))
 
+  const ahora = new Date()
+  const fechaGen = ahora.toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+
+  renderResumen(resultados, fechaGen)
+
+  ultimoResumen = { resultados, fechaLabel: fechaGen }
+  resumenGuardado = false
+  const btnG = document.getElementById('btn-guardar')
+  btnG.style.display  = 'inline-flex'
+  btnG.innerHTML       = '💾 Guardar Resumen'
+  btnG.disabled        = false
+  btnG.style.background = ''
+}
+
+function renderResumen(resultados, fechaLabel) {
   const filas = resultados.map(r => {
     const pfClass = r.porcFisico >= 80 ? '' : r.porcFisico >= 40 ? '' : 'warn'
     const desvColor = r.desvio >= 0 ? '#27ae60' : '#c0392b'
     return `
       <div class="rs-obra-card">
         <div>
-          <div class="rs-obra-nombre">${r.obra.nombre}</div>
-          <div class="rs-obra-ubic">${r.obra.ubicacion || r.obra.descripcion || ''}</div>
+          <div class="rs-obra-nombre">${r.nombre || r.obra?.nombre || ''}</div>
+          <div class="rs-obra-ubic">${r.ubicacion || r.obra?.ubicacion || r.obra?.descripcion || ''}</div>
         </div>
         <div>
           <div class="rs-metric-lbl">Avance Físico</div>
@@ -158,9 +186,6 @@ async function generarResumen() {
       </div>`
   }).join('')
 
-  const ahora = new Date()
-  const fechaGen = ahora.toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
-
   const desvioTotal = resultados.reduce((s, r) => s + r.desvio, 0)
   const colorTotal   = desvioTotal >= 0 ? '#27ae60' : '#c0392b'
   const bgTotal       = desvioTotal >= 0 ? '#f0faf5' : '#fff5f5'
@@ -174,7 +199,7 @@ async function generarResumen() {
         </div>
         <div style="text-align:right">
           <div style="font-size:13px;font-weight:700">Serving Suite Control</div>
-          <div style="font-size:11px;opacity:.85">${fechaGen}</div>
+          <div style="font-size:11px;opacity:.85">${fechaLabel}</div>
         </div>
       </div>
       ${filas}
@@ -187,11 +212,139 @@ async function generarResumen() {
       </div>
       <div class="rs-footer">
         <span>Generado por <strong>Serving Suite Control</strong></span>
-        <span>${fechaGen}</span>
+        <span>${fechaLabel}</span>
       </div>
     </div>`
 
+  document.getElementById('rs-contenido').style.display = 'block'
+  document.getElementById('rs-empty').style.display = 'none'
   document.getElementById('btn-print').style.display = 'inline-flex'
+}
+
+async function calcularNumResumen() {
+  const { data } = await db.from('resumenes_obra').select('numero').order('numero', { ascending: false }).limit(1)
+  return data && data.length > 0 ? data[0].numero + 1 : 1
+}
+
+async function guardarResumen() {
+  if (!ultimoResumen) return
+  if (resumenGuardado) { window.print(); return }
+
+  const btn = document.getElementById('btn-guardar')
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span> Guardando...'
+  btn.disabled = true
+
+  try {
+    const num = await calcularNumResumen()
+    const obrasSnapshot = ultimoResumen.resultados.map(r => ({
+      obra_id:    r.obra.id,
+      nombre:     r.obra.nombre,
+      ubicacion:  r.obra.ubicacion || r.obra.descripcion || '',
+      porcFisico: r.porcFisico,
+      real:       r.real,
+      desvio:     r.desvio
+    }))
+    const desvioTotal = ultimoResumen.resultados.reduce((s, r) => s + r.desvio, 0)
+
+    const { error } = await db.from('resumenes_obra').insert({
+      numero:       num,
+      obras:        obrasSnapshot,
+      desvio_total: desvioTotal,
+      creado_por:   usuario.id
+    })
+    if (error) throw error
+
+    resumenGuardado = true
+    toast(`Resumen N° ${String(num).padStart(3, '0')} guardado`, 'ok')
+    btn.innerHTML = `✓ Guardado N° ${String(num).padStart(3, '0')}`
+    btn.style.background = '#27ae60'
+
+    await cargarHistorialResumenes()
+
+  } catch (e) {
+    console.error(e)
+    toast('Error al guardar: ' + e.message, 'err')
+    btn.innerHTML = '💾 Guardar Resumen'
+    btn.disabled = false
+  }
+}
+
+async function cargarHistorialResumenes() {
+  const { data: resumenes } = await db.from('resumenes_obra').select('*').order('fecha', { ascending: false })
+
+  const wrap    = document.getElementById('historial-resumenes')
+  const content = document.getElementById('historial-resumenes-content')
+
+  if (!resumenes || resumenes.length === 0) { wrap.style.display = 'none'; return }
+  wrap.style.display = 'block'
+
+  const fmtF = s => {
+    if (!s) return '—'
+    const [y, m, d] = s.substring(0, 10).split('-')
+    return `${d}/${m}/${y}`
+  }
+
+  const rows = resumenes.map(r => `
+    <tr style="border-bottom:1px solid #f0f0f0">
+      <td style="padding:8px 10px;font-weight:700;color:var(--primary);font-size:14px">N° ${String(r.numero).padStart(3, '0')}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--gray)">${fmtF(r.fecha)}</td>
+      <td style="padding:8px 10px;font-weight:600">${(r.obras || []).length} obra${(r.obras || []).length !== 1 ? 's' : ''}</td>
+      <td style="padding:8px 10px;font-weight:700;color:${r.desvio_total >= 0 ? '#27ae60' : '#c0392b'}">${r.desvio_total >= 0 ? '+' : ''}${formatPeso(r.desvio_total)}</td>
+      <td style="padding:8px 10px">
+        <button class="btn btn-outline btn-sm" onclick="reimprimirResumen('${r.id}')">🖨️ PDF</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="eliminarResumen('${r.id}', ${r.numero})">🗑️</button>
+      </td>
+    </tr>`).join('')
+
+  content.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid #e0e8e0">
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">N°</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Fecha</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Obras</th>
+          <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.05em">Desvío Total</th>
+          <th style="padding:6px 10px"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
+}
+
+async function reimprimirResumen(id) {
+  const btn = event.currentTarget
+  btn.innerHTML = '⏳'; btn.disabled = true
+
+  try {
+    const { data: r } = await db.from('resumenes_obra').select('*').eq('id', id).single()
+    if (!r) { toast('No se encontró el resumen', 'err'); return }
+
+    const resultados = (r.obras || []).map(o => ({
+      obra: { id: o.obra_id, nombre: o.nombre, ubicacion: o.ubicacion },
+      porcFisico: o.porcFisico, real: o.real, desvio: o.desvio
+    }))
+    const fechaLabel = new Date(r.fecha + 'T12:00').toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+
+    renderResumen(resultados, fechaLabel)
+    document.getElementById('btn-guardar').style.display = 'none'
+    document.getElementById('rs-contenido').scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => window.print(), 300)
+
+  } catch (e) {
+    console.error(e)
+    toast('Error al cargar el resumen', 'err')
+  }
+  btn.innerHTML = '🖨️ PDF'; btn.disabled = false
+}
+
+async function eliminarResumen(id, num) {
+  if (!confirm(`¿Eliminar el Resumen N° ${String(num).padStart(3, '0')}? Esta acción no se puede deshacer.`)) return
+
+  const { error } = await db.from('resumenes_obra').delete().eq('id', id)
+  if (error) { toast('Error al eliminar', 'err'); return }
+
+  toast(`Resumen N° ${String(num).padStart(3, '0')} eliminado`, 'ok')
+  await cargarHistorialResumenes()
 }
 
 async function calcResumenObra(obra) {
