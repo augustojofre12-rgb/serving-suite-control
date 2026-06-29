@@ -42,7 +42,7 @@
 
 .rs-obra-card {
   padding: 16px 28px; border-bottom: 1px solid #f0f0f0;
-  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 0.9fr; gap: 14px; align-items: center;
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 14px; align-items: center;
 }
 .rs-obra-card:last-child { border-bottom: none; }
 .rs-obra-nombre { font-weight: 800; font-size: 14px; color: var(--text); }
@@ -155,15 +155,15 @@ async function generarResumen() {
           <div class="rs-metric-lbl">Desvío</div>
           <div class="rs-metric-val" style="color:${desvColor}">${r.desvio >= 0 ? '+' : ''}${formatPeso(r.desvio)}</div>
         </div>
-        <div>
-          <div class="rs-metric-lbl">Plazo</div>
-          <div class="rs-metric-val" style="font-size:12px;${r.diasNum !== null && r.diasNum < 0 ? 'color:#c0392b' : ''}">${r.diasTexto}</div>
-        </div>
       </div>`
   }).join('')
 
   const ahora = new Date()
   const fechaGen = ahora.toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })
+
+  const desvioTotal = resultados.reduce((s, r) => s + r.desvio, 0)
+  const colorTotal   = desvioTotal >= 0 ? '#27ae60' : '#c0392b'
+  const bgTotal       = desvioTotal >= 0 ? '#f0faf5' : '#fff5f5'
 
   document.getElementById('rs-contenido').innerHTML = `
     <div class="rs-wrap">
@@ -178,6 +178,10 @@ async function generarResumen() {
         </div>
       </div>
       ${filas}
+      <div style="padding:16px 28px;background:${bgTotal};display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.03em">Desvío Total (todas las obras)</div>
+        <div style="font-size:20px;font-weight:800;color:${colorTotal}">${desvioTotal >= 0 ? '+' : ''}${formatPeso(desvioTotal)}</div>
+      </div>
       <div class="rs-footer">
         <span>Generado por <strong>Serving Suite Control</strong></span>
         <span>${fechaGen}</span>
@@ -236,15 +240,7 @@ async function calcResumenObra(obra) {
   const porcFisico = totalPresupCD > 0 ? Math.round(totalEarnedCD / totalPresupCD * 1000) / 10 : 0
   const desvio = totalEarnedCD - totalReal
 
-  let diasTexto = '—', diasNum = null
-  if (obra.fecha_fin_estimada) {
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-    const fin = new Date(obra.fecha_fin_estimada + 'T00:00:00')
-    diasNum = Math.round((fin - hoy) / 86400000)
-    diasTexto = diasNum >= 0 ? `${diasNum} días restantes` : `Vencida hace ${Math.abs(diasNum)} días`
-  }
-
-  return { obra, porcFisico, real: totalReal, desvio, diasTexto, diasNum }
+  return { obra, porcFisico, real: totalReal, desvio }
 }
 
 init()
