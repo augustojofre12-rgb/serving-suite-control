@@ -274,7 +274,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
@@ -414,21 +414,23 @@ async function cargarQR() {
     card.innerHTML = `
       <div class="eq-nombre">${eq.nombre}</div>
       <div class="eq-interno">${eq.numero_interno ? 'N° interno: ' + eq.numero_interno : ''} ${eq.tipo ? '· ' + eq.tipo : ''}</div>
-      <canvas id="qr-${eq.id}" width="160" height="160"></canvas>
+      <div id="qr-${eq.id}" style="width:160px;height:160px"></div>
       <button class="btn-imprimir-qr" onclick="imprimirQR('${eq.id}', '${eq.nombre.replace(/'/g, '')}')">🖨️ Imprimir tarjeta</button>
     `
     grid.appendChild(card)
 
-    QRCode.toCanvas(document.getElementById('qr-' + eq.id), url, {
-      width: 160,
-      margin: 1,
-      color: { dark: '#1e6b40', light: '#ffffff' }
+    new QRCode(document.getElementById('qr-' + eq.id), {
+      text:       url,
+      width:      160,
+      height:     160,
+      colorDark:  '#1e6b40',
+      colorLight: '#ffffff'
     })
   }
 }
 
 function imprimirQR(equipoId, equipoNombre) {
-  const canvas = document.getElementById('qr-' + equipoId)
+  const canvas = document.querySelector('#qr-' + equipoId + ' canvas')
   const url    = BASE_URL + 'carga-combustible.html?equipo_id=' + equipoId
   const img    = canvas.toDataURL('image/png')
 
