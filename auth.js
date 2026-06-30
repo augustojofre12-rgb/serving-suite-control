@@ -73,7 +73,8 @@ function renderSidebar(usuario, paginaActiva) {
       <a class="nav-item ${paginaActiva==='informes-mo'?'active':''}" href="informes.html?tab=mo">👷&nbsp; Inf. Mano de Obra</a>
       ${(esCoord||esDir) ? `<div class="nav-sec">Recursos</div>
       <a class="nav-item ${paginaActiva==='flota'?'active':''}" href="flota.html">🚜&nbsp; Flota de Equipos</a>
-      <a class="nav-item ${paginaActiva==='rrhh'?'active':''}" href="rrhh.html">👷&nbsp; Recursos Humanos</a>` : ''}
+      <a class="nav-item ${paginaActiva==='rrhh'?'active':''}" href="rrhh.html">👷&nbsp; Recursos Humanos</a>
+      <a class="nav-item ${paginaActiva==='combustible'?'active':''}" href="combustible.html">⛽&nbsp; Control de Combustible</a>` : ''}
       ${esCoord ? `<div class="nav-sec">Administración</div>
       <a class="nav-item ${paginaActiva==='usuarios'?'active':''}" href="usuarios.html">👥&nbsp; Usuarios</a>` : ''}
     </nav>

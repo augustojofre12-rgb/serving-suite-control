@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Carga de Combustible</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f7f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header {
+    width: 100%;
+    background: #1e6b40;
+    padding: 24px 20px 20px;
+    color: #fff;
+  }
+  .header .logo-row {
+    font-size: 11px;
+    opacity: 0.75;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .header p {
+    font-size: 13px;
+    opacity: 0.8;
+  }
+  .equipo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 6px 14px;
+    margin-top: 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .equipo-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #a8f0c6; }
+  .obra-tag {
+    background: rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-top: 10px;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+  .obra-tag strong { display: block; font-size: 13px; opacity: 1; }
+
+  .form-wrap {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 16px 40px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e6b40;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 16px;
+    font-family: inherit;
+    background: #fafafa;
+    color: #222;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: #1e6b40;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(30,107,64,0.12);
+  }
+  .field input.readonly {
+    background: #f0f0f0;
+    color: #888;
+    border-color: #e8e8e8;
+  }
+  .field textarea { resize: none; height: 72px; }
+  .field .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn-submit {
+    width: 100%;
+    height: 52px;
+    background: #1e6b40;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background .2s, transform .1s;
+    margin-top: 6px;
+  }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+  .msg-ok {
+    background: #f0faf5;
+    border: 1.5px solid #4caf7d;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    display: none;
+  }
+  .msg-ok .icon { font-size: 40px; margin-bottom: 10px; }
+  .msg-ok h2 { font-size: 17px; color: #1e6b40; margin-bottom: 6px; }
+  .msg-ok p { font-size: 13px; color: #555; }
+  .msg-ok .nueva { margin-top: 14px; font-size: 14px; color: #1e6b40; font-weight: 600; cursor: pointer; text-decoration: underline; background: none; border: none; font-family: inherit; }
+
+  .error-page {
+    text-align: center;
+    padding: 60px 20px;
+    display: none;
+  }
+  .error-page .icon { font-size: 48px; margin-bottom: 14px; }
+  .error-page h2 { font-size: 18px; color: #333; margin-bottom: 8px; }
+  .error-page p { font-size: 14px; color: #888; }
+
+  .loading-page {
+    text-align: center;
+    padding: 80px 20px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #1e6b40;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-row">Serving Suite Control</div>
+  <h1>Carga de combustible</h1>
+  <p>Registrá la carga directamente desde acá</p>
+  <div id="equipo-badge" class="equipo-badge" style="display:none">
+    <span class="dot"></span>
+    <span id="equipo-nombre">—</span>
+  </div>
+  <div id="obra-tag" class="obra-tag" style="display:none">
+    <span style="font-size:11px;opacity:0.8">Obra asignada</span>
+    <strong id="obra-nombre">—</strong>
+  </div>
+</div>
+
+<div class="form-wrap">
+  <div id="loading-page" class="loading-page">
+    <div class="spinner"></div>
+    <p style="color:#888;font-size:14px">Cargando datos del equipo...</p>
+  </div>
+
+  <div id="error-page" class="error-page">
+    <div class="icon">⚠️</div>
+    <h2>Equipo no encontrado</h2>
+    <p>El código QR no corresponde a ningún equipo registrado. Contactá al coordinador.</p>
+  </div>
+
+  <div id="form-content" style="display:none">
+
+    <div class="card">
+      <div class="card-title">⛽ Datos de la carga</div>
+      <div class="field">
+        <label>Equipo</label>
+        <input id="inp-equipo" class="readonly" readonly>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Horas motor</label>
+          <input id="inp-horas" type="number" inputmode="numeric" placeholder="4.580" min="0" step="0.1">
+          <div class="hint">Lectura del horómetro</div>
+        </div>
+        <div class="field">
+          <label>Litros</label>
+          <input id="inp-litros" type="number" inputmode="numeric" placeholder="120" min="0.1" step="0.1">
+          <div class="hint">Litros cargados</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👤 Quién registra</div>
+      <div class="field">
+        <label>Nombre del operador / encargado</label>
+        <input id="inp-nombre" type="text" placeholder="Tu nombre completo" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Observaciones (opcional)</label>
+        <textarea id="inp-obs" placeholder="Ej: cambio de filtro incluido, aceite repuesto..."></textarea>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="btn-registrar" onclick="registrar()">
+      ⛽ Registrar carga
+    </button>
+
+    <p style="text-align:center;font-size:11px;color:#bbb;margin-top:12px">
+      La fecha y hora se registran automáticamente
+    </p>
+
+    <div id="msg-ok" class="msg-ok">
+      <div class="icon">✅</div>
+      <h2>¡Carga registrada!</h2>
+      <p id="msg-ok-detalle">Los datos fueron guardados correctamente.</p>
+      <button class="nueva" onclick="nuevaCarga()">Registrar otra carga</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+let equipoData = null
+let obraData   = null
+
+async function init() {
+  const params    = new URLSearchParams(window.location.search)
+  const equipoId  = params.get('equipo_id')
+
+  if (!equipoId) {
+    showError()
+    return
+  }
+
+  const { data: equipo } = await db
+    .from('flota_equipos')
+    .select('*')
+    .eq('id', equipoId)
+    .single()
+
+  if (!equipo) {
+    showError()
+    return
+  }
+
+  equipoData = equipo
+
+  // Buscar obra activa donde esté asignado
+  const { data: asignacion } = await db
+    .from('obra_equipos')
+    .select('obra_id, obras(id, nombre, ubicacion, estado)')
+    .eq('equipo_id', equipoId)
+    .single()
+
+  if (asignacion && asignacion.obras && asignacion.obras.estado === 'activa') {
+    obraData = asignacion.obras
+  }
+
+  // Mostrar badge en header
+  const badge = document.getElementById('equipo-badge')
+  badge.style.display = 'inline-flex'
+  document.getElementById('equipo-nombre').textContent =
+    equipo.nombre + (equipo.numero_interno ? ' — N° interno ' + equipo.numero_interno : '')
+
+  if (obraData) {
+    const tag = document.getElementById('obra-tag')
+    tag.style.display = 'block'
+    document.getElementById('obra-nombre').textContent =
+      obraData.nombre + (obraData.ubicacion ? ' — ' + obraData.ubicacion : '')
+  }
+
+  // Rellenar campo equipo en form
+  document.getElementById('inp-equipo').value =
+    equipo.nombre + (equipo.numero_interno ? ' — N° interno ' + equipo.numero_interno : '')
+
+  document.getElementById('loading-page').style.display = 'none'
+  document.getElementById('form-content').style.display = 'block'
+}
+
+function showError() {
+  document.getElementById('loading-page').style.display = 'none'
+  document.getElementById('error-page').style.display   = 'block'
+}
+
+async function registrar() {
+  const horas  = parseFloat(document.getElementById('inp-horas').value)
+  const litros = parseFloat(document.getElementById('inp-litros').value)
+  const nombre = document.getElementById('inp-nombre').value.trim()
+  const obs    = document.getElementById('inp-obs').value.trim()
+
+  if (!litros || litros <= 0) {
+    alert('Ingresá la cantidad de litros cargados.')
+    document.getElementById('inp-litros').focus()
+    return
+  }
+  if (!nombre) {
+    alert('Ingresá tu nombre para registrar la carga.')
+    document.getElementById('inp-nombre').focus()
+    return
+  }
+
+  const btn = document.getElementById('btn-registrar')
+  btn.disabled = true
+  btn.textContent = 'Guardando...'
+
+  const { error } = await db.from('cargas_combustible').insert({
+    equipo_id:       equipoData.id,
+    obra_id:         obraData ? obraData.id : null,
+    horas_motor:     horas || null,
+    litros:          litros,
+    registrado_por:  nombre,
+    observaciones:   obs || null
+  })
+
+  if (error) {
+    alert('Error al guardar: ' + error.message)
+    btn.disabled = false
+    btn.textContent = '⛽ Registrar carga'
+    return
+  }
+
+  // Mostrar mensaje de éxito
+  document.querySelector('.card') && Array.from(document.querySelectorAll('.card')).forEach(c => c.style.display = 'none')
+  btn.style.display = 'none'
+  document.querySelector('p[style*="fecha"]') && (document.querySelector('p[style*="fecha"]').style.display = 'none')
+
+  const msgOk = document.getElementById('msg-ok')
+  document.getElementById('msg-ok-detalle').textContent =
+    litros + ' litros' + (horas ? ' — Horómetro: ' + horas + ' hs' : '') +
+    (obraData ? ' — ' + obraData.nombre : '')
+  msgOk.style.display = 'block'
+  msgOk.scrollIntoView({ behavior: 'smooth' })
+}
+
+function nuevaCarga() {
+  window.location.reload()
+}
+
+init()
+</script>
+</body>
+</html>

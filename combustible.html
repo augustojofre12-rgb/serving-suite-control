@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Control de Combustible</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+  .tab-btn {
+    padding: 8px 20px;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .tab-btn.active {
+    background: #fff;
+    color: var(--primary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: flex-end;
+  }
+  .filtros select, .filtros input[type=date] {
+    height: 36px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 13px;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .filtros label { font-size: 12px; color: var(--gray); display: block; margin-bottom: 3px; }
+  .filtros .f-group { display: flex; flex-direction: column; }
+  .btn-filtrar {
+    height: 36px;
+    padding: 0 16px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+  }
+
+  .tabla-wrap { overflow-x: auto; border-radius: 10px; border: 1.5px solid #e8e8e8; }
+  table.comb-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.comb-tabla th {
+    background: #f5f7f5;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--gray);
+    border-bottom: 1.5px solid #e8e8e8;
+  }
+  table.comb-tabla td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f2f2f2;
+    color: var(--text);
+    vertical-align: middle;
+  }
+  table.comb-tabla tr:last-child td { border-bottom: none; }
+  table.comb-tabla tr:hover td { background: #f9fbf9; }
+  .litros-val { font-weight: 700; color: var(--primary); }
+  .badge-obra {
+    display: inline-block;
+    background: #e8f5ee;
+    color: #1e6b40;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .badge-sin-obra {
+    color: #bbb;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  .qr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .qr-card {
+    background: #fff;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .qr-card .eq-nombre {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+  }
+  .qr-card .eq-interno {
+    font-size: 12px;
+    color: var(--gray);
+    text-align: center;
+  }
+  .qr-card canvas { border-radius: 6px; }
+  .btn-imprimir-qr {
+    width: 100%;
+    padding: 8px 0;
+    border: 1.5px solid var(--primary);
+    background: #fff;
+    color: var(--primary);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-imprimir-qr:hover { background: #f0faf5; }
+  .btn-link {
+    display: inline-block;
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+    word-break: break-all;
+    text-align: center;
+    text-decoration: none;
+  }
+  .btn-link:hover { color: var(--primary); }
+
+  .resumen-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+
+  .empty-tabla {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray);
+    font-size: 14px;
+  }
+  .empty-tabla .eti { font-size: 32px; margin-bottom: 10px; }
+
+  @media print {
+    body { background: #fff; }
+    .sidebar, .ph, .tab-bar, .filtros, .btn-imprimir-qr, .btn-link { display: none !important; }
+    .qr-card { border: 1px solid #ccc; break-inside: avoid; }
+    .qr-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+
+    <div class="ph" style="margin-bottom:24px">
+      <div class="ph-left">
+        <h1>Control de Combustible</h1>
+        <p>Historial de cargas y códigos QR por equipo</p>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('historial')">📋 Historial de cargas</button>
+      <button class="tab-btn" onclick="switchTab('qr')">📲 Códigos QR</button>
+    </div>
+
+    <!-- TAB HISTORIAL -->
+    <div id="tab-historial" class="tab-panel active">
+      <div class="resumen-cards" id="resumen-cards">
+        <div class="card bl-primary">
+          <div class="card-label">Total este mes</div>
+          <div class="card-value" id="res-mes">—</div>
+          <div class="card-sub">litros cargados</div>
+        </div>
+        <div class="card bl-ok">
+          <div class="card-label">Cargas este mes</div>
+          <div class="card-value" id="res-cant">—</div>
+          <div class="card-sub">registros</div>
+        </div>
+        <div class="card bl-warn">
+          <div class="card-label">Total período filtrado</div>
+          <div class="card-value" id="res-filtro">—</div>
+          <div class="card-sub">litros</div>
+        </div>
+      </div>
+
+      <div class="filtros">
+        <div class="f-group">
+          <label>Obra</label>
+          <select id="filtro-obra" onchange="cargarHistorial()">
+            <option value="">Todas las obras</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label>Equipo</label>
+          <select id="filtro-equipo" onchange="cargarHistorial()">
+            <option value="">Todos los equipos</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label>Desde</label>
+          <input type="date" id="filtro-desde" onchange="cargarHistorial()">
+        </div>
+        <div class="f-group">
+          <label>Hasta</label>
+          <input type="date" id="filtro-hasta" onchange="cargarHistorial()">
+        </div>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="comb-tabla">
+          <thead>
+            <tr>
+              <th>Fecha / Hora</th>
+              <th>Equipo</th>
+              <th>Obra</th>
+              <th>Litros</th>
+              <th>Horómetro</th>
+              <th>Registrado por</th>
+              <th>Obs.</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body">
+            <tr><td colspan="7" class="empty-tabla"><div class="eti">⛽</div>Cargando historial...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB QR -->
+    <div id="tab-qr" class="tab-panel">
+      <p style="font-size:13px;color:var(--gray);margin-bottom:20px">
+        Escaneá el QR con el celular para registrar una carga. Podés imprimir la tarjeta y pegarla en la cabina de cada equipo.
+      </p>
+      <div class="qr-grid" id="qr-grid">
+        <div style="color:var(--gray);font-size:14px;padding:20px">Cargando equipos...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+let usuario = null
+const BASE_URL = window.location.origin + window.location.pathname.replace('combustible.html', '')
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'combustible')
+
+  // Fechas por defecto: mes actual
+  const hoy   = new Date()
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+  document.getElementById('filtro-desde').value = desde.toISOString().split('T')[0]
+  document.getElementById('filtro-hasta').value = hoy.toISOString().split('T')[0]
+
+  await Promise.all([cargarFiltros(), cargarHistorial(), cargarResumenMes()])
+}
+
+async function cargarFiltros() {
+  const [{ data: obras }, { data: equipos }] = await Promise.all([
+    db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre'),
+    db.from('flota_equipos').select('id, nombre, numero_interno').order('numero_interno')
+  ])
+
+  const selObra = document.getElementById('filtro-obra')
+  ;(obras || []).forEach(o => {
+    const op = document.createElement('option')
+    op.value = o.id
+    op.textContent = o.nombre
+    selObra.appendChild(op)
+  })
+
+  const selEq = document.getElementById('filtro-equipo')
+  ;(equipos || []).forEach(e => {
+    const op = document.createElement('option')
+    op.value = e.id
+    op.textContent = e.nombre + (e.numero_interno ? ' (N°' + e.numero_interno + ')' : '')
+    selEq.appendChild(op)
+  })
+}
+
+async function cargarResumenMes() {
+  const hoy   = new Date()
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString()
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0, 23, 59, 59).toISOString()
+
+  const { data } = await db
+    .from('cargas_combustible')
+    .select('litros')
+    .gte('fecha', desde)
+    .lte('fecha', hasta)
+
+  const totalMes = (data || []).reduce((s, r) => s + (r.litros || 0), 0)
+  document.getElementById('res-mes').textContent  = formatNum(Math.round(totalMes)) + ' L'
+  document.getElementById('res-cant').textContent = (data || []).length
+}
+
+async function cargarHistorial() {
+  const obraId  = document.getElementById('filtro-obra').value
+  const equipoId = document.getElementById('filtro-equipo').value
+  const desde   = document.getElementById('filtro-desde').value
+  const hasta   = document.getElementById('filtro-hasta').value
+
+  let q = db
+    .from('cargas_combustible')
+    .select('*, flota_equipos(nombre, numero_interno), obras(nombre)')
+    .order('fecha', { ascending: false })
+    .limit(500)
+
+  if (obraId)   q = q.eq('obra_id', obraId)
+  if (equipoId) q = q.eq('equipo_id', equipoId)
+  if (desde)    q = q.gte('fecha', desde + 'T00:00:00')
+  if (hasta)    q = q.lte('fecha', hasta + 'T23:59:59')
+
+  const { data, error } = await q
+
+  const tbody = document.getElementById('tabla-body')
+
+  if (error || !data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-tabla"><div class="eti">⛽</div>No hay cargas registradas para los filtros seleccionados.</td></tr>`
+    document.getElementById('res-filtro').textContent = '0 L'
+    return
+  }
+
+  const totalFiltro = data.reduce((s, r) => s + (r.litros || 0), 0)
+  document.getElementById('res-filtro').textContent = formatNum(Math.round(totalFiltro)) + ' L'
+
+  tbody.innerHTML = data.map(r => {
+    const fecha = r.fecha ? new Date(r.fecha).toLocaleString('es-AR', {
+      day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    }) : '—'
+    const equipo = r.flota_equipos
+      ? r.flota_equipos.nombre + (r.flota_equipos.numero_interno ? ' <span style="color:#aaa">(N°' + r.flota_equipos.numero_interno + ')</span>' : '')
+      : '<span style="color:#bbb">—</span>'
+    const obra = r.obras
+      ? `<span class="badge-obra">${r.obras.nombre}</span>`
+      : '<span class="badge-sin-obra">Sin asignar</span>'
+    const horas = r.horas_motor ? r.horas_motor + ' hs' : '—'
+    const obs   = r.observaciones
+      ? `<span title="${r.observaciones}" style="cursor:help;color:var(--gray)">💬</span>`
+      : ''
+
+    return `<tr>
+      <td style="white-space:nowrap;font-size:12px">${fecha}</td>
+      <td>${equipo}</td>
+      <td>${obra}</td>
+      <td><span class="litros-val">${r.litros} L</span></td>
+      <td>${horas}</td>
+      <td>${r.registrado_por || '—'}</td>
+      <td>${obs}</td>
+    </tr>`
+  }).join('')
+}
+
+async function cargarQR() {
+  const { data: equipos } = await db
+    .from('flota_equipos')
+    .select('*')
+    .order('numero_interno')
+
+  const grid = document.getElementById('qr-grid')
+
+  if (!equipos || equipos.length === 0) {
+    grid.innerHTML = '<div style="color:var(--gray);font-size:14px;padding:20px">No hay equipos registrados en el sistema.</div>'
+    return
+  }
+
+  grid.innerHTML = ''
+
+  for (const eq of equipos) {
+    const url = BASE_URL + 'carga-combustible.html?equipo_id=' + eq.id
+    const card = document.createElement('div')
+    card.className = 'qr-card'
+    card.innerHTML = `
+      <div class="eq-nombre">${eq.nombre}</div>
+      <div class="eq-interno">${eq.numero_interno ? 'N° interno: ' + eq.numero_interno : ''} ${eq.tipo ? '· ' + eq.tipo : ''}</div>
+      <canvas id="qr-${eq.id}" width="160" height="160"></canvas>
+      <button class="btn-imprimir-qr" onclick="imprimirQR('${eq.id}', '${eq.nombre.replace(/'/g, '')}')">🖨️ Imprimir tarjeta</button>
+    `
+    grid.appendChild(card)
+
+    QRCode.toCanvas(document.getElementById('qr-' + eq.id), url, {
+      width: 160,
+      margin: 1,
+      color: { dark: '#1e6b40', light: '#ffffff' }
+    })
+  }
+}
+
+function imprimirQR(equipoId, equipoNombre) {
+  const canvas = document.getElementById('qr-' + equipoId)
+  const url    = BASE_URL + 'carga-combustible.html?equipo_id=' + equipoId
+  const img    = canvas.toDataURL('image/png')
+
+  const win = window.open('', '_blank', 'width=400,height=500')
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>QR - ${equipoNombre}</title>
+      <style>
+        body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fff; }
+        .tarjeta { border: 2px solid #1e6b40; border-radius: 16px; padding: 24px 28px; text-align: center; max-width: 300px; }
+        .logo { font-size: 11px; letter-spacing: 1px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+        h2 { font-size: 18px; font-weight: 600; color: #1e6b40; margin-bottom: 4px; }
+        .sub { font-size: 13px; color: #888; margin-bottom: 16px; }
+        img { width: 180px; height: 180px; border-radius: 8px; }
+        p { font-size: 12px; color: #555; margin-top: 14px; line-height: 1.5; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <div class="tarjeta">
+        <div class="logo">Serving Suite Control</div>
+        <h2>${equipoNombre}</h2>
+        <div class="sub">Escaneá para registrar una carga de combustible</div>
+        <img src="${img}" alt="QR Code">
+        <p>📱 Apuntá la cámara del celular al código QR y completá el formulario</p>
+      </div>
+      <script>window.onload=()=>{window.print();window.close()}<\/script>
+    </body>
+    </html>
+  `)
+  win.document.close()
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'historial') || (i === 1 && tab === 'qr'))
+  })
+  document.getElementById('tab-historial').classList.toggle('active', tab === 'historial')
+  document.getElementById('tab-qr').classList.toggle('active', tab === 'qr')
+  if (tab === 'qr' && document.getElementById('qr-grid').children.length <= 1) cargarQR()
+}
+
+init()
+</script>
+</body>
+</html>
