@@ -68,14 +68,15 @@ function renderSidebar(usuario, paginaActiva) {
       ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='resumen-semanal'?'active':''}" href="resumen-semanal.html">🗞️&nbsp; Estado Actual de Obra</a>` : ''}
       <div class="nav-sec">Informes Mensuales</div>
       <a class="nav-item ${paginaActiva==='informes'?'active':''}" href="informes.html">📄&nbsp; Informes Mensuales</a>
+      ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='asfalto'?'active':''}" href="asfalto.html">🛣️&nbsp; Producción Mezcla Asfáltica</a>
+      <a class="nav-item ${paginaActiva==='combustible'?'active':''}" href="combustible.html">⛽&nbsp; Control de Combustible</a>` : ''}
       <div class="nav-sec">Certificación</div>
       <a class="nav-item ${paginaActiva==='certificacion'?'active':''}" href="certificacion.html">📋&nbsp; Certificación</a>
       <a class="nav-item ${paginaActiva==='informes-mo'?'active':''}" href="informes.html?tab=mo">👷&nbsp; Inf. Mano de Obra</a>
       ${(esCoord||esDir) ? `<div class="nav-sec">Recursos</div>
       <a class="nav-item ${paginaActiva==='flota'?'active':''}" href="flota.html">🚜&nbsp; Flota de Equipos</a>
       <a class="nav-item ${paginaActiva==='rrhh'?'active':''}" href="rrhh.html">👷&nbsp; Recursos Humanos</a>
-      <a class="nav-item ${paginaActiva==='combustible'?'active':''}" href="combustible.html">⛽&nbsp; Control de Combustible</a>
-      <a class="nav-item ${paginaActiva==='asfalto'?'active':''}" href="asfalto.html">🛣️&nbsp; Producción Mezcla Asfáltica</a>` : ''}
+` : ''}
       ${esCoord ? `<div class="nav-sec">Administración</div>
       <a class="nav-item ${paginaActiva==='usuarios'?'active':''}" href="usuarios.html">👥&nbsp; Usuarios</a>` : ''}
     </nav>
