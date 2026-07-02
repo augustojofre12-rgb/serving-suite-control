@@ -89,8 +89,9 @@
 
     <div class="tab-bar no-print">
       <button class="tab-btn active" onclick="switchTab('nuevo')">📋 Nuevo Informe</button>
-      <button class="tab-btn" onclick="switchTab('historial')">📁 Historial</button>
       <button class="tab-btn" onclick="switchTab('precios')">💲 Precios Unitarios</button>
+      <button class="tab-btn" onclick="switchTab('estructura')">💰 Estructura de Costo</button>
+      <button class="tab-btn" onclick="switchTab('historial')">📁 Historial</button>
     </div>
 
     <!-- ══════════════ TAB NUEVO ══════════════ -->
@@ -161,6 +162,11 @@
           <div></div>
         </div>
       </div>
+
+    </div>
+
+    <!-- ══════════════ TAB ESTRUCTURA DE COSTO ══════════════ -->
+    <div id="tab-estructura" class="tab-panel">
 
       <!-- Secciones de consumo (generadas por JS) -->
       <div id="secciones-wrap"></div>
@@ -292,11 +298,12 @@ async function init() {
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const tabs = ['nuevo','historial','precios']
+  const tabs = ['nuevo','precios','estructura','historial']
   document.querySelectorAll('.tab-btn').forEach((b,i)  => b.classList.toggle('active', tabs[i] === tab))
   document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', tabs[i] === tab))
-  document.getElementById('btn-guardar').style.display  = tab === 'nuevo' ? 'block' : 'none'
-  document.getElementById('btn-imprimir').style.display = tab === 'nuevo' ? 'block' : 'none'
+  const showBtns = tab === 'nuevo' || tab === 'estructura'
+  document.getElementById('btn-guardar').style.display  = showBtns ? 'block' : 'none'
+  document.getElementById('btn-imprimir').style.display = showBtns ? 'block' : 'none'
   if (tab === 'historial') cargarHistorial()
   if (tab === 'precios')   renderPrecios()
 }
