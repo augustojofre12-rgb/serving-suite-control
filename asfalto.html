@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Producción Mezcla Asfáltica</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .tab-bar{display:flex;gap:4px;background:#f0f0f0;border-radius:10px;padding:4px;margin-bottom:24px;width:fit-content}
+  .tab-btn{padding:8px 20px;border:none;background:none;border-radius:7px;font-size:14px;font-weight:500;color:var(--gray);cursor:pointer;transition:all .15s}
+  .tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.10)}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  .sec-card{background:#fff;border:1.5px solid #e8e8e8;border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .sec-hdr{background:#f5f7f5;padding:11px 16px;border-bottom:1.5px solid #e8e8e8;display:flex;justify-content:space-between;align-items:center}
+  .sec-ttl{font-size:14px;font-weight:700;color:var(--primary)}
+  .sec-ftr{background:#f9fbf9;padding:9px 16px;border-top:1.5px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center}
+
+  .it{width:100%;border-collapse:collapse;font-size:13px}
+  .it th{background:#fafafa;padding:7px 9px;text-align:left;font-weight:600;font-size:11px;color:var(--gray);border-bottom:1px solid #f0f0f0;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+  .it td{padding:5px 7px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+  .it tr:last-child td{border-bottom:none}
+  .it input,.it select{border:1.5px solid #e0e0e0;border-radius:6px;padding:5px 8px;font-size:13px;width:100%;background:#fff;font-family:inherit;color:var(--text)}
+  .it input:focus,.it select:focus{outline:none;border-color:var(--primary)}
+  .it input[type=number]{-moz-appearance:textfield}
+  .it input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+  .add-btn{border:1.5px dashed var(--primary);background:none;color:var(--primary);border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer}
+  .add-btn:hover{background:#f0faf5}
+  .sub-val{font-size:14px;font-weight:700;color:var(--primary)}
+  .sub-tn{font-size:12px;color:#bbb;margin-left:6px}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:24px;width:90%;max-width:460px}
+  .modal h2{font-size:16px;font-weight:700;margin-bottom:16px}
+  .mf{margin-bottom:12px}
+  .mf label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+  .mf input{width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 11px;font-size:14px;font-family:inherit;background:#fafafa}
+  .mf input:focus{outline:none;border-color:var(--primary)}
+  .mbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+
+  .r-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .r-tbl td{padding:6px 12px;border-bottom:1px solid #f0f0f0}
+  .r-tbl tr:last-child td{border-bottom:none}
+  .r-lbl{color:var(--gray)}
+  .r-val{text-align:right;font-weight:600}
+  .r-tot td{background:#f0faf5;font-weight:700;color:var(--primary);font-size:14px}
+  .r-tn td{color:#aaa;font-size:12px}
+
+  .obra-card{background:#f9fbf9;border:1.5px solid #d4eadc;border-radius:10px;padding:13px 16px;min-width:190px}
+  .obra-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px}
+  .obra-tn{font-size:11px;color:var(--gray);margin-bottom:3px}
+  .obra-val{font-size:18px;font-weight:700;color:var(--primary)}
+  .obra-cont{font-size:11px;color:#aaa;margin-top:2px}
+
+  .th-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .th-tbl th{background:#f5f7f5;padding:10px 13px;text-align:left;font-weight:600;font-size:12px;color:var(--gray);border-bottom:1.5px solid #e8e8e8}
+  .th-tbl td{padding:10px 13px;border-bottom:1px solid #f2f2f2;vertical-align:middle}
+  .th-tbl tr:last-child td{border-bottom:none}
+  .th-tbl tr:hover td{background:#f9fbf9}
+
+  @media print{
+    .sidebar,.ph,.tab-bar,.add-btn,.btn-icon,.sec-ftr .add-btn,.btn,.mbtns,.no-print{display:none !important}
+    .it input,.it select{border:none;padding:0;background:transparent;pointer-events:none}
+    .it input[style*="display:none"]{display:none !important}
+    .sec-card{border:1px solid #ccc;break-inside:avoid;margin-bottom:10px}
+    body{background:#fff}
+    @page{size:A4 portrait;margin:12mm}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+
+    <div class="ph" style="margin-bottom:20px">
+      <div class="ph-left">
+        <h1>Producción Mezcla Asfáltica</h1>
+        <p>Análisis económico mensual de producción</p>
+      </div>
+      <div style="display:flex;gap:10px" class="no-print">
+        <button class="btn" id="btn-imprimir" onclick="window.print()" style="display:none">🖨️ Imprimir</button>
+        <button class="btn btn-accent" id="btn-guardar" onclick="guardarInforme()" style="display:none">💾 Guardar Informe</button>
+      </div>
+    </div>
+
+    <div class="tab-bar no-print">
+      <button class="tab-btn active" onclick="switchTab('nuevo')">📋 Nuevo Informe</button>
+      <button class="tab-btn" onclick="switchTab('historial')">📁 Historial</button>
+      <button class="tab-btn" onclick="switchTab('precios')">💲 Precios Unitarios</button>
+    </div>
+
+    <!-- ══════════════ TAB NUEVO ══════════════ -->
+    <div id="tab-nuevo" class="tab-panel active">
+
+      <!-- Encabezado -->
+      <div class="sec-card">
+        <div class="sec-hdr"><div class="sec-ttl">📄 Datos del Informe</div></div>
+        <div style="padding:13px 16px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase">Mes</label>
+            <select id="inf-mes" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:7px 11px;font-size:14px;background:#fff">
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase">Año</label>
+            <input type="number" id="inf-anio" min="2020" max="2099" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:7px 11px;font-size:14px;width:88px;background:#fff">
+          </div>
+          <div style="flex:1;min-width:240px">
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase">Descripción / Obras del mes</label>
+            <input type="text" id="inf-obs" placeholder="Ej: Martín de Loyola y Cuadrillas Bacheo" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:7px 11px;font-size:14px;width:100%;background:#fff">
+          </div>
+        </div>
+      </div>
+
+      <!-- Producción diaria -->
+      <div class="sec-card">
+        <div class="sec-hdr">
+          <div class="sec-ttl">📅 Producción Diaria</div>
+          <span id="badge-tn" style="font-size:13px;font-weight:700;color:var(--primary)">0 TN</span>
+        </div>
+        <table class="it">
+          <thead><tr>
+            <th style="width:150px">Fecha</th>
+            <th style="width:160px">Toneladas (TN)</th>
+            <th>Observación</th>
+            <th style="width:36px"></th>
+          </tr></thead>
+          <tbody id="prod-tbody"></tbody>
+        </table>
+        <div class="sec-ftr">
+          <button class="add-btn" onclick="addProdRow()">+ Agregar día</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Distribución por obra -->
+      <div class="sec-card">
+        <div class="sec-hdr">
+          <div class="sec-ttl">🏗️ Distribución por Obra</div>
+          <span style="font-size:12px;color:var(--gray)">% calculado automáticamente según TN</span>
+        </div>
+        <table class="it">
+          <thead><tr>
+            <th>Obra / Destino</th>
+            <th style="width:150px">TN asignadas</th>
+            <th style="width:90px">%</th>
+            <th style="width:36px"></th>
+          </tr></thead>
+          <tbody id="dist-tbody"></tbody>
+        </table>
+        <div class="sec-ftr">
+          <button class="add-btn" onclick="addDistRow()">+ Agregar obra</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Secciones de consumo (generadas por JS) -->
+      <div id="secciones-wrap"></div>
+
+      <!-- Resumen -->
+      <div class="sec-card">
+        <div class="sec-hdr"><div class="sec-ttl">📊 Resumen Económico</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #f0f0f0">
+          <div style="padding:15px 18px;border-right:1px solid #f0f0f0">
+            <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Gerencia General</div>
+            <table class="r-tbl" id="r-gerencia"></table>
+          </div>
+          <div style="padding:15px 18px">
+            <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+              Contadora <span style="font-size:10px;font-weight:400;color:#bbb">(ítems con ✓)</span>
+            </div>
+            <table class="r-tbl" id="r-contadora"></table>
+          </div>
+        </div>
+        <div style="padding:15px 18px">
+          <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Imputación por Obra</div>
+          <div id="r-obras" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ TAB HISTORIAL ══════════════ -->
+    <div id="tab-historial" class="tab-panel">
+      <div style="overflow-x:auto;border-radius:12px;border:1.5px solid #e8e8e8">
+        <table class="th-tbl">
+          <thead><tr>
+            <th>N°</th><th>Período</th><th>Producción</th><th>Costo Gerencia</th><th>Costo Contadora</th><th>Costo/TN</th><th>Descripción</th><th class="no-print">Acciones</th>
+          </tr></thead>
+          <tbody id="hist-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB PRECIOS ══════════════ -->
+    <div id="tab-precios" class="tab-panel">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px" class="no-print">
+        <button class="btn btn-accent" onclick="abrirModalPrecio(null)">+ Agregar Insumo</button>
+      </div>
+      <div style="overflow-x:auto;border-radius:12px;border:1.5px solid #e8e8e8">
+        <table class="th-tbl">
+          <thead><tr>
+            <th>Insumo</th><th>Unidad</th><th>Precio unitario</th><th>Actualización</th><th>Observación</th><th class="no-print">Acciones</th>
+          </tr></thead>
+          <tbody id="precios-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Modal precio -->
+<div class="modal-bg" id="modal-precio">
+  <div class="modal">
+    <h2 id="mp-title">Agregar Insumo</h2>
+    <input type="hidden" id="mp-id">
+    <div class="mf">
+      <label>Insumo / Descripción</label>
+      <input type="text" id="mp-insumo" placeholder="Ej: Gas oil">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="mf">
+        <label>Unidad de medida</label>
+        <input type="text" id="mp-unidad" placeholder="Ej: $/L · $/HS · $/TN">
+      </div>
+      <div class="mf">
+        <label>Precio unitario</label>
+        <input type="number" id="mp-precio" placeholder="0" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="mf">
+      <label>Observación (opcional)</label>
+      <input type="text" id="mp-obs-m" placeholder="Fuente del precio, notas...">
+    </div>
+    <div class="mbtns">
+      <button class="btn" onclick="cerrarModalPrecio()">Cancelar</button>
+      <button class="btn btn-accent" onclick="guardarPrecio()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const SECCIONES = [
+  { id:'calentada',   label:'🔥 Calentada' },
+  { id:'elaboracion', label:'⚙️ Elaboración mezcla asfáltica' },
+  { id:'materiales',  label:'🪨 Materiales mezcla asfáltica' },
+  { id:'transporte',  label:'🚛 Transporte mezcla asfáltica' },
+  { id:'colocacion',  label:'🛣️ Colocación mezcla asfáltica' },
+  { id:'extras',      label:'🔧 Extras / Imprevistos' }
+]
+
+let usuario = null
+let precios  = []
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'asfalto')
+
+  const hoy = new Date()
+  document.getElementById('inf-mes').value  = hoy.getMonth() + 1
+  document.getElementById('inf-anio').value = hoy.getFullYear()
+
+  await cargarPrecios()
+  renderSecciones()
+  addProdRow()
+  addDistRow()
+
+  document.getElementById('btn-guardar').style.display = 'block'
+  document.getElementById('btn-imprimir').style.display = 'block'
+  calcTotales()
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const tabs = ['nuevo','historial','precios']
+  document.querySelectorAll('.tab-btn').forEach((b,i)  => b.classList.toggle('active', tabs[i] === tab))
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', tabs[i] === tab))
+  document.getElementById('btn-guardar').style.display  = tab === 'nuevo' ? 'block' : 'none'
+  document.getElementById('btn-imprimir').style.display = tab === 'nuevo' ? 'block' : 'none'
+  if (tab === 'historial') cargarHistorial()
+  if (tab === 'precios')   renderPrecios()
+}
+
+// ─── PRECIOS ──────────────────────────────────────────────────────────────────
+async function cargarPrecios() {
+  const { data } = await db.from('asfalto_precios').select('*').eq('activo', true).order('insumo')
+  precios = data || []
+}
+
+function preciosOpts() {
+  return precios.map(p =>
+    `<option value="${p.id}" data-unidad="${p.unidad||''}" data-precio="${p.precio||0}">${p.insumo} (${p.unidad})</option>`
+  ).join('')
+}
+
+function renderPrecios() {
+  const tbody = document.getElementById('precios-tbody')
+  if (!precios.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">No hay insumos. Agregá el primero.</td></tr>`
+    return
+  }
+  tbody.innerHTML = precios.map(p => `
+    <tr>
+      <td style="font-weight:500">${p.insumo}</td>
+      <td>${p.unidad}</td>
+      <td style="font-weight:600;color:var(--primary)">${formatPeso(p.precio)}</td>
+      <td style="font-size:12px;color:var(--gray)">${p.fecha_actualizacion ? new Date(p.fecha_actualizacion+'T12:00').toLocaleDateString('es-AR') : '—'}</td>
+      <td style="font-size:12px;color:var(--gray);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.observacion||''}">${p.observacion||'—'}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="abrirModalPrecio('${p.id}')">✏️ Editar</button>
+        <button class="btn" style="font-size:12px;padding:4px 10px;color:var(--danger);border-color:var(--danger)" onclick="eliminarPrecio('${p.id}')">✕</button>
+      </td>
+    </tr>`).join('')
+}
+
+function abrirModalPrecio(id) {
+  const p = id ? precios.find(x => x.id === id) : null
+  document.getElementById('mp-title').textContent  = p ? 'Editar Insumo' : 'Agregar Insumo'
+  document.getElementById('mp-id').value           = p?.id || ''
+  document.getElementById('mp-insumo').value       = p?.insumo || ''
+  document.getElementById('mp-unidad').value       = p?.unidad || ''
+  document.getElementById('mp-precio').value       = p?.precio || ''
+  document.getElementById('mp-obs-m').value        = p?.observacion || ''
+  document.getElementById('modal-precio').classList.add('open')
+  setTimeout(() => document.getElementById('mp-insumo').focus(), 100)
+}
+
+function cerrarModalPrecio() {
+  document.getElementById('modal-precio').classList.remove('open')
+}
+
+async function guardarPrecio() {
+  const id     = document.getElementById('mp-id').value
+  const insumo = document.getElementById('mp-insumo').value.trim()
+  const unidad = document.getElementById('mp-unidad').value.trim()
+  const precio = parseFloat(document.getElementById('mp-precio').value) || 0
+  const obs    = document.getElementById('mp-obs-m').value.trim()
+
+  if (!insumo || !unidad) { alert('Completá insumo y unidad.'); return }
+
+  const datos = { insumo, unidad, precio, observacion: obs||null, fecha_actualizacion: new Date().toISOString().split('T')[0], activo: true }
+  if (id) {
+    await db.from('asfalto_precios').update(datos).eq('id', id)
+  } else {
+    await db.from('asfalto_precios').insert(datos)
+  }
+
+  cerrarModalPrecio()
+  await cargarPrecios()
+  renderPrecios()
+  actualizarDropdowns()
+  toast('Insumo guardado')
+}
+
+async function eliminarPrecio(id) {
+  if (!confirm('¿Eliminar este insumo de la lista?')) return
+  await db.from('asfalto_precios').update({ activo: false }).eq('id', id)
+  await cargarPrecios()
+  renderPrecios()
+  toast('Insumo eliminado')
+}
+
+function actualizarDropdowns() {
+  document.querySelectorAll('.it-sel').forEach(sel => {
+    const val = sel.value
+    sel.innerHTML = `<option value="">— Seleccionar insumo —</option>${preciosOpts()}<option value="__libre__">✏️ Texto libre</option>`
+    sel.value = val
+  })
+}
+
+// ─── SECCIONES ────────────────────────────────────────────────────────────────
+function renderSecciones() {
+  document.getElementById('secciones-wrap').innerHTML = SECCIONES.map(s => `
+    <div class="sec-card">
+      <div class="sec-hdr"><div class="sec-ttl">${s.label}</div></div>
+      <table class="it">
+        <thead><tr>
+          <th>Insumo / Descripción</th>
+          <th style="width:105px">Cantidad</th>
+          <th style="width:90px">Unidad</th>
+          <th style="width:140px">Precio unit.</th>
+          <th style="width:130px;text-align:right">Total</th>
+          <th style="width:32px;text-align:center" title="Incluir en resumen contadora">✓</th>
+          <th style="width:32px"></th>
+        </tr></thead>
+        <tbody id="tbody-${s.id}"></tbody>
+      </table>
+      <div class="sec-ftr">
+        <button class="add-btn no-print" onclick="addItemRow('${s.id}')">+ Agregar ítem</button>
+        <div>
+          <span class="sub-val" id="sub-${s.id}">$0</span>
+          <span class="sub-tn" id="subtn-${s.id}"></span>
+        </div>
+      </div>
+    </div>`).join('')
+}
+
+function addItemRow(seccionId) {
+  const tbody = document.getElementById('tbody-' + seccionId)
+  const tr = document.createElement('tr')
+  tr.dataset.total = '0'
+  tr.innerHTML = `
+    <td style="min-width:180px">
+      <select class="it-sel" onchange="onPrecioSelect(this)">
+        <option value="">— Seleccionar insumo —</option>
+        ${preciosOpts()}
+        <option value="__libre__">✏️ Texto libre</option>
+      </select>
+      <input type="text" class="it-desc" placeholder="Descripción libre" style="display:none;margin-top:4px" oninput="calcTotales()">
+    </td>
+    <td><input type="number" class="it-cant" min="0" step="0.001" placeholder="0" oninput="calcTotal(this.closest('tr'))"></td>
+    <td><input type="text" class="it-unid" placeholder="UD"></td>
+    <td><input type="number" class="it-pu" min="0" step="0.01" placeholder="0" oninput="calcTotal(this.closest('tr'))"></td>
+    <td style="text-align:right;font-weight:600;padding-right:10px;white-space:nowrap;color:var(--primary)" class="it-total">$0</td>
+    <td style="text-align:center"><input type="checkbox" class="it-cont" checked onchange="calcTotales()" title="Incluir en resumen contadora"></td>
+    <td><button class="btn-icon" onclick="this.closest('tr').remove();calcTotales()">✕</button></td>
+  `
+  tbody.appendChild(tr)
+}
+
+function onPrecioSelect(sel) {
+  const row = sel.closest('tr')
+  const val = sel.value
+  const descInp = row.querySelector('.it-desc')
+
+  if (val === '__libre__') {
+    descInp.style.display = 'block'
+    row.querySelector('.it-unid').value = ''
+    row.querySelector('.it-pu').value   = ''
+    descInp.focus()
+  } else if (val) {
+    descInp.style.display = 'none'
+    const opt = sel.options[sel.selectedIndex]
+    row.querySelector('.it-unid').value = opt.dataset.unidad || ''
+    row.querySelector('.it-pu').value   = opt.dataset.precio || ''
+    calcTotal(row)
+  } else {
+    descInp.style.display = 'none'
+    row.querySelector('.it-unid').value = ''
+    row.querySelector('.it-pu').value   = ''
+    row.dataset.total = '0'
+    row.querySelector('.it-total').textContent = '$0'
+    calcTotales()
+  }
+}
+
+function calcTotal(row) {
+  const cant = parseFloat(row.querySelector('.it-cant')?.value) || 0
+  const pu   = parseFloat(row.querySelector('.it-pu')?.value)   || 0
+  const tot  = cant * pu
+  row.dataset.total = String(tot)
+  row.querySelector('.it-total').textContent = formatPeso(Math.round(tot))
+  calcTotales()
+}
+
+// ─── PRODUCCIÓN DIARIA ────────────────────────────────────────────────────────
+function addProdRow() {
+  const tbody = document.getElementById('prod-tbody')
+  const tr = document.createElement('tr')
+  const hoy = new Date().toISOString().split('T')[0]
+  tr.innerHTML = `
+    <td><input type="date" class="prod-fecha" value="${hoy}" onchange="onProdChange()"></td>
+    <td><input type="number" class="prod-tn" min="0" step="0.001" placeholder="0" oninput="onProdChange()"></td>
+    <td><input type="text" class="prod-obs" placeholder="Observación opcional"></td>
+    <td><button class="btn-icon" onclick="this.closest('tr').remove();onProdChange()">✕</button></td>
+  `
+  tbody.appendChild(tr)
+}
+
+function getTotalTN() {
+  return Array.from(document.querySelectorAll('#prod-tbody .prod-tn'))
+    .reduce((s, inp) => s + (parseFloat(inp.value) || 0), 0)
+}
+
+function onProdChange() {
+  const total = getTotalTN()
+  document.getElementById('badge-tn').textContent = (Math.round(total * 1000)/1000) + ' TN'
+  actualizarPorcentajes(total)
+  calcTotales()
+}
+
+// ─── DISTRIBUCIÓN OBRAS ───────────────────────────────────────────────────────
+function addDistRow() {
+  const tbody = document.getElementById('dist-tbody')
+  const tr = document.createElement('tr')
+  tr.innerHTML = `
+    <td><input type="text" class="dist-obra" placeholder="Nombre de la obra o destino"></td>
+    <td><input type="number" class="dist-tn" min="0" step="0.001" placeholder="0" oninput="onDistChange()"></td>
+    <td><span class="dist-porc" style="font-size:13px;color:var(--gray);padding-left:6px">—</span></td>
+    <td><button class="btn-icon" onclick="this.closest('tr').remove();onDistChange()">✕</button></td>
+  `
+  tbody.appendChild(tr)
+}
+
+function actualizarPorcentajes(totalTN) {
+  document.querySelectorAll('#dist-tbody tr').forEach(row => {
+    const tn   = parseFloat(row.querySelector('.dist-tn')?.value) || 0
+    const porc = totalTN > 0 ? Math.round(tn / totalTN * 1000) / 10 : 0
+    const el   = row.querySelector('.dist-porc')
+    if (el) el.textContent = porc + '%'
+  })
+}
+
+function onDistChange() {
+  actualizarPorcentajes(getTotalTN())
+  calcTotales()
+}
+
+// ─── TOTALES Y RESUMEN ────────────────────────────────────────────────────────
+function calcTotales() {
+  const totalTN = getTotalTN()
+  let totalGer = 0, totalCont = 0
+  const seccTotals = {}
+
+  SECCIONES.forEach(s => {
+    let sg = 0, sc = 0
+    document.querySelectorAll(`#tbody-${s.id} tr`).forEach(row => {
+      const t = parseFloat(row.dataset.total) || 0
+      sg += t
+      if (row.querySelector('.it-cont')?.checked) sc += t
+    })
+    seccTotals[s.id] = { ger: sg, cont: sc }
+    totalGer  += sg
+    totalCont += sc
+
+    document.getElementById('sub-' + s.id).textContent = formatPeso(Math.round(sg))
+    const subtn = document.getElementById('subtn-' + s.id)
+    if (subtn) subtn.textContent = (sg > 0 && totalTN > 0) ? '(' + formatPeso(Math.round(sg/totalTN)) + '/TN)' : ''
+  })
+
+  renderResumen(seccTotals, totalGer, totalCont, totalTN)
+}
+
+function renderResumen(seccTotals, totalGer, totalCont, totalTN) {
+  const gerTN  = totalTN > 0 ? Math.round(totalGer  / totalTN) : 0
+  const contTN = totalTN > 0 ? Math.round(totalCont / totalTN) : 0
+
+  const gerRows = SECCIONES.map(s => {
+    const v = seccTotals[s.id]?.ger || 0
+    if (!v) return ''
+    return `<tr><td class="r-lbl">${s.label.replace(/^[\S]+\s/,'')}</td><td class="r-val">${formatPeso(Math.round(v))}</td></tr>`
+  }).join('')
+  document.getElementById('r-gerencia').innerHTML = gerRows +
+    `<tr class="r-tot"><td>TOTAL</td><td class="r-val">${formatPeso(Math.round(totalGer))}</td></tr>
+     <tr class="r-tn"><td>Costo unitario</td><td class="r-val">${formatPeso(gerTN)}/TN</td></tr>`
+
+  const contRows = SECCIONES.map(s => {
+    const v = seccTotals[s.id]?.cont || 0
+    if (!v) return ''
+    return `<tr><td class="r-lbl">${s.label.replace(/^[\S]+\s/,'')}</td><td class="r-val">${formatPeso(Math.round(v))}</td></tr>`
+  }).join('')
+  document.getElementById('r-contadora').innerHTML = contRows +
+    `<tr class="r-tot"><td>TOTAL</td><td class="r-val">${formatPeso(Math.round(totalCont))}</td></tr>
+     <tr class="r-tn"><td>Costo unitario</td><td class="r-val">${formatPeso(contTN)}/TN</td></tr>`
+
+  const distRows = Array.from(document.querySelectorAll('#dist-tbody tr'))
+  const obrasHtml = distRows.map(row => {
+    const nombre = row.querySelector('.dist-obra')?.value.trim() || '(sin nombre)'
+    const tn     = parseFloat(row.querySelector('.dist-tn')?.value) || 0
+    if (!tn) return ''
+    const porc      = totalTN > 0 ? tn / totalTN : 0
+    const montoGer  = Math.round(totalGer  * porc)
+    const montoCont = Math.round(totalCont * porc)
+    const porcPct   = Math.round(porc * 1000) / 10
+    return `<div class="obra-card">
+      <div class="obra-name">${nombre}</div>
+      <div class="obra-tn">${tn} TN · ${porcPct}%</div>
+      <div class="obra-val">${formatPeso(montoGer)}</div>
+      <div class="obra-cont">${formatPeso(montoCont)} (contadora)</div>
+    </div>`
+  }).join('')
+
+  document.getElementById('r-obras').innerHTML =
+    obrasHtml || '<span style="color:var(--gray);font-size:13px">Completá la distribución por obra arriba</span>'
+}
+
+// ─── GUARDAR ──────────────────────────────────────────────────────────────────
+async function guardarInforme() {
+  const mes  = parseInt(document.getElementById('inf-mes').value)
+  const anio = parseInt(document.getElementById('inf-anio').value)
+  const obs  = document.getElementById('inf-obs').value.trim()
+
+  const totalTN = getTotalTN()
+  let totalGer = 0, totalCont = 0
+  SECCIONES.forEach(s => {
+    document.querySelectorAll(`#tbody-${s.id} tr`).forEach(row => {
+      const t = parseFloat(row.dataset.total) || 0
+      totalGer += t
+      if (row.querySelector('.it-cont')?.checked) totalCont += t
+    })
+  })
+
+  const btn = document.getElementById('btn-guardar')
+  btn.disabled = true; btn.textContent = 'Guardando...'
+
+  const { data: lastInf } = await db.from('informes_asfalto').select('numero').order('numero', { ascending: false }).limit(1)
+  const numero = ((lastInf?.[0]?.numero) || 0) + 1
+
+  const { data: informe, error } = await db.from('informes_asfalto').insert({
+    numero, mes, anio,
+    observaciones: obs || null,
+    total_tn:               totalTN,
+    total_costo_gerencia:   Math.round(totalGer),
+    total_costo_contadora:  Math.round(totalCont),
+    costo_por_tn:           totalTN > 0 ? Math.round(totalGer / totalTN) : 0,
+    creado_por: usuario.id
+  }).select().single()
+
+  if (error) {
+    toast('Error al guardar: ' + error.message, 'error')
+    btn.disabled = false; btn.textContent = '💾 Guardar Informe'
+    return
+  }
+
+  const infId = informe.id
+
+  // Producción diaria
+  const prodRows = Array.from(document.querySelectorAll('#prod-tbody tr')).map(row => ({
+    informe_id:  infId,
+    fecha:       row.querySelector('.prod-fecha')?.value || null,
+    toneladas:   parseFloat(row.querySelector('.prod-tn')?.value) || 0,
+    observacion: row.querySelector('.prod-obs')?.value.trim() || null
+  })).filter(r => r.fecha && r.toneladas > 0)
+  if (prodRows.length) await db.from('asfalto_produccion_diaria').insert(prodRows)
+
+  // Distribución obras
+  const distRows = Array.from(document.querySelectorAll('#dist-tbody tr')).map(row => {
+    const tn = parseFloat(row.querySelector('.dist-tn')?.value) || 0
+    return {
+      informe_id:  infId,
+      obra_nombre: row.querySelector('.dist-obra')?.value.trim() || '',
+      toneladas:   tn,
+      porcentaje:  totalTN > 0 ? Math.round(tn / totalTN * 1000) / 10 : 0
+    }
+  }).filter(r => r.obra_nombre && r.toneladas > 0)
+  if (distRows.length) await db.from('asfalto_obras_distribucion').insert(distRows)
+
+  // Items de consumo
+  const itemRows = []
+  SECCIONES.forEach(s => {
+    document.querySelectorAll(`#tbody-${s.id} tr`).forEach(row => {
+      const sel       = row.querySelector('.it-sel')
+      const precioId  = sel?.value && sel.value !== '__libre__' ? sel.value : null
+      const descSel   = precioId ? sel.options[sel.selectedIndex]?.text?.split(' (')[0] || '' : ''
+      const descLibre = row.querySelector('.it-desc')?.value.trim() || ''
+      const desc      = sel?.value === '__libre__' ? descLibre : descSel
+      if (!desc) return
+      const cant = parseFloat(row.querySelector('.it-cant')?.value) || 0
+      const pu   = parseFloat(row.querySelector('.it-pu')?.value)   || 0
+      itemRows.push({
+        informe_id:        infId,
+        seccion:           s.id,
+        descripcion:       desc,
+        precio_id:         precioId,
+        cantidad:          cant,
+        unidad:            row.querySelector('.it-unid')?.value.trim() || null,
+        precio_unitario:   pu,
+        total:             Math.round(cant * pu),
+        incluir_contadora: row.querySelector('.it-cont')?.checked ?? true
+      })
+    })
+  })
+  if (itemRows.length) await db.from('asfalto_items_consumo').insert(itemRows)
+
+  toast('Informe N°' + numero + ' guardado')
+  btn.disabled = false; btn.textContent = '💾 Guardar Informe'
+}
+
+// ─── HISTORIAL ────────────────────────────────────────────────────────────────
+async function cargarHistorial() {
+  const { data } = await db.from('informes_asfalto').select('*')
+    .order('anio', { ascending: false }).order('mes', { ascending: false })
+
+  const tbody = document.getElementById('hist-tbody')
+  if (!data || !data.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray)">No hay informes guardados aún.</td></tr>`
+    return
+  }
+
+  tbody.innerHTML = data.map(inf => `
+    <tr>
+      <td><span style="background:#e8f5ee;color:#1e6b40;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">N°${inf.numero}</span></td>
+      <td style="font-weight:600">${MESES[inf.mes]} ${inf.anio}</td>
+      <td>${inf.total_tn ? (Math.round(inf.total_tn*100)/100) + ' TN' : '—'}</td>
+      <td style="font-weight:600;color:var(--primary)">${formatPeso(inf.total_costo_gerencia||0)}</td>
+      <td>${formatPeso(inf.total_costo_contadora||0)}</td>
+      <td style="color:var(--gray)">${inf.costo_por_tn ? formatPeso(inf.costo_por_tn)+'/TN' : '—'}</td>
+      <td style="font-size:12px;color:var(--gray);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inf.observaciones||'—'}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="reimprimirInforme('${inf.id}')">🖨️ Reimprimir</button>
+        <button class="btn" style="font-size:12px;padding:4px 10px;color:var(--danger);border-color:var(--danger)" onclick="eliminarInforme('${inf.id}')">✕</button>
+      </td>
+    </tr>`).join('')
+}
+
+async function reimprimirInforme(id) {
+  const [{ data: inf }, { data: prod }, { data: dist }, { data: items }] = await Promise.all([
+    db.from('informes_asfalto').select('*').eq('id', id).single(),
+    db.from('asfalto_produccion_diaria').select('*').eq('informe_id', id).order('fecha'),
+    db.from('asfalto_obras_distribucion').select('*').eq('informe_id', id),
+    db.from('asfalto_items_consumo').select('*').eq('informe_id', id)
+  ])
+  if (!inf) { toast('No se pudo cargar el informe', 'error'); return }
+
+  const totalTN   = inf.total_tn || 0
+  const secMap = {}
+  SECCIONES.forEach(s => { secMap[s.id] = [] })
+  ;(items||[]).forEach(it => { if (secMap[it.seccion]) secMap[it.seccion].push(it) })
+
+  const secHtml = SECCIONES.map(s => {
+    const rows = secMap[s.id]
+    if (!rows.length) return ''
+    const sub = rows.reduce((a, r) => a + (r.total||0), 0)
+    return `<div style="margin-bottom:14px;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+      <div style="background:#f5f7f5;padding:8px 12px;font-weight:700;font-size:13px;color:#1e6b40">${s.label}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#fafafa">
+          <th style="padding:5px 10px;text-align:left;border-bottom:1px solid #eee">Descripción</th>
+          <th style="padding:5px 10px;text-align:right;border-bottom:1px solid #eee;width:70px">Cant.</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;width:70px">Unid.</th>
+          <th style="padding:5px 10px;text-align:right;border-bottom:1px solid #eee;width:120px">P. Unit.</th>
+          <th style="padding:5px 10px;text-align:right;border-bottom:1px solid #eee;width:120px">Total</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5">${r.descripcion}${r.incluir_contadora ? '' : ' <span style="font-size:10px;color:#bbb">(solo gerencia)</span>'}</td>
+            <td style="padding:5px 10px;text-align:right;border-bottom:1px solid #f5f5f5">${r.cantidad}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5">${r.unidad||''}</td>
+            <td style="padding:5px 10px;text-align:right;border-bottom:1px solid #f5f5f5">$${(r.precio_unitario||0).toLocaleString('es-AR')}</td>
+            <td style="padding:5px 10px;text-align:right;border-bottom:1px solid #f5f5f5;font-weight:600">$${(r.total||0).toLocaleString('es-AR')}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr style="background:#f0faf5">
+          <td colspan="4" style="padding:6px 10px;font-weight:700;color:#1e6b40;font-size:12px">Subtotal</td>
+          <td style="padding:6px 10px;text-align:right;font-weight:700;color:#1e6b40">$${sub.toLocaleString('es-AR')}</td>
+        </tr></tfoot>
+      </table>
+    </div>`
+  }).join('')
+
+  const prodHtml = (prod||[]).length ? `
+    <div style="margin-bottom:14px;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+      <div style="background:#f5f7f5;padding:8px 12px;font-weight:700;font-size:13px;color:#1e6b40">📅 Producción Diaria</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#fafafa">
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:left">Fecha</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right;width:120px">Toneladas</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee">Observación</th>
+        </tr></thead>
+        <tbody>
+          ${(prod||[]).map(r => `<tr>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5">${r.fecha ? new Date(r.fecha+'T12:00').toLocaleDateString('es-AR') : '—'}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;text-align:right;font-weight:600">${r.toneladas} TN</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;color:#888">${r.observacion||''}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr style="background:#f0faf5">
+          <td style="padding:6px 10px;font-weight:700;color:#1e6b40">TOTAL</td>
+          <td style="padding:6px 10px;text-align:right;font-weight:700;color:#1e6b40">${totalTN} TN</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>` : ''
+
+  const obrasHtml = (dist||[]).length ? `
+    <div style="margin-bottom:14px;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+      <div style="background:#f5f7f5;padding:8px 12px;font-weight:700;font-size:13px;color:#1e6b40">🏗️ Imputación por Obra</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#fafafa">
+          <th style="padding:5px 10px;border-bottom:1px solid #eee">Obra</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right">TN</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right">%</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right">Monto (Gerencia)</th>
+          <th style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right">Monto (Contadora)</th>
+        </tr></thead>
+        <tbody>
+          ${(dist||[]).map(d => `<tr>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;font-weight:500">${d.obra_nombre}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;text-align:right">${d.toneladas} TN</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;text-align:right">${d.porcentaje}%</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;text-align:right;font-weight:600;color:#1e6b40">$${Math.round((inf.total_costo_gerencia||0)*d.porcentaje/100).toLocaleString('es-AR')}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #f5f5f5;text-align:right">$${Math.round((inf.total_costo_contadora||0)*d.porcentaje/100).toLocaleString('es-AR')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : ''
+
+  const win = window.open('', '_blank', 'width=900,height=720')
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Informe N°${inf.numero} — ${MESES[inf.mes]} ${inf.anio}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:20px;color:#222}
+    @page{size:A4 portrait;margin:12mm}
+    @media print{.no-print{display:none}}
+  </style></head><body>
+  <div style="border-bottom:3px solid #1e6b40;padding-bottom:12px;margin-bottom:16px">
+    <div style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase">Serving Suite Control</div>
+    <h1 style="font-size:20px;margin:4px 0;color:#1e6b40">Producción Mezcla Asfáltica — N°${inf.numero}</h1>
+    <div style="font-size:14px;color:#555">${MESES[inf.mes]} ${inf.anio}${inf.observaciones?' · '+inf.observaciones:''}</div>
+  </div>
+  <div style="display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+    ${[
+      ['PRODUCCIÓN TOTAL', (Math.round(totalTN*100)/100)+' TN'],
+      ['COSTO GERENCIA',   '$'+(inf.total_costo_gerencia||0).toLocaleString('es-AR')],
+      ['COSTO CONTADORA',  '$'+(inf.total_costo_contadora||0).toLocaleString('es-AR')],
+      ['COSTO/TN',         '$'+(inf.costo_por_tn||0).toLocaleString('es-AR')+'/TN']
+    ].map(([l,v]) => `<div style="border:1.5px solid #d4eadc;border-radius:8px;padding:10px 16px;min-width:140px">
+      <div style="font-size:10px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
+      <div style="font-size:18px;font-weight:700;color:#1e6b40">${v}</div>
+    </div>`).join('')}
+  </div>
+  ${prodHtml}${secHtml}${obrasHtml}
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`)
+  win.document.close()
+}
+
+async function eliminarInforme(id) {
+  if (!confirm('¿Eliminar este informe? Se borrarán todos los datos asociados.')) return
+  await Promise.all([
+    db.from('asfalto_items_consumo').delete().eq('informe_id', id),
+    db.from('asfalto_produccion_diaria').delete().eq('informe_id', id),
+    db.from('asfalto_obras_distribucion').delete().eq('informe_id', id)
+  ])
+  await db.from('informes_asfalto').delete().eq('id', id)
+  toast('Informe eliminado')
+  cargarHistorial()
+}
+
+init()
+</script>
+</body>
+</html>
