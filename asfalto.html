@@ -216,7 +216,7 @@
       <div style="overflow-x:auto;border-radius:12px;border:1.5px solid #e8e8e8">
         <table class="th-tbl">
           <thead><tr>
-            <th>Insumo</th><th>Unidad</th><th>Precio unitario</th><th>Actualización</th><th>Observación</th><th class="no-print">Acciones</th>
+            <th>Insumo</th><th>Unidad</th><th>Precio unitario</th><th>Cant./TN</th><th>Actualización</th><th>Observación</th><th class="no-print">Acciones</th>
           </tr></thead>
           <tbody id="precios-tbody">
             <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
@@ -247,6 +247,11 @@
         <label>Precio unitario</label>
         <input type="number" id="mp-precio" placeholder="0" min="0" step="0.01">
       </div>
+    </div>
+    <div class="mf">
+      <label>Cantidad por TN de mezcla <span style="font-weight:400;color:#aaa">(opcional — solo para materiales de la receta)</span></label>
+      <input type="number" id="mp-qty-tn" placeholder="Ej: 50 para 50 L/TN" min="0" step="0.001">
+      <div style="font-size:11px;color:#aaa;margin-top:3px">Si completás este campo, las cantidades se calcularán solas al cargar TN producidas</div>
     </div>
     <div class="mf">
       <label>Observación (opcional)</label>
@@ -332,6 +337,7 @@ function renderPrecios() {
       <td style="font-weight:500">${p.insumo}</td>
       <td>${p.unidad}</td>
       <td style="font-weight:600;color:var(--primary)">${formatPeso(p.precio)}</td>
+      <td style="text-align:center;font-size:13px;color:${p.qty_por_tn ? 'var(--primary)' : '#ccc'}">${p.qty_por_tn ? p.qty_por_tn + ' ' + (p.unidad||'') + '/TN' : '—'}</td>
       <td style="font-size:12px;color:var(--gray)">${p.fecha_actualizacion ? new Date(p.fecha_actualizacion+'T12:00').toLocaleDateString('es-AR') : '—'}</td>
       <td style="font-size:12px;color:var(--gray);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.observacion||''}">${p.observacion||'—'}</td>
       <td class="no-print" style="white-space:nowrap">
@@ -348,6 +354,7 @@ function abrirModalPrecio(id) {
   document.getElementById('mp-insumo').value       = p?.insumo || ''
   document.getElementById('mp-unidad').value       = p?.unidad || ''
   document.getElementById('mp-precio').value       = p?.precio || ''
+  document.getElementById('mp-qty-tn').value       = p?.qty_por_tn || ''
   document.getElementById('mp-obs-m').value        = p?.observacion || ''
   document.getElementById('modal-precio').classList.add('open')
   setTimeout(() => document.getElementById('mp-insumo').focus(), 100)
@@ -366,7 +373,8 @@ async function guardarPrecio() {
 
   if (!insumo || !unidad) { alert('Completá insumo y unidad.'); return }
 
-  const datos = { insumo, unidad, precio, observacion: obs||null, fecha_actualizacion: new Date().toISOString().split('T')[0], activo: true }
+  const qty_por_tn = parseFloat(document.getElementById('mp-qty-tn').value) || null
+  const datos = { insumo, unidad, precio, qty_por_tn, observacion: obs||null, fecha_actualizacion: new Date().toISOString().split('T')[0], activo: true }
   if (id) {
     await db.from('asfalto_precios').update(datos).eq('id', id)
   } else {
@@ -504,7 +512,42 @@ function onProdChange() {
   const total = getTotalTN()
   document.getElementById('badge-tn').textContent = (Math.round(total * 1000)/1000) + ' TN'
   actualizarPorcentajes(total)
+  autoFillMateriales(total)
   calcTotales()
+}
+
+function autoFillMateriales(totalTN) {
+  const tbody = document.getElementById('tbody-materiales')
+  tbody.querySelectorAll('tr[data-auto]').forEach(r => r.remove())
+  if (!totalTN || totalTN <= 0) return
+
+  const receta = precios.filter(p => p.qty_por_tn > 0)
+  receta.forEach(p => {
+    const cant  = Math.round(p.qty_por_tn * totalTN * 1000) / 1000
+    const total = cant * (p.precio || 0)
+    const tr = document.createElement('tr')
+    tr.dataset.auto  = 'true'
+    tr.dataset.total = String(total)
+    tr.innerHTML = `
+      <td style="min-width:180px">
+        <select class="it-sel" onchange="onPrecioSelect(this)">
+          <option value="">— Seleccionar insumo —</option>
+          ${preciosOpts()}
+          <option value="__libre__">✏️ Texto libre</option>
+        </select>
+        <input type="text" class="it-desc" style="display:none;margin-top:4px" oninput="calcTotales()">
+        <div style="font-size:10px;color:#aaa;margin-top:2px">🔄 auto · ${p.qty_por_tn} ${p.unidad||''}/TN</div>
+      </td>
+      <td><input type="number" class="it-cant" min="0" step="0.001" value="${cant}" oninput="calcTotal(this.closest('tr'))"></td>
+      <td><input type="text" class="it-unid" value="${p.unidad||''}"></td>
+      <td><input type="number" class="it-pu" min="0" step="0.01" value="${p.precio||0}" oninput="calcTotal(this.closest('tr'))"></td>
+      <td style="text-align:right;font-weight:600;padding-right:10px;white-space:nowrap;color:var(--primary)" class="it-total">${formatPeso(Math.round(total))}</td>
+      <td style="text-align:center"><input type="checkbox" class="it-cont" checked onchange="calcTotales()"></td>
+      <td><button class="btn-icon" onclick="this.closest('tr').removeAttribute('data-auto');this.remove();calcTotales()">✕</button></td>
+    `
+    tbody.appendChild(tr)
+    tr.querySelector('.it-sel').value = p.id
+  })
 }
 
 // ─── DISTRIBUCIÓN OBRAS ───────────────────────────────────────────────────────
