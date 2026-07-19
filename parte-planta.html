@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Parte Diario — Planta Asfáltica</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f7f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header {
+    width: 100%;
+    background: #1e6b40;
+    padding: 24px 20px 20px;
+    color: #fff;
+  }
+  .header .logo-row {
+    font-size: 11px;
+    opacity: 0.75;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .header p  { font-size: 13px; opacity: 0.8; }
+
+  .form-wrap {
+    width: 100%;
+    max-width: 540px;
+    padding: 20px 16px 40px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e6b40;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 16px;
+    font-family: inherit;
+    background: #fafafa;
+    color: #222;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: #1e6b40;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(30,107,64,0.12);
+  }
+  .field textarea { resize: none; height: 88px; }
+
+  .tank-card {
+    background: #f9fbf9;
+    border: 1.5px solid #d4eadc;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .tank-card:last-child { margin-bottom: 0; }
+  .tank-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e6b40;
+    margin-bottom: 10px;
+  }
+  .tank-sec-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    margin-top: 10px;
+  }
+  .tank-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field-sm label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .field-sm input {
+    width: 100%;
+    border: 1.5px solid #ddeee5;
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    color: #222;
+    -webkit-appearance: none;
+  }
+  .field-sm input:focus {
+    outline: none;
+    border-color: #1e6b40;
+    box-shadow: 0 0 0 2px rgba(30,107,64,0.1);
+  }
+  .tank-consumo {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #c8e6d4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tank-consumo-label { font-size: 12px; color: #888; }
+  .tank-consumo-val   { font-size: 15px; font-weight: 700; color: #1e6b40; }
+
+  .btn-submit {
+    width: 100%;
+    height: 52px;
+    background: #1e6b40;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background .2s, transform .1s;
+    margin-top: 6px;
+  }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+  .msg-ok {
+    background: #f0faf5;
+    border: 1.5px solid #4caf7d;
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
+    display: none;
+    margin-top: 14px;
+  }
+  .msg-ok .icon { font-size: 40px; margin-bottom: 10px; }
+  .msg-ok h2 { font-size: 17px; color: #1e6b40; margin-bottom: 6px; }
+  .msg-ok p  { font-size: 13px; color: #555; }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #1e6b40;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-row">Serving Suite Control</div>
+  <h1>🏭 Parte Diario de Planta</h1>
+  <p>Planta Asfáltica — INT 5001</p>
+</div>
+
+<div class="form-wrap">
+
+  <div class="card">
+    <div class="card-title">📄 Datos del día</div>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" id="inp-fecha">
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label>Producción total (TN)</label>
+      <input type="number" id="inp-produccion" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🛢️ Consumos de tanques</div>
+    <div id="tanques-wrap"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 Observaciones / Rotura de planta</div>
+    <div class="field" style="margin-bottom:0">
+      <textarea id="inp-obs" placeholder="Roturas, anomalías, notas del día..."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="btn-guardar" onclick="guardar()">
+    💾 Guardar parte del día
+  </button>
+  <p style="text-align:center;font-size:11px;color:#bbb;margin-top:12px">
+    Serving S.R.L. — INT 5001
+  </p>
+
+  <div id="msg-ok" class="msg-ok">
+    <div class="icon">✅</div>
+    <h2>¡Parte guardado!</h2>
+    <p id="msg-ok-det"></p>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+
+const TANQUES = [
+  { id: 't1',   label: 'T1 — CA 30 (20)' },
+  { id: 't2',   label: 'T2 — CA 30 (40)' },
+  { id: 't3',   label: 'T3 — (50)' },
+  { id: 't4',   label: 'T4 — (50)' },
+  { id: 't5',   label: 'T5 — IFO (50)' },
+  { id: 'fuel', label: 'Fuel Oil' },
+  { id: 'lav',  label: 'Lavarropas' },
+  { id: 'cald', label: 'Caldera Planta' }
+]
+
+function renderTanques() {
+  document.getElementById('tanques-wrap').innerHTML = TANQUES.map(t => `
+    <div class="tank-card">
+      <div class="tank-name">${t.label}</div>
+      <div class="tank-sec-label">Medición inicial</div>
+      <div class="tank-grid">
+        <div class="field-sm">
+          <label>Altura (m)</label>
+          <input type="number" id="${t.id}-ai" inputmode="decimal" placeholder="0.000" min="0" step="0.001" oninput="calcConsumo('${t.id}')">
+        </div>
+        <div class="field-sm">
+          <label>Volumen (m³)</label>
+          <input type="number" id="${t.id}-vi" inputmode="decimal" placeholder="0.000" min="0" step="0.001" oninput="calcConsumo('${t.id}')">
+        </div>
+      </div>
+      <div class="tank-sec-label">Medición final</div>
+      <div class="tank-grid">
+        <div class="field-sm">
+          <label>Altura (m)</label>
+          <input type="number" id="${t.id}-af" inputmode="decimal" placeholder="0.000" min="0" step="0.001" oninput="calcConsumo('${t.id}')">
+        </div>
+        <div class="field-sm">
+          <label>Volumen (m³)</label>
+          <input type="number" id="${t.id}-vf" inputmode="decimal" placeholder="0.000" min="0" step="0.001" oninput="calcConsumo('${t.id}')">
+        </div>
+      </div>
+      <div class="tank-consumo">
+        <span class="tank-consumo-label">Consumo del día</span>
+        <span class="tank-consumo-val" id="${t.id}-cons">— m³</span>
+      </div>
+    </div>
+  `).join('')
+}
+
+function calcConsumo(id) {
+  const vi = parseFloat(document.getElementById(id + '-vi')?.value)
+  const vf = parseFloat(document.getElementById(id + '-vf')?.value)
+  const el = document.getElementById(id + '-cons')
+  if (!isNaN(vi) && !isNaN(vf)) {
+    const cons = Math.round((vi - vf) * 1000) / 1000
+    el.textContent = cons + ' m³'
+    el.style.color = cons < 0 ? '#e53935' : '#1e6b40'
+  } else {
+    el.textContent = '— m³'
+    el.style.color = '#1e6b40'
+  }
+}
+
+async function guardar() {
+  const fecha      = document.getElementById('inp-fecha').value
+  const produccion = parseFloat(document.getElementById('inp-produccion').value) || null
+  const obs        = document.getElementById('inp-obs').value.trim()
+
+  if (!fecha) { alert('Ingresá la fecha del parte.'); return }
+
+  const btn = document.getElementById('btn-guardar')
+  btn.disabled = true
+  btn.textContent = 'Guardando...'
+
+  const { data: parte, error } = await db.from('partes_planta').insert({
+    fecha,
+    produccion_tn: produccion,
+    observaciones: obs || null
+  }).select().single()
+
+  if (error) {
+    alert('Error al guardar: ' + error.message)
+    btn.disabled = false
+    btn.textContent = '💾 Guardar parte del día'
+    return
+  }
+
+  const tanqueRows = TANQUES.map(t => {
+    const ai = parseFloat(document.getElementById(t.id + '-ai')?.value)
+    const vi = parseFloat(document.getElementById(t.id + '-vi')?.value)
+    const af = parseFloat(document.getElementById(t.id + '-af')?.value)
+    const vf = parseFloat(document.getElementById(t.id + '-vf')?.value)
+    const aiV = isNaN(ai) ? null : ai
+    const viV = isNaN(vi) ? null : vi
+    const afV = isNaN(af) ? null : af
+    const vfV = isNaN(vf) ? null : vf
+    if (aiV === null && viV === null && afV === null && vfV === null) return null
+    const consumo = (viV !== null && vfV !== null) ? Math.round((viV - vfV) * 1000) / 1000 : null
+    return {
+      parte_id:        parte.id,
+      tanque:          t.id,
+      tanque_label:    t.label,
+      altura_inicial:  aiV,
+      volumen_inicial: viV,
+      altura_final:    afV,
+      volumen_final:   vfV,
+      consumo
+    }
+  }).filter(Boolean)
+
+  if (tanqueRows.length) {
+    await db.from('partes_planta_tanques').insert(tanqueRows)
+  }
+
+  Array.from(document.querySelectorAll('.card')).forEach(c => c.style.display = 'none')
+  btn.style.display = 'none'
+  document.querySelector('p[style*="INT"]').style.display = 'none'
+  document.getElementById('msg-ok-det').textContent =
+    new Date(fecha + 'T12:00').toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' }) +
+    (produccion ? ' · ' + produccion + ' TN producidas' : '')
+  document.getElementById('msg-ok').style.display = 'block'
+  document.getElementById('msg-ok').scrollIntoView({ behavior: 'smooth' })
+}
+
+document.getElementById('inp-fecha').value = new Date().toISOString().split('T')[0]
+renderTanques()
+
+</script>
+</body>
+</html>

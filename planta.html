@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serving Suite Control — Planta Asfáltica</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  .tab-bar{display:flex;gap:4px;background:#f0f0f0;border-radius:10px;padding:4px;margin-bottom:24px;width:fit-content}
+  .tab-btn{padding:8px 20px;border:none;background:none;border-radius:7px;font-size:14px;font-weight:500;color:var(--gray);cursor:pointer;transition:all .15s}
+  .tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.10)}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  .th-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .th-tbl th{background:#f5f7f5;padding:10px 13px;text-align:left;font-weight:600;font-size:12px;color:var(--gray);border-bottom:1.5px solid #e8e8e8}
+  .th-tbl td{padding:10px 13px;border-bottom:1px solid #f2f2f2;vertical-align:middle}
+  .th-tbl tr:last-child td{border-bottom:none}
+  .th-tbl tr:hover td{background:#f9fbf9}
+
+  .dt-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .dt-tbl th{background:#f5f7f5;padding:7px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--gray);border-bottom:1px solid #e8e8e8;text-transform:uppercase;letter-spacing:.3px}
+  .dt-tbl td{padding:7px 10px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+  .dt-tbl tr:last-child td{border-bottom:none}
+
+  .qr-card{background:#fff;border:1.5px solid #d4eadc;border-radius:14px;padding:28px;text-align:center;max-width:320px;margin:0 auto}
+  .qr-card h3{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:4px}
+  .qr-card p{font-size:12px;color:var(--gray);margin-bottom:20px}
+  .qr-wrap{display:flex;justify-content:center;margin-bottom:20px}
+  .url-box{background:#f5f7f5;border-radius:8px;padding:10px 14px;font-size:11px;color:var(--gray);word-break:break-all;margin-bottom:16px;text-align:left}
+
+  .detail-panel{display:none;background:#f9fbf9;border:1.5px solid #d4eadc;border-radius:12px;padding:16px;margin-top:8px}
+  .detail-panel.open{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+
+    <div class="ph" style="margin-bottom:20px">
+      <div class="ph-left">
+        <h1>Planta Asfáltica</h1>
+        <p>Partes diarios y control de consumos — INT 5001</p>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('historial')">📁 Historial de Partes</button>
+      <button class="tab-btn" onclick="switchTab('qr')">📲 Código QR</button>
+    </div>
+
+    <!-- ══ HISTORIAL ══ -->
+    <div id="tab-historial" class="tab-panel active">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase">Desde</label>
+          <input type="date" id="f-desde" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:7px 11px;font-size:14px;background:#fff">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px;text-transform:uppercase">Hasta</label>
+          <input type="date" id="f-hasta" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:7px 11px;font-size:14px;background:#fff">
+        </div>
+        <button class="btn" onclick="cargarHistorial()">Buscar</button>
+      </div>
+      <div style="overflow-x:auto;border-radius:12px;border:1.5px solid #e8e8e8">
+        <table class="th-tbl">
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Producción (TN)</th>
+            <th>Tanques con datos</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
+          </tr></thead>
+          <tbody id="hist-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="detail-wrap"></div>
+    </div>
+
+    <!-- ══ QR ══ -->
+    <div id="tab-qr" class="tab-panel">
+      <div class="qr-card">
+        <h3>🏭 Planta Asfáltica — INT 5001</h3>
+        <p>El plantista escanea este código para cargar el parte diario</p>
+        <div class="qr-wrap">
+          <div id="qr-planta"></div>
+        </div>
+        <div class="url-box" id="qr-url-box"></div>
+        <button class="btn btn-accent" style="width:100%" onclick="imprimirQR()">🖨️ Imprimir tarjeta</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+
+let usuario = null
+
+async function init() {
+  usuario = await requireAuth()
+  if (!usuario) return
+  renderSidebar(usuario, 'planta')
+
+  const hoy   = new Date()
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
+  const hasta = hoy.toISOString().split('T')[0]
+  document.getElementById('f-desde').value = desde
+  document.getElementById('f-hasta').value = hasta
+
+  await cargarHistorial()
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', ['historial','qr'][i] === tab))
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+  document.getElementById('tab-' + tab).classList.add('active')
+  if (tab === 'qr') generarQR()
+}
+
+// ── Historial ────────────────────────────────────────────────────────────────
+
+async function cargarHistorial() {
+  const desde = document.getElementById('f-desde').value
+  const hasta = document.getElementById('f-hasta').value
+  const tbody = document.getElementById('hist-tbody')
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--gray)">Cargando...</td></tr>`
+
+  let query = db.from('partes_planta').select('*').order('fecha', { ascending: false })
+  if (desde) query = query.gte('fecha', desde)
+  if (hasta) query = query.lte('fecha', hasta)
+  const { data } = await query
+
+  if (!data || !data.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">No hay partes en el período seleccionado.</td></tr>`
+    return
+  }
+
+  const ids = data.map(p => p.id)
+  const { data: tanques } = await db.from('partes_planta_tanques').select('*').in('parte_id', ids)
+  const tanqMap = {}
+  ;(tanques || []).forEach(t => {
+    if (!tanqMap[t.parte_id]) tanqMap[t.parte_id] = []
+    tanqMap[t.parte_id].push(t)
+  })
+
+  tbody.innerHTML = data.map(p => {
+    const ts = tanqMap[p.id] || []
+    const conDatos = ts.filter(t => t.volumen_inicial !== null || t.volumen_final !== null).length
+    return `
+    <tr>
+      <td style="font-weight:600">${new Date(p.fecha + 'T12:00').toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}</td>
+      <td style="font-weight:700;color:var(--primary)">${p.produccion_tn != null ? p.produccion_tn + ' TN' : '—'}</td>
+      <td><span style="background:#e8f5ee;color:#1e6b40;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${conDatos} tanques</span></td>
+      <td style="font-size:12px;color:var(--gray);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.observaciones || '—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="toggleDetalle('${p.id}')">Ver detalle</button>
+        <button class="btn" style="font-size:12px;padding:4px 10px;color:var(--danger);border-color:var(--danger)" onclick="eliminarParte('${p.id}')">✕</button>
+      </td>
+    </tr>
+    <tr id="det-${p.id}" style="display:none">
+      <td colspan="5" style="padding:0 13px 13px">
+        ${renderDetalle(p, tanqMap[p.id] || [])}
+      </td>
+    </tr>`
+  }).join('')
+}
+
+function renderDetalle(p, tanques) {
+  const filas = tanques.map(t => {
+    const cons = t.consumo !== null ? t.consumo + ' m³' : '—'
+    return `<tr>
+      <td style="font-weight:500">${t.tanque_label || t.tanque}</td>
+      <td>${t.altura_inicial != null ? t.altura_inicial + ' m' : '—'}</td>
+      <td>${t.volumen_inicial != null ? t.volumen_inicial + ' m³' : '—'}</td>
+      <td>${t.altura_final != null ? t.altura_final + ' m' : '—'}</td>
+      <td>${t.volumen_final != null ? t.volumen_final + ' m³' : '—'}</td>
+      <td style="font-weight:700;color:var(--primary)">${cons}</td>
+    </tr>`
+  }).join('')
+
+  return `<div style="background:#f9fbf9;border:1.5px solid #d4eadc;border-radius:10px;overflow:hidden">
+    <table class="dt-tbl">
+      <thead><tr>
+        <th>Tanque</th><th>Alt. Inicial</th><th>Vol. Inicial</th><th>Alt. Final</th><th>Vol. Final</th><th>Consumo</th>
+      </tr></thead>
+      <tbody>${filas || '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:12px">Sin datos de tanques</td></tr>'}</tbody>
+    </table>
+    ${p.observaciones ? `<div style="padding:10px 13px;font-size:12px;color:var(--gray);border-top:1px solid #e8e8e8">📝 ${p.observaciones}</div>` : ''}
+  </div>`
+}
+
+function toggleDetalle(id) {
+  const row = document.getElementById('det-' + id)
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none'
+}
+
+async function eliminarParte(id) {
+  if (!confirm('¿Eliminar este parte? Se borrarán también los datos de tanques.')) return
+  await db.from('partes_planta_tanques').delete().eq('parte_id', id)
+  await db.from('partes_planta').delete().eq('id', id)
+  toast('Parte eliminado')
+  cargarHistorial()
+}
+
+// ── QR ───────────────────────────────────────────────────────────────────────
+
+function generarQR() {
+  const wrap = document.getElementById('qr-planta')
+  if (wrap.querySelector('canvas') || wrap.querySelector('img')) return
+
+  const url = window.location.origin + window.location.pathname.replace('planta.html', 'parte-planta.html')
+  document.getElementById('qr-url-box').textContent = url
+
+  new QRCode(wrap, {
+    text: url,
+    width: 180, height: 180,
+    colorDark: '#1e6b40',
+    colorLight: '#ffffff'
+  })
+}
+
+function imprimirQR() {
+  const canvas = document.querySelector('#qr-planta canvas')
+  if (!canvas) { toast('Generando QR...', 'error'); return }
+  const img = canvas.toDataURL('image/png')
+  const win = window.open('', '_blank', 'width=400,height=520')
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>QR — Planta Asfáltica</title>
+  <style>
+    body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    .card{border:2px solid #1e6b40;border-radius:16px;padding:28px 32px;text-align:center;max-width:300px}
+    h2{color:#1e6b40;font-size:16px;margin:0 0 4px}
+    p{color:#888;font-size:12px;margin:0 0 18px}
+    img{width:180px;height:180px;display:block;margin:0 auto 16px}
+    small{font-size:10px;color:#bbb;display:block;margin-top:14px}
+    @media print{body{-webkit-print-color-adjust:exact}}
+  </style></head><body>
+  <div class="card">
+    <h2>🏭 Planta Asfáltica</h2>
+    <p>Escaneá para cargar el parte diario</p>
+    <img src="${img}">
+    <div style="font-size:13px;font-weight:700;color:#333">Serving S.R.L. — INT 5001</div>
+    <small>Serving Suite Control</small>
+  </div>
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`)
+  win.document.close()
+}
+
+init()
+</script>
+</body>
+</html>
