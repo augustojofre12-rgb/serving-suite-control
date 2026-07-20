@@ -250,10 +250,11 @@
               <th>Horómetro</th>
               <th>Registrado por</th>
               <th>Obs.</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tabla-body">
-            <tr><td colspan="7" class="empty-tabla"><div class="eti">⛽</div>Cargando historial...</td></tr>
+            <tr><td colspan="8" class="empty-tabla"><div class="eti">⛽</div>Cargando historial...</td></tr>
           </tbody>
         </table>
       </div>
@@ -273,12 +274,31 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Modal editar obra -->
+<div class="modal-bg" id="modal-obra" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:90%;max-width:420px">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">✏️ Asignar obra</h2>
+    <input type="hidden" id="mo-carga-id">
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:6px;text-transform:uppercase">Obra</label>
+      <select id="mo-obra" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:9px 11px;font-size:14px;background:#fafafa">
+        <option value="">— Sin asignar —</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarModalObra()">Cancelar</button>
+      <button class="btn btn-accent" onclick="guardarObra()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
 let usuario = null
+let obras = []
 const BASE_URL = window.location.origin + window.location.pathname.replace('combustible.html', '')
 
 async function init() {
@@ -296,13 +316,14 @@ async function init() {
 }
 
 async function cargarFiltros() {
-  const [{ data: obras }, { data: equipos }] = await Promise.all([
+  const [{ data: obras_data }, { data: equipos }] = await Promise.all([
     db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre'),
     db.from('flota_equipos').select('id, nombre, numero_interno').order('numero_interno')
   ])
 
+  obras = obras_data || []
   const selObra = document.getElementById('filtro-obra')
-  ;(obras || []).forEach(o => {
+  ;(obras_data || []).forEach(o => {
     const op = document.createElement('option')
     op.value = o.id
     op.textContent = o.nombre
@@ -356,7 +377,7 @@ async function cargarHistorial() {
   const tbody = document.getElementById('tabla-body')
 
   if (error || !data || data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-tabla"><div class="eti">⛽</div>No hay cargas registradas para los filtros seleccionados.</td></tr>`
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-tabla"><div class="eti">⛽</div>No hay cargas registradas para los filtros seleccionados.</td></tr>`
     document.getElementById('res-filtro').textContent = '0 L'
     return
   }
@@ -383,11 +404,15 @@ async function cargarHistorial() {
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${fecha}</td>
       <td>${equipo}</td>
-      <td>${obra}</td>
+      <td id="obra-cell-${r.id}">${obra}</td>
       <td><span class="litros-val">${r.litros} L</span></td>
       <td>${horas}</td>
       <td>${r.registrado_por || '—'}</td>
       <td>${obs}</td>
+      <td style="white-space:nowrap">
+        <button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="abrirEditarObra('${r.id}', '${r.obra_id || ''}')">✏️ Obra</button>
+        <button class="btn" style="font-size:12px;padding:4px 10px;color:var(--danger);border-color:var(--danger)" onclick="eliminarCarga('${r.id}')">✕</button>
+      </td>
     </tr>`
   }).join('')
 }
@@ -474,6 +499,39 @@ function switchTab(tab) {
   document.getElementById('tab-historial').classList.toggle('active', tab === 'historial')
   document.getElementById('tab-qr').classList.toggle('active', tab === 'qr')
   if (tab === 'qr' && document.getElementById('qr-grid').children.length <= 1) cargarQR()
+}
+
+function abrirEditarObra(cargaId, obraActualId) {
+  document.getElementById('mo-carga-id').value = cargaId
+  const sel = document.getElementById('mo-obra')
+  sel.innerHTML = '<option value="">— Sin asignar —</option>' +
+    obras.map(o => `<option value="${o.id}" ${o.id === obraActualId ? 'selected' : ''}>${o.nombre}</option>`).join('')
+  document.getElementById('modal-obra').style.display = 'flex'
+}
+
+function cerrarModalObra() {
+  document.getElementById('modal-obra').style.display = 'none'
+}
+
+async function guardarObra() {
+  const id     = document.getElementById('mo-carga-id').value
+  const obraId = document.getElementById('mo-obra').value || null
+
+  const { error } = await db.from('cargas_combustible').update({ obra_id: obraId }).eq('id', id)
+  if (error) { toast('Error al guardar', 'error'); return }
+
+  cerrarModalObra()
+  toast('Obra actualizada')
+  cargarHistorial()
+}
+
+async function eliminarCarga(id) {
+  if (!confirm('¿Eliminar este registro de carga? No se puede deshacer.')) return
+  const { error } = await db.from('cargas_combustible').delete().eq('id', id)
+  if (error) { toast('Error al eliminar', 'error'); return }
+  toast('Registro eliminado')
+  cargarHistorial()
+  cargarResumenMes()
 }
 
 init()
