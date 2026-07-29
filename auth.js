@@ -70,6 +70,7 @@ function renderSidebar(usuario, paginaActiva) {
       <a class="nav-item ${paginaActiva==='informes'?'active':''}" href="informes.html">📄&nbsp; Informes Mensuales</a>
       ${(esCoord||esDir) ? `<a class="nav-item ${paginaActiva==='asfalto'?'active':''}" href="asfalto.html">🛣️&nbsp; Producción Mezcla Asfáltica</a>
       <a class="nav-item ${paginaActiva==='planta'?'active':''}" href="planta.html">🏭&nbsp; Planta Asfáltica</a>
+      <a class="nav-item ${paginaActiva==='bascula'?'active':''}" href="bascula.html">⚖️&nbsp; B&aacute;scula Pescadores</a>
       <a class="nav-item ${paginaActiva==='combustible'?'active':''}" href="combustible.html">⛽&nbsp; Control de Combustible</a>` : ''}
       <div class="nav-sec">Certificación</div>
       <a class="nav-item ${paginaActiva==='certificacion'?'active':''}" href="certificacion.html">📋&nbsp; Certificación</a>
