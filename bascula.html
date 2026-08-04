@@ -683,7 +683,7 @@ async function cargarHistorial() {
       <td>${bEstado}</td>
       <td style="white-space:nowrap">
         <button class="btn" style="font-size:12px;padding:3px 9px;margin-right:4px" onclick="imprimirRemito('${m.id}')">&#128424;&#65039;</button>
-        <button class="btn" style="font-size:12px;padding:3px 9px;color:var(--danger);border-color:var(--danger)" onclick="eliminarMovimiento('${m.id}')">&#10005;</button>
+        ${usuario.rol !== 'operador_bascula' ? `<button class="btn" style="font-size:12px;padding:3px 9px;color:var(--danger);border-color:var(--danger)" onclick="eliminarMovimiento('${m.id}')">&#10005;</button>` : ''}
       </td>
     </tr>`
   }).join('')
@@ -778,6 +778,7 @@ function imprimirRemito(id) {
 }
 
 async function eliminarMovimiento(id) {
+  if (usuario.rol === 'operador_bascula') return
   if (!confirm('Eliminar este movimiento?')) return
   await db.from('bascula_movimientos').delete().eq('id', id)
   toast('Movimiento eliminado')
