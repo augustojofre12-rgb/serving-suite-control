@@ -19,6 +19,16 @@ async function requireAuth() {
     window.location.href = 'index.html'
     return null
   }
+
+  // Operador de báscula: solo puede acceder a bascula.html
+  if (usuario.rol === 'operador_bascula') {
+    const paginaActual = window.location.pathname.split('/').pop()
+    if (paginaActual !== 'bascula.html') {
+      window.location.href = 'bascula.html'
+      return null
+    }
+  }
+
   return usuario
 }
 
@@ -46,16 +56,15 @@ function renderSidebar(usuario, paginaActiva) {
     ? usuario.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : usuario.email.substring(0, 2).toUpperCase()
 
-  const esCoord = usuario.rol === 'coordinador'
-  const esDir   = usuario.rol === 'directivo'
-  const esJefe  = usuario.rol === 'jefe_obra'
+  const esCoord   = usuario.rol === 'coordinador'
+  const esDir     = usuario.rol === 'directivo'
+  const esJefe    = usuario.rol === 'jefe_obra'
+  const esBascula = usuario.rol === 'operador_bascula'
 
-  document.getElementById('sidebar').innerHTML = `
-    <div class="sb-logo">
-      <img src="logo.png" alt="Serving">
-      <p>Suite Control</p>
-    </div>
-    <nav class="sb-nav">
+  const navContent = esBascula ? `
+      <div class="nav-sec">B&aacute;scula</div>
+      <a class="nav-item active" href="bascula.html">⚖️&nbsp; B&aacute;scula Pescadores</a>
+  ` : `
       <div class="nav-sec">Principal</div>
       <a class="nav-item ${paginaActiva==='obras'?'active':''}" href="dashboard.html">🏗️&nbsp; Mis Obras / Contrataciones</a>
       ${esCoord ? `<a class="nav-item ${paginaActiva==='nueva-obra'?'active':''}" href="nueva-obra.html">➕&nbsp; Nueva Obra / Contratación</a>` : ''}
@@ -81,7 +90,14 @@ function renderSidebar(usuario, paginaActiva) {
 ` : ''}
       ${esCoord ? `<div class="nav-sec">Administración</div>
       <a class="nav-item ${paginaActiva==='usuarios'?'active':''}" href="usuarios.html">👥&nbsp; Usuarios</a>` : ''}
-    </nav>
+  `
+
+  document.getElementById('sidebar').innerHTML = `
+    <div class="sb-logo">
+      <img src="logo.png" alt="Serving">
+      <p>Suite Control</p>
+    </div>
+    <nav class="sb-nav">${navContent}</nav>
     <div class="sb-user">
       <div class="avatar">${iniciales}</div>
       <div>
@@ -97,7 +113,8 @@ function labelRol(rol) {
   const labels = {
     coordinador: 'Coordinador',
     jefe_obra: 'Jefe de Obra',
-    directivo: 'Directivo'
+    directivo: 'Directivo',
+    operador_bascula: 'Operador Báscula'
   }
   return labels[rol] || rol
 }
