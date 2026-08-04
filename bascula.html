@@ -124,7 +124,8 @@
           </div>
           <div class="field">
             <label>Proveedor</label>
-            <select id="f-proveedor"><option value="">— Seleccionar —</option></select>
+            <input type="text" id="f-proveedor" list="dl-proveedor" placeholder="Seleccionar o escribir...">
+            <datalist id="dl-proveedor"></datalist>
           </div>
         </div>
 
@@ -135,20 +136,20 @@
           </div>
           <div class="field">
             <label>N° Interno</label>
-            <select id="f-interno" onchange="onInternoChange()">
-              <option value="">— Seleccionar —</option>
-            </select>
+            <input type="text" id="f-interno" list="dl-interno" placeholder="Seleccionar o escribir..." oninput="onInternoChange()">
+            <datalist id="dl-interno"></datalist>
           </div>
           <div class="field">
             <label>Patente</label>
-            <input type="text" id="f-patente" class="readonly" readonly placeholder="Auto">
+            <input type="text" id="f-patente" placeholder="Ej: AB 123 CD">
           </div>
         </div>
 
         <div class="form-grid g2" style="margin-top:12px">
           <div class="field">
             <label>Chofer</label>
-            <select id="f-chofer"><option value="">— Seleccionar —</option></select>
+            <input type="text" id="f-chofer" list="dl-chofer" placeholder="Seleccionar o escribir...">
+            <datalist id="dl-chofer"></datalist>
           </div>
           <div class="field">
             <label>Observaciones (opcional)</label>
@@ -427,21 +428,19 @@ async function cargarListas() {
 
 function poblarSelects() {
   const opts = (arr, ph) => `<option value="">${ph}</option>` + arr.map(x => `<option value="${x.nombre}">${x.nombre}</option>`).join('')
-  document.getElementById('f-material').innerHTML  = opts(listas.materiales,  '— Seleccionar material —')
-  document.getElementById('f-proveedor').innerHTML = opts(listas.proveedores, '— Seleccionar proveedor —')
-  document.getElementById('f-chofer').innerHTML    = opts(listas.choferes,    '— Seleccionar chofer —')
-  document.getElementById('f-interno').innerHTML   =
-    '<option value="">— Seleccionar N° interno —</option>' +
-    listas.camiones.map(c => `<option value="${c.id}" data-patente="${c.patente}">${c.numero_interno}</option>`).join('')
+  document.getElementById('f-material').innerHTML = opts(listas.materiales, '— Seleccionar material —')
+  document.getElementById('dl-proveedor').innerHTML = listas.proveedores.map(x => `<option value="${x.nombre}">`).join('')
+  document.getElementById('dl-chofer').innerHTML    = listas.choferes.map(x => `<option value="${x.nombre}">`).join('')
+  document.getElementById('dl-interno').innerHTML   = listas.camiones.map(c => `<option value="${c.numero_interno}">`).join('')
   const hMat = document.getElementById('h-material')
   hMat.innerHTML = '<option value="">Todos los materiales</option>' +
     listas.materiales.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join('')
 }
 
 function onInternoChange() {
-  const sel = document.getElementById('f-interno')
-  const opt = sel.options[sel.selectedIndex]
-  document.getElementById('f-patente').value = opt ? (opt.dataset.patente || '') : ''
+  const val = document.getElementById('f-interno').value.trim()
+  const cam = listas.camiones.find(c => c.numero_interno === val)
+  if (cam) document.getElementById('f-patente').value = cam.patente || ''
 }
 
 function setTipo(tipo) {
@@ -480,8 +479,7 @@ async function guardarMovimiento() {
   const chofer    = document.getElementById('f-chofer').value
   const obs       = document.getElementById('f-obs').value.trim()
   const patente   = document.getElementById('f-patente').value.trim()
-  const selInt    = document.getElementById('f-interno')
-  const interno   = selInt.options[selInt.selectedIndex]?.text || ''
+  const interno   = document.getElementById('f-interno').value.trim()
 
   if (!material) { toast('Selecciona un material', 'error'); return }
 
