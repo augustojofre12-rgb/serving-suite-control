@@ -561,7 +561,7 @@ function abrirEditarCarga(id) {
       `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
   document.getElementById('me-equipo').innerHTML =
-    equipos.map(e => `<option value="${e.id}" ${e.id === r.flota_equipo_id ? 'selected' : ''}>${e.nombre}${e.numero_interno ? ' (N°'+e.numero_interno+')' : ''}</option>`).join('')
+    equipos.map(e => `<option value="${e.id}" ${e.id === r.equipo_id ? 'selected' : ''}>${e.nombre}${e.numero_interno ? ' (N°'+e.numero_interno+')' : ''}</option>`).join('')
   document.getElementById('me-obra').innerHTML =
     '<option value="">— Sin asignar —</option>' +
     obras.map(o => `<option value="${o.id}" ${o.id === r.obra_id ? 'selected' : ''}>${o.nombre}</option>`).join('')
@@ -577,7 +577,7 @@ async function guardarEditarCarga() {
   const payload = {
     fecha:          document.getElementById('me-fecha').value  || null,
     litros:         parseFloat(document.getElementById('me-litros').value) || null,
-    flota_equipo_id:document.getElementById('me-equipo').value || null,
+    equipo_id:      document.getElementById('me-equipo').value || null,
     horas_motor:    parseFloat(document.getElementById('me-horas').value)  || null,
     obra_id:        document.getElementById('me-obra').value   || null,
     observaciones:  document.getElementById('me-obs').value.trim() || null
