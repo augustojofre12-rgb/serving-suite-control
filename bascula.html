@@ -405,7 +405,7 @@ function switchTab(tab) {
   if (tab === 'historial') {
     cargarHistorial()
     clearInterval(refreshTimer)
-    refreshTimer = setInterval(cargarHistorial, 30000)
+    refreshTimer = setInterval(cargarHistorial, 300000)
   } else {
     clearInterval(refreshTimer)
     refreshTimer = null
@@ -677,7 +677,7 @@ async function cargarHistorial() {
   const label = document.getElementById('refresh-label')
   if (label) {
     const hora = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
-    label.textContent = `Última actualización: ${hora} — se actualiza cada 30 seg.`
+    label.textContent = `Última actualización: ${hora} — se actualiza cada 5 min.`
   }
 
   tbody.innerHTML = data.map(m => {
