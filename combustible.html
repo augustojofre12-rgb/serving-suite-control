@@ -275,6 +275,45 @@
 <div class="toast" id="toast"></div>
 
 <!-- Modal editar obra -->
+<div class="modal-bg" id="modal-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:90%;max-width:480px">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:18px">✏️ Editar carga</h2>
+    <input type="hidden" id="me-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Fecha</label>
+        <input type="datetime-local" id="me-fecha" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Litros</label>
+        <input type="number" id="me-litros" step="0.1" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Equipo</label>
+        <select id="me-equipo" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fafafa"></select>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Horas motor</label>
+        <input type="number" id="me-horas" step="0.1" placeholder="Opcional" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Obra</label>
+      <select id="me-obra" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fafafa"></select>
+    </div>
+    <div style="margin-bottom:18px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;text-transform:uppercase">Observaciones</label>
+      <input type="text" id="me-obs" placeholder="Opcional" style="width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="cerrarEditarCarga()">Cancelar</button>
+      <button class="btn btn-accent" onclick="guardarEditarCarga()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-obra" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;padding:24px;width:90%;max-width:420px">
     <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">✏️ Asignar obra</h2>
@@ -298,7 +337,9 @@
 <script src="auth.js"></script>
 <script>
 let usuario = null
-let obras = []
+let obras   = []
+let equipos = []
+let cargasMap = {}
 const BASE_URL = window.location.origin + window.location.pathname.replace('combustible.html', '')
 
 async function init() {
@@ -316,12 +357,13 @@ async function init() {
 }
 
 async function cargarFiltros() {
-  const [{ data: obras_data }, { data: equipos }] = await Promise.all([
+  const [{ data: obras_data }, { data: equipos_data }] = await Promise.all([
     db.from('obras').select('id, nombre').eq('estado', 'activa').order('nombre'),
     db.from('flota_equipos').select('id, nombre, numero_interno').order('numero_interno')
   ])
 
-  obras = obras_data || []
+  obras   = obras_data   || []
+  equipos = equipos_data || []
   const selObra = document.getElementById('filtro-obra')
   ;(obras_data || []).forEach(o => {
     const op = document.createElement('option')
@@ -331,7 +373,7 @@ async function cargarFiltros() {
   })
 
   const selEq = document.getElementById('filtro-equipo')
-  ;(equipos || []).forEach(e => {
+  ;(equipos_data || []).forEach(e => {
     const op = document.createElement('option')
     op.value = e.id
     op.textContent = e.nombre + (e.numero_interno ? ' (N°' + e.numero_interno + ')' : '')
@@ -385,6 +427,9 @@ async function cargarHistorial() {
   const totalFiltro = data.reduce((s, r) => s + (r.litros || 0), 0)
   document.getElementById('res-filtro').textContent = formatNum(Math.round(totalFiltro)) + ' L'
 
+  cargasMap = {}
+  data.forEach(r => cargasMap[r.id] = r)
+
   tbody.innerHTML = data.map(r => {
     const fecha = r.fecha ? new Date(r.fecha).toLocaleString('es-AR', {
       day:'2-digit', month:'2-digit', year:'numeric',
@@ -411,6 +456,7 @@ async function cargarHistorial() {
       <td>${obs}</td>
       <td style="white-space:nowrap">
         <button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="abrirEditarObra('${r.id}', '${r.obra_id || ''}')">✏️ Obra</button>
+        ${usuario.rol === 'coordinador' ? `<button class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px" onclick="abrirEditarCarga('${r.id}')">✏️ Editar</button>` : ''}
         <button class="btn" style="font-size:12px;padding:4px 10px;color:var(--danger);border-color:var(--danger)" onclick="eliminarCarga('${r.id}')">✕</button>
       </td>
     </tr>`
@@ -499,6 +545,49 @@ function switchTab(tab) {
   document.getElementById('tab-historial').classList.toggle('active', tab === 'historial')
   document.getElementById('tab-qr').classList.toggle('active', tab === 'qr')
   if (tab === 'qr' && document.getElementById('qr-grid').children.length <= 1) cargarQR()
+}
+
+function abrirEditarCarga(id) {
+  const r = cargasMap[id]
+  if (!r) return
+  document.getElementById('me-id').value     = id
+  document.getElementById('me-litros').value = r.litros || ''
+  document.getElementById('me-horas').value  = r.horas_motor || ''
+  document.getElementById('me-obs').value    = r.observaciones || ''
+  if (r.fecha) {
+    const d = new Date(r.fecha)
+    const pad = n => String(n).padStart(2,'0')
+    document.getElementById('me-fecha').value =
+      `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  document.getElementById('me-equipo').innerHTML =
+    equipos.map(e => `<option value="${e.id}" ${e.id === r.flota_equipo_id ? 'selected' : ''}>${e.nombre}${e.numero_interno ? ' (N°'+e.numero_interno+')' : ''}</option>`).join('')
+  document.getElementById('me-obra').innerHTML =
+    '<option value="">— Sin asignar —</option>' +
+    obras.map(o => `<option value="${o.id}" ${o.id === r.obra_id ? 'selected' : ''}>${o.nombre}</option>`).join('')
+  document.getElementById('modal-editar').style.display = 'flex'
+}
+
+function cerrarEditarCarga() {
+  document.getElementById('modal-editar').style.display = 'none'
+}
+
+async function guardarEditarCarga() {
+  const id = document.getElementById('me-id').value
+  const payload = {
+    fecha:          document.getElementById('me-fecha').value  || null,
+    litros:         parseFloat(document.getElementById('me-litros').value) || null,
+    flota_equipo_id:document.getElementById('me-equipo').value || null,
+    horas_motor:    parseFloat(document.getElementById('me-horas').value)  || null,
+    obra_id:        document.getElementById('me-obra').value   || null,
+    observaciones:  document.getElementById('me-obs').value.trim() || null
+  }
+  const { error } = await db.from('cargas_combustible').update(payload).eq('id', id)
+  if (error) { toast('Error al guardar', 'error'); return }
+  cerrarEditarCarga()
+  toast('Carga actualizada')
+  cargarHistorial()
+  cargarResumenMes()
 }
 
 function abrirEditarObra(cargaId, obraActualId) {
