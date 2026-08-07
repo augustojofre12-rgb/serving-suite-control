@@ -138,7 +138,7 @@ async function renderObraCard(obra, verFinanciero) {
   const fin    = obra.fecha_fin_estimada ? new Date(obra.fecha_fin_estimada+'T12:00').toLocaleDateString('es-AR',{month:'short',year:'numeric'}) : '—'
 
   return `
-    <a class="obra-card" href="obra.html?id=${obra.id}">
+    <a class="obra-card" href="${usuario.rol === 'jefe_obra' ? 'historial-partes.html' : 'obra.html'}?id=${obra.id}">
       <div class="flex-between mb-20">
         <div><div class="obra-title">${obra.nombre}</div><div class="obra-sub">${obra.ubicacion || obra.descripcion || ''}</div></div>
         <span class="badge ${badgeEstado}">${labelEstado}</span>
