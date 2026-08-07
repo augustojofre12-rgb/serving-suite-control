@@ -29,6 +29,16 @@ async function requireAuth() {
     }
   }
 
+  // Jefe de obra: solo puede acceder a dashboard y parte diario
+  if (usuario.rol === 'jefe_obra') {
+    const paginaActual = window.location.pathname.split('/').pop()
+    const permitidas = ['dashboard.html', 'parte.html', '']
+    if (!permitidas.includes(paginaActual)) {
+      window.location.href = 'parte.html'
+      return null
+    }
+  }
+
   return usuario
 }
 
@@ -64,6 +74,11 @@ function renderSidebar(usuario, paginaActiva) {
   const navContent = esBascula ? `
       <div class="nav-sec">B&aacute;scula</div>
       <a class="nav-item active" href="bascula.html">⚖️&nbsp; B&aacute;scula Pescadores</a>
+  ` : esJefe ? `
+      <div class="nav-sec">Principal</div>
+      <a class="nav-item ${paginaActiva==='obras'?'active':''}" href="dashboard.html">🏗️&nbsp; Mis Obras / Contrataciones</a>
+      <div class="nav-sec">Gesti&oacute;n Diaria</div>
+      <a class="nav-item ${paginaActiva==='parte'?'active':''}" href="parte.html">📋&nbsp; Parte Diario</a>
   ` : `
       <div class="nav-sec">Principal</div>
       <a class="nav-item ${paginaActiva==='obras'?'active':''}" href="dashboard.html">🏗️&nbsp; Mis Obras / Contrataciones</a>
