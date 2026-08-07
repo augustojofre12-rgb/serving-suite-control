@@ -32,7 +32,7 @@ async function requireAuth() {
   // Jefe de obra: solo puede acceder a dashboard y parte diario
   if (usuario.rol === 'jefe_obra') {
     const paginaActual = window.location.pathname.split('/').pop()
-    const permitidas = ['dashboard.html', 'parte.html', '']
+    const permitidas = ['dashboard.html', 'parte.html', 'historial-partes.html', '']
     if (!permitidas.includes(paginaActual)) {
       window.location.href = 'parte.html'
       return null
