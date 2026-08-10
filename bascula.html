@@ -649,8 +649,8 @@ async function cargarHistorial() {
   tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray)">Cargando...</td></tr>`
 
   let q = db.from('bascula_movimientos').select('*').order('fecha', { ascending: false }).limit(500)
-  if (desde) q = q.gte('fecha', desde + 'T00:00:00')
-  if (hasta) q = q.lte('fecha', hasta + 'T23:59:59')
+  if (desde) q = q.gte('fecha', desde + 'T00:00:00-03:00')
+  if (hasta) q = q.lte('fecha', hasta + 'T23:59:59-03:00')
   if (tipo)  q = q.eq('tipo', tipo)
   if (mat)   q = q.eq('material', mat)
   const { data } = await q
