@@ -69,6 +69,7 @@
           <th style="width:80px">Unidad</th>
           <th style="width:130px">Precio Unit. $</th>
           <th style="width:120px">Remito</th>
+          <th style="width:120px;text-align:right">Total $</th>
           <th style="width:36px" title="Marcar como Costo Indirecto">💼</th>
           <th style="width:40px"></th>
         </tr></thead>
@@ -79,10 +80,18 @@
             <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
             <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
             <td><input type="text" placeholder="R-0000"></td>
+            <td style="text-align:right;padding-right:10px"><span class="mat-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
             <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)" title="Costo Directo — clic para marcar como Indirecto">💼</button></td>
             <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr style="background:#f0f5f2;border-top:2px solid #dde8e0">
+            <td colspan="5" style="padding:8px 14px;font-weight:700;font-size:12px;color:var(--primary);text-align:right;text-transform:uppercase;letter-spacing:.03em">Total Materiales:</td>
+            <td style="padding:8px 10px;text-align:right"><strong id="mat-total-suma" style="font-size:14px;color:var(--primary)">—</strong></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
       <button class="add-row-btn" onclick="addMat()">+ Agregar material</button>
     </div>
@@ -363,12 +372,14 @@ async function cargarParteExistente(parteId) {
       <td><select>${['m³','m²','kg','tn','u','lt'].map(u=>`<option${m.unidad===u?' selected':''}>${u}</option>`).join('')}</select></td>
       <td><input type="number" value="${m.precio_unitario}" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><input type="text" value="${m.remito||''}"></td>
+      <td style="text-align:right;padding-right:10px"><span class="mat-total" data-valor="${(m.cantidad||0)*(m.precio_unitario||0)}" style="font-weight:700;font-size:13px;color:var(--primary)">${(m.cantidad||0)*(m.precio_unitario||0) > 0 ? formatPeso(Math.round((m.cantidad||0)*(m.precio_unitario||0))) : '—'}</span></td>
       <td style="text-align:center"><button type="button" class="ci-btn" onclick="toggleCI(this)"
         style="${m.es_indirecto ? 'background:#e8d5ff;border:1.5px solid #8e44ad;border-radius:6px;opacity:1' : ''}"
         title="${m.es_indirecto ? 'Costo Indirecto ✓ — clic para cambiar a Directo' : 'Costo Directo — clic para marcar como Indirecto'}">💼</button></td>
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`)
   })
+  actualizarSumaMat()
 
   // Personal — crear filas (registrado o eventual), poblar selects, luego asignar valores
   const tbodyPers = document.getElementById('tbody-pers')
@@ -618,7 +629,8 @@ function fillPersData(sel) {
 function delRow(btn) {
   const tbody = btn.closest('tr').parentElement
   btn.closest('tr').remove()
-  if (tbody?.id === 'tbody-pers') { actualizarSelectsPers(); actualizarSumaPers() }
+  if (tbody?.id === 'tbody-mat') actualizarSumaMat()
+  else if (tbody?.id === 'tbody-pers') { actualizarSelectsPers(); actualizarSumaPers() }
   else if (tbody?.id === 'tbody-eq') { actualizarSelectsEq(); actualizarSumaEq() }
 }
 
@@ -631,6 +643,7 @@ function rowTemplate(type) {
       <td><select><option>m³</option><option>m²</option><option>kg</option><option>tn</option><option>u</option><option>lt</option></select></td>
       <td><input type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal(this)"></td>
       <td><input type="text" placeholder="R-0000"></td>
+      <td style="text-align:right;padding-right:10px"><span class="mat-total" data-valor="0" style="font-weight:700;font-size:13px;color:var(--primary)">—</span></td>
       ${CI_BTN}
       <td><button class="btn-icon" onclick="delRow(this)">✕</button></td>
     </tr>`,
@@ -899,7 +912,28 @@ function calcHorasEq(input) {
   actualizarTotalEq(row)
 }
 
-function calcTotal(input) { /* solo visual */ }
+function calcTotal(input) {
+  const row = input.closest('tr')
+  const inputs = row.querySelectorAll('input[type="number"]')
+  const cant   = parseFloat(inputs[0]?.value) || 0
+  const precio = parseFloat(inputs[1]?.value) || 0
+  const total  = cant * precio
+  const span   = row.querySelector('.mat-total')
+  if (span) {
+    span.dataset.valor = total
+    span.textContent   = total > 0 ? formatPeso(Math.round(total)) : '—'
+  }
+  actualizarSumaMat()
+}
+
+function actualizarSumaMat() {
+  let suma = 0
+  document.querySelectorAll('#tbody-mat .mat-total').forEach(span => {
+    suma += parseFloat(span.dataset.valor) || 0
+  })
+  const el = document.getElementById('mat-total-suma')
+  if (el) el.textContent = suma > 0 ? formatPeso(Math.round(suma)) : '—'
+}
 
 // ── Toggle Costo Indirecto ──────────────────────────────────
 function toggleCI(btn) {
