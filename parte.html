@@ -539,6 +539,12 @@ async function cargarRecursosParte(obraId) {
 }
 
 function actualizarSelectsEq() {
+  const yaSeleccionados = new Set()
+  document.querySelectorAll('#tbody-eq tr').forEach(row => {
+    const sel = row.querySelector('select')
+    if (sel && sel.value) yaSeleccionados.add(sel.value)
+  })
+
   document.querySelectorAll('#tbody-eq tr').forEach(row => {
     const sel = row.querySelector('select')
     if (!sel) return
@@ -548,8 +554,10 @@ function actualizarSelectsEq() {
     } else {
       sel.innerHTML = '<option value="">— Seleccioná equipo —</option>'
       obraEquipos.forEach(e => {
-        const name = (e.flota_equipos?.numero_interno ? e.flota_equipos.numero_interno + ' — ' : '') + (e.flota_equipos?.nombre || '')
-        sel.insertAdjacentHTML('beforeend', `<option value="${e.equipo_id}">${name}</option>`)
+        if (!yaSeleccionados.has(e.equipo_id) || e.equipo_id === currentVal) {
+          const name = (e.flota_equipos?.numero_interno ? e.flota_equipos.numero_interno + ' — ' : '') + (e.flota_equipos?.nombre || '')
+          sel.insertAdjacentHTML('beforeend', `<option value="${e.equipo_id}">${name}</option>`)
+        }
       })
       if (currentVal) sel.value = currentVal
     }
@@ -584,6 +592,7 @@ function actualizarSelectsPers() {
 }
 
 function fillEqData(sel) {
+  actualizarSelectsEq()
   const asig = obraEquipos.find(e => e.equipo_id === sel.value)
   if (!asig) return
   const row = sel.closest('tr')
@@ -610,7 +619,7 @@ function delRow(btn) {
   const tbody = btn.closest('tr').parentElement
   btn.closest('tr').remove()
   if (tbody?.id === 'tbody-pers') { actualizarSelectsPers(); actualizarSumaPers() }
-  else if (tbody?.id === 'tbody-eq') actualizarSumaEq()
+  else if (tbody?.id === 'tbody-eq') { actualizarSelectsEq(); actualizarSumaEq() }
 }
 
 function rowTemplate(type) {
