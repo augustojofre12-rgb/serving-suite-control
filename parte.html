@@ -785,16 +785,16 @@ async function preCargarDesdeUltimoParte(itemId) {
     actualizarSelectsPers()
     tbodyPers.querySelectorAll('tr').forEach((row, i) => {
       const p = pers[i]
-      const inputs = row.querySelectorAll('input')
+      const inputs = row.querySelectorAll('input:not([data-skip])')
       if (p.persona_id) {
         const sel = row.querySelector('select')
         sel.value = p.persona_id
         fillPersData(sel)
-        // Precio del último parte (sobreescribe el de la obra)
         if (inputs[5] && p.precio_hora) inputs[5].value = p.precio_hora
       } else {
-        inputs[0].value = p.nombre || ''
-        if (inputs[1]) inputs[1].value = p.funcion || ''
+        const nombreInput = row.querySelector('input[data-skip]')
+        if (nombreInput) nombreInput.value = p.nombre || ''
+        if (inputs[0]) inputs[0].value = p.categoria || ''
         if (inputs[5] && p.precio_hora) inputs[5].value = p.precio_hora
       }
     })
