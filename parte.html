@@ -785,14 +785,17 @@ async function preCargarDesdeUltimoParte(itemId) {
     actualizarSelectsPers()
     tbodyPers.querySelectorAll('tr').forEach((row, i) => {
       const p = pers[i]
+      const inputs = row.querySelectorAll('input')
       if (p.persona_id) {
         const sel = row.querySelector('select')
         sel.value = p.persona_id
         fillPersData(sel)
+        // Precio del último parte (sobreescribe el de la obra)
+        if (inputs[5] && p.precio_hora) inputs[5].value = p.precio_hora
       } else {
-        const inputs = row.querySelectorAll('input')
         inputs[0].value = p.nombre || ''
         if (inputs[1]) inputs[1].value = p.funcion || ''
+        if (inputs[5] && p.precio_hora) inputs[5].value = p.precio_hora
       }
     })
   } else {
@@ -816,6 +819,9 @@ async function preCargarDesdeUltimoParte(itemId) {
       if (asig) {
         sel.value = asig.equipo_id
         fillEqData(sel)
+        // Precio del último parte (sobreescribe el de la obra)
+        const inputs = row.querySelectorAll('input')
+        if (inputs[4] && e.precio_hora) inputs[4].value = e.precio_hora
       }
     })
   } else {
