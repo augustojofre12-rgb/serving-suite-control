@@ -734,6 +734,93 @@ async function onItemChange() {
     } else {
       acumEl.innerHTML = '—'
     }
+
+    if (!parteEditId && itemId) {
+      await preCargarDesdeUltimoParte(itemId)
+    }
+  }
+}
+
+async function preCargarDesdeUltimoParte(itemId) {
+  const { data: partes } = await db.from('partes_diarios')
+    .select('id').eq('item_id', itemId)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (!partes || partes.length === 0) return
+
+  const ultimoId = partes[0].id
+  const [{ data: mat }, { data: pers }, { data: eq }] = await Promise.all([
+    db.from('parte_materiales').select('*').eq('parte_id', ultimoId),
+    db.from('parte_personal').select('*').eq('parte_id', ultimoId),
+    db.from('parte_equipos').select('*').eq('parte_id', ultimoId)
+  ])
+
+  // Materiales (sin cantidad)
+  const materiales = (mat || []).filter(m => !m.descripcion.startsWith('⛽') && !m.descripcion.startsWith('🔧'))
+  const tbodyMat = document.getElementById('tbody-mat')
+  tbodyMat.innerHTML = ''
+  if (materiales.length > 0) {
+    materiales.forEach(m => {
+      tbodyMat.insertAdjacentHTML('beforeend', rowTemplate('mat'))
+      const row = tbodyMat.lastElementChild
+      const inputs = row.querySelectorAll('input')
+      inputs[0].value = m.descripcion
+      row.querySelector('select').value = m.unidad || 'm³'
+      inputs[2].value = m.precio_unitario || ''
+    })
+  } else {
+    tbodyMat.insertAdjacentHTML('beforeend', rowTemplate('mat'))
+  }
+  actualizarSumaMat()
+
+  // Personal
+  const tbodyPers = document.getElementById('tbody-pers')
+  tbodyPers.innerHTML = ''
+  if (pers && pers.length > 0) {
+    pers.forEach(p => {
+      tbodyPers.insertAdjacentHTML('beforeend', p.persona_id ? rowTemplate('pers') : rowTemplate('eventual'))
+    })
+    actualizarSelectsPers()
+    tbodyPers.querySelectorAll('tr').forEach((row, i) => {
+      const p = pers[i]
+      if (p.persona_id) {
+        const sel = row.querySelector('select')
+        sel.value = p.persona_id
+        fillPersData(sel)
+      } else {
+        const inputs = row.querySelectorAll('input')
+        inputs[0].value = p.nombre || ''
+        if (inputs[1]) inputs[1].value = p.funcion || ''
+      }
+    })
+  } else {
+    tbodyPers.insertAdjacentHTML('beforeend', rowTemplate('pers'))
+    actualizarSelectsPers()
+  }
+
+  // Equipos
+  const tbodyEq = document.getElementById('tbody-eq')
+  tbodyEq.innerHTML = ''
+  if (eq && eq.length > 0) {
+    eq.forEach(() => tbodyEq.insertAdjacentHTML('beforeend', rowTemplate('eq')))
+    actualizarSelectsEq()
+    tbodyEq.querySelectorAll('tr').forEach((row, i) => {
+      const e = eq[i]
+      const sel = row.querySelector('select')
+      const asig = obraEquipos.find(oe => {
+        const name = (oe.flota_equipos?.numero_interno ? oe.flota_equipos.numero_interno + ' — ' : '') + (oe.flota_equipos?.nombre || '')
+        return name === e.descripcion
+      })
+      if (asig) {
+        sel.value = asig.equipo_id
+        fillEqData(sel)
+      }
+    })
+  } else {
+    tbodyEq.insertAdjacentHTML('beforeend', rowTemplate('eq'))
+    actualizarSelectsEq()
   }
 }
 
